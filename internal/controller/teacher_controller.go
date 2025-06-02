@@ -3,8 +3,8 @@ package controller
 
 import (
 	"lumenslate/internal/model"
+	"lumenslate/internal/service"
 	"net/http"
-	"server/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
