@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	qrepo "server/internal/repository/questions"
+	qrepo "lumenslate/internal/repository/questions"
 )
 
 type QuestionForPDF struct {

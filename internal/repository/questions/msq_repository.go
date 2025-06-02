@@ -2,8 +2,8 @@ package questions
 
 import (
 	"context"
-	"server/internal/firebase"
-	"server/internal/model/questions"
+	"lumenslate/internal/firebase"
+	"lumenslate/internal/model/questions"
 	"strconv"
 
 	"cloud.google.com/go/firestore"

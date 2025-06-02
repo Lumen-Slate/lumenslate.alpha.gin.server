@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"log"
-	"server/internal/firebase"
-	"server/internal/model"
+	"lumenslate/internal/firebase"
+	"lumenslate/internal/model"
 	"strconv"
 	"time"
 )

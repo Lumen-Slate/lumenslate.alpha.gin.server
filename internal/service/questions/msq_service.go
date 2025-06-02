@@ -1,8 +1,8 @@
 package questions
 
 import (
-	"server/internal/model/questions"
-	repo "server/internal/repository/questions"
+	"lumenslate/internal/model/questions"
+	repo "lumenslate/internal/repository/questions"
 )
 
 func CreateMSQ(m questions.MSQ) error {

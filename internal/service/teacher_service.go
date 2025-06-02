@@ -1,8 +1,8 @@
 package service
 
 import (
-	"server/internal/model"
-	"server/internal/repository"
+	"lumenslate/internal/model"
+	"lumenslate/internal/repository"
 )
 
 func CreateTeacher(t model.Teacher) error {

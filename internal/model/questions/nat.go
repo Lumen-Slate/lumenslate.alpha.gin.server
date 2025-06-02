@@ -1,6 +1,6 @@
 package questions
 
-import "server/internal/model"
+import "lumenslate/internal/model"
 
 type NAT struct {
 	ID       string           `json:"id" firestore:"id"`

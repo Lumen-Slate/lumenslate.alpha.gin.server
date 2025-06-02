@@ -1,0 +1,2214 @@
+basePath: /
+definitions:
+  controller.GeneratePDFRequest:
+    properties:
+      questionIds:
+        items:
+          type: string
+        type: array
+      showAnswers:
+        type: boolean
+      showType:
+        type: boolean
+    type: object
+  model.Assignment:
+    properties:
+      body:
+        type: string
+      commentIds:
+        items:
+          type: string
+        type: array
+      createdAt:
+        type: string
+      dueDate:
+        type: string
+      id:
+        type: string
+      mcqs:
+        items:
+          $ref: '#/definitions/model.MCQ'
+        type: array
+      msqs:
+        items:
+          $ref: '#/definitions/model.MSQ'
+        type: array
+      nats:
+        items:
+          $ref: '#/definitions/model.NAT'
+        type: array
+      points:
+        type: integer
+      subjectives:
+        items:
+          $ref: '#/definitions/model.Subjective'
+        type: array
+      title:
+        type: string
+    type: object
+  model.Classroom:
+    properties:
+      assignmentIds:
+        items:
+          type: string
+        type: array
+      credits:
+        type: integer
+      id:
+        type: string
+      subject:
+        type: string
+      tags:
+        description: Added tags field
+        items:
+          type: string
+        type: array
+      teacherIds:
+        items:
+          type: string
+        type: array
+    type: object
+  model.Comment:
+    properties:
+      commentBody:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MCQ:
+    properties:
+      answer:
+        type: integer
+      options:
+        items:
+          type: string
+        type: array
+      question:
+        type: string
+    type: object
+  model.MSQ:
+    properties:
+      answers:
+        items:
+          type: integer
+        type: array
+      options:
+        items:
+          type: string
+        type: array
+      question:
+        type: string
+    type: object
+  model.NAT:
+    properties:
+      answer:
+        type: string
+      question:
+        type: string
+    type: object
+  model.Post:
+    properties:
+      attachments:
+        items:
+          type: string
+        type: array
+      body:
+        type: string
+      commentIds:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      title:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.QuestionBank:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      tags:
+        description: Added tags field
+        items:
+          type: string
+        type: array
+      teacherId:
+        type: string
+      topic:
+        type: string
+    type: object
+  model.Student:
+    properties:
+      classIds:
+        items:
+          type: string
+        type: array
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      rollNo:
+        type: string
+    type: object
+  model.Subjective:
+    properties:
+      question:
+        type: string
+    type: object
+  model.Submission:
+    properties:
+      assignmentId:
+        type: string
+      id:
+        type: string
+      mcqAnswers:
+        additionalProperties:
+          type: string
+        type: object
+      msqAnswers:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      natAnswers:
+        additionalProperties:
+          type: integer
+        type: object
+      studentId:
+        type: string
+      subjectiveAnswers:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  model.Teacher:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  model.Variable:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      namePositions:
+        items:
+          type: integer
+        type: array
+      value:
+        type: string
+      valuePositions:
+        items:
+          type: integer
+        type: array
+      variableType:
+        type: string
+    type: object
+  questions.MCQ:
+    properties:
+      answerIndex:
+        type: integer
+      bankId:
+        type: string
+      id:
+        type: string
+      options:
+        items:
+          type: string
+        type: array
+      points:
+        type: integer
+      question:
+        type: string
+      variableIds:
+        items:
+          type: string
+        type: array
+    type: object
+  questions.MSQ:
+    properties:
+      answerIndices:
+        items:
+          type: integer
+        type: array
+      bankId:
+        type: string
+      id:
+        type: string
+      options:
+        items:
+          type: string
+        type: array
+      points:
+        type: integer
+      question:
+        type: string
+      variableIds:
+        items:
+          type: string
+        type: array
+    type: object
+  questions.NAT:
+    properties:
+      answer:
+        type: number
+      bankId:
+        type: string
+      id:
+        type: string
+      points:
+        type: integer
+      question:
+        type: string
+      variable:
+        items:
+          $ref: '#/definitions/model.Variable'
+        type: array
+    type: object
+  questions.Subjective:
+    properties:
+      bankId:
+        type: string
+      gradingCriteria:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      idealAnswer:
+        type: string
+      points:
+        type: integer
+      question:
+        type: string
+      variable:
+        items:
+          $ref: '#/definitions/model.Variable'
+        type: array
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Backend API for managing assignments, questions, classrooms and more.
+  title: ParableMind API
+  version: "1.0"
+paths:
+  /assignments:
+    get:
+      parameters:
+      - description: Filter by points
+        in: query
+        name: points
+        type: string
+      - description: Filter by due date
+        in: query
+        name: dueDate
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Assignment'
+            type: array
+      summary: Get All Assignments
+      tags:
+      - Assignments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Assignment JSON
+        in: body
+        name: assignment
+        required: true
+        schema:
+          $ref: '#/definitions/model.Assignment'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Assignment'
+      summary: Create Assignment
+      tags:
+      - Assignments
+  /assignments/{id}:
+    delete:
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Assignment
+      tags:
+      - Assignments
+    get:
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Assignment'
+      summary: Get Assignment by ID
+      tags:
+      - Assignments
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Assignment
+        in: body
+        name: assignment
+        required: true
+        schema:
+          $ref: '#/definitions/model.Assignment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Assignment'
+      summary: Update Assignment
+      tags:
+      - Assignments
+  /classrooms:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Classroom'
+            type: array
+      summary: Get All Classrooms
+      tags:
+      - Classrooms
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Classroom JSON
+        in: body
+        name: classroom
+        required: true
+        schema:
+          $ref: '#/definitions/model.Classroom'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Classroom'
+      summary: Create Classroom
+      tags:
+      - Classrooms
+  /classrooms/{id}:
+    delete:
+      parameters:
+      - description: Classroom ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Classroom
+      tags:
+      - Classrooms
+    get:
+      parameters:
+      - description: Classroom ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Classroom'
+      summary: Get Classroom by ID
+      tags:
+      - Classrooms
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Classroom ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Partial updates
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Classroom
+      tags:
+      - Classrooms
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Classroom ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Classroom
+        in: body
+        name: classroom
+        required: true
+        schema:
+          $ref: '#/definitions/model.Classroom'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Classroom'
+      summary: Update Classroom
+      tags:
+      - Classrooms
+  /comments:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Comment'
+            type: array
+      summary: Get All Comments
+      tags:
+      - Comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Comment JSON
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/model.Comment'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Comment'
+      summary: Create Comment
+      tags:
+      - Comments
+  /comments/{id}:
+    delete:
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Comment
+      tags:
+      - Comments
+    get:
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Comment'
+      summary: Get Comment by ID
+      tags:
+      - Comments
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch a comment
+      tags:
+      - Comments
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Comment
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/model.Comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Comment'
+      summary: Update Comment
+      tags:
+      - Comments
+  /generate-pdf:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Question IDs and flags
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/controller.GeneratePDFRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Generate a PDF of mixed question types and return file path
+      tags:
+      - Export
+  /mcqs:
+    get:
+      parameters:
+      - description: Filter by bank ID
+        in: query
+        name: bankId
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/questions.MCQ'
+            type: array
+      summary: Get all MCQs
+      tags:
+      - MCQs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: MCQ JSON
+        in: body
+        name: mcq
+        required: true
+        schema:
+          $ref: '#/definitions/questions.MCQ'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/questions.MCQ'
+      summary: Create MCQ
+      tags:
+      - MCQs
+  /mcqs/{id}:
+    delete:
+      parameters:
+      - description: MCQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete MCQ
+      tags:
+      - MCQs
+    get:
+      parameters:
+      - description: MCQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.MCQ'
+      summary: Get MCQ by ID
+      tags:
+      - MCQs
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: MCQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch MCQ
+      tags:
+      - MCQs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: MCQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated MCQ
+        in: body
+        name: mcq
+        required: true
+        schema:
+          $ref: '#/definitions/questions.MCQ'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.MCQ'
+      summary: Update MCQ
+      tags:
+      - MCQs
+  /mcqs/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of MCQs
+        in: body
+        name: mcqs
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/questions.MCQ'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/questions.MCQ'
+            type: array
+      summary: Bulk Create MCQs
+      tags:
+      - MCQs
+  /msqs:
+    get:
+      parameters:
+      - description: Filter by bank ID
+        in: query
+        name: bankId
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/questions.MSQ'
+            type: array
+      summary: Get All MSQs
+      tags:
+      - MSQs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: MSQ JSON
+        in: body
+        name: msq
+        required: true
+        schema:
+          $ref: '#/definitions/questions.MSQ'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/questions.MSQ'
+      summary: Create MSQ
+      tags:
+      - MSQs
+  /msqs/{id}:
+    delete:
+      parameters:
+      - description: MSQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete MSQ
+      tags:
+      - MSQs
+    get:
+      parameters:
+      - description: MSQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.MSQ'
+      summary: Get MSQ by ID
+      tags:
+      - MSQs
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: MSQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch MSQ
+      tags:
+      - MSQs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: MSQ ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated MSQ
+        in: body
+        name: msq
+        required: true
+        schema:
+          $ref: '#/definitions/questions.MSQ'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.MSQ'
+      summary: Update MSQ
+      tags:
+      - MSQs
+  /msqs/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of MSQs
+        in: body
+        name: msqs
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/questions.MSQ'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/questions.MSQ'
+            type: array
+      summary: Bulk Create MSQs
+      tags:
+      - MSQs
+  /nats:
+    get:
+      parameters:
+      - description: Filter by bank ID
+        in: query
+        name: bankId
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/questions.NAT'
+            type: array
+      summary: Get All NATs
+      tags:
+      - NATs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: NAT JSON
+        in: body
+        name: nat
+        required: true
+        schema:
+          $ref: '#/definitions/questions.NAT'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/questions.NAT'
+      summary: Create NAT
+      tags:
+      - NATs
+  /nats/{id}:
+    delete:
+      parameters:
+      - description: NAT ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete NAT
+      tags:
+      - NATs
+    get:
+      parameters:
+      - description: NAT ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.NAT'
+      summary: Get NAT by ID
+      tags:
+      - NATs
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: NAT ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch NAT
+      tags:
+      - NATs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: NAT ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated NAT
+        in: body
+        name: nat
+        required: true
+        schema:
+          $ref: '#/definitions/questions.NAT'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.NAT'
+      summary: Update NAT
+      tags:
+      - NATs
+  /nats/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of NATs
+        in: body
+        name: nats
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/questions.NAT'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/questions.NAT'
+            type: array
+      summary: Bulk Create NATs
+      tags:
+      - NATs
+  /posts:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: userId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Post'
+            type: array
+      summary: Get All Posts
+      tags:
+      - Posts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post JSON
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/model.Post'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Post'
+      summary: Create Post
+      tags:
+      - Posts
+  /posts/{id}:
+    delete:
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Post
+      tags:
+      - Posts
+    get:
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+      summary: Get Post by ID
+      tags:
+      - Posts
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Post
+      tags:
+      - Posts
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Post
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/model.Post'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Post'
+      summary: Update Post
+      tags:
+      - Posts
+  /question-banks:
+    get:
+      parameters:
+      - description: Filter by topic
+        in: query
+        name: topic
+        type: string
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Filter by teacher ID
+        in: query
+        name: teacherId
+        type: string
+      - description: Tags (comma-separated)
+        in: query
+        name: tags
+        type: string
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.QuestionBank'
+            type: array
+      summary: Get All QuestionBanks
+      tags:
+      - QuestionBanks
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: QuestionBank JSON
+        in: body
+        name: questionBank
+        required: true
+        schema:
+          $ref: '#/definitions/model.QuestionBank'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.QuestionBank'
+      summary: Create QuestionBank
+      tags:
+      - QuestionBanks
+  /question-banks/{id}:
+    delete:
+      parameters:
+      - description: QuestionBank ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete QuestionBank
+      tags:
+      - QuestionBanks
+    get:
+      parameters:
+      - description: QuestionBank ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.QuestionBank'
+      summary: Get QuestionBank by ID
+      tags:
+      - QuestionBanks
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: QuestionBank ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updates
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch QuestionBank
+      tags:
+      - QuestionBanks
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: QuestionBank ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated QuestionBank
+        in: body
+        name: questionBank
+        required: true
+        schema:
+          $ref: '#/definitions/model.QuestionBank'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.QuestionBank'
+      summary: Update QuestionBank
+      tags:
+      - QuestionBanks
+  /students:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      - description: Filter by email
+        in: query
+        name: email
+        type: string
+      - description: Filter by roll number
+        in: query
+        name: rollNo
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Student'
+            type: array
+      summary: Get All Students
+      tags:
+      - Students
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student JSON
+        in: body
+        name: student
+        required: true
+        schema:
+          $ref: '#/definitions/model.Student'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Student'
+      summary: Create Student
+      tags:
+      - Students
+  /students/{id}:
+    delete:
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Student
+      tags:
+      - Students
+    get:
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Student'
+      summary: Get Student by ID
+      tags:
+      - Students
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch a student
+      tags:
+      - Students
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Student
+        in: body
+        name: student
+        required: true
+        schema:
+          $ref: '#/definitions/model.Student'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Student'
+      summary: Update Student
+      tags:
+      - Students
+  /subjectives:
+    get:
+      parameters:
+      - description: Bank ID
+        in: query
+        name: bankId
+        type: string
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/questions.Subjective'
+            type: array
+      summary: Get all Subjectives
+      tags:
+      - Subjectives
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Subjective Question
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/questions.Subjective'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/questions.Subjective'
+      summary: Create Subjective
+      tags:
+      - Subjectives
+  /subjectives/{id}:
+    delete:
+      parameters:
+      - description: Subjective ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Subjective
+      tags:
+      - Subjectives
+    get:
+      parameters:
+      - description: Subjective ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.Subjective'
+      summary: Get Subjective by ID
+      tags:
+      - Subjectives
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updates
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Subjective
+      tags:
+      - Subjectives
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subjective
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/questions.Subjective'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/questions.Subjective'
+      summary: Update Subjective
+      tags:
+      - Subjectives
+  /subjectives/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of Subjective Questions
+        in: body
+        name: data
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/questions.Subjective'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/questions.Subjective'
+            type: array
+      summary: Bulk Create Subjectives
+      tags:
+      - Subjectives
+  /submissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Submission'
+            type: array
+      summary: Get All Submissions
+      tags:
+      - Submissions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Submission JSON
+        in: body
+        name: submission
+        required: true
+        schema:
+          $ref: '#/definitions/model.Submission'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Submission'
+      summary: Create Submission
+      tags:
+      - Submissions
+  /submissions/{id}:
+    delete:
+      parameters:
+      - description: Submission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Submission
+      tags:
+      - Submissions
+    get:
+      parameters:
+      - description: Submission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Submission'
+      summary: Get Submission by ID
+      tags:
+      - Submissions
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Submission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch a submission
+      tags:
+      - Submissions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Submission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Submission
+        in: body
+        name: submission
+        required: true
+        schema:
+          $ref: '#/definitions/model.Submission'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Submission'
+      summary: Update Submission
+      tags:
+      - Submissions
+  /teachers:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Teacher'
+            type: array
+      summary: Get All Teachers
+      tags:
+      - Teachers
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Teacher JSON
+        in: body
+        name: teacher
+        required: true
+        schema:
+          $ref: '#/definitions/model.Teacher'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Teacher'
+      summary: Create Teacher
+      tags:
+      - Teachers
+  /teachers/{id}:
+    delete:
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Teacher
+      tags:
+      - Teachers
+    get:
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Teacher'
+      summary: Get Teacher by ID
+      tags:
+      - Teachers
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch a teacher
+      tags:
+      - Teachers
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Teacher
+        in: body
+        name: teacher
+        required: true
+        schema:
+          $ref: '#/definitions/model.Teacher'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Teacher'
+      summary: Update Teacher
+      tags:
+      - Teachers
+  /variables:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Variable'
+            type: array
+      summary: Get All Variables
+      tags:
+      - Variables
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Variable JSON
+        in: body
+        name: variable
+        required: true
+        schema:
+          $ref: '#/definitions/model.Variable'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Variable'
+      summary: Create Variable
+      tags:
+      - Variables
+  /variables/{id}:
+    delete:
+      parameters:
+      - description: Variable ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Variable
+      tags:
+      - Variables
+    get:
+      parameters:
+      - description: Variable ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Variable'
+      summary: Get Variable by ID
+      tags:
+      - Variables
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updates
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Variable
+      tags:
+      - Variables
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Variable ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Variable
+        in: body
+        name: variable
+        required: true
+        schema:
+          $ref: '#/definitions/model.Variable'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Variable'
+      summary: Update Variable
+      tags:
+      - Variables
+  /variables/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: List of Variables
+        in: body
+        name: variables
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/model.Variable'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/model.Variable'
+            type: array
+      summary: Bulk Create Variables
+      tags:
+      - Variables
+swagger: "2.0"

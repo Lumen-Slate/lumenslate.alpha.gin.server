@@ -1,6 +1,6 @@
 package questions
 
-import "server/internal/model"
+import "lumenslate/internal/model"
 
 type Subjective struct {
 	ID              string           `json:"id" firestore:"id"`

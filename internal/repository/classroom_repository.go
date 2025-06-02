@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"server/internal/firebase"
-	"server/internal/model"
+	"lumenslate/internal/firebase"
+	"lumenslate/internal/model"
 	"strconv"
 	"strings"
 
