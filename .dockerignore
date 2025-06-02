@@ -1,0 +1,37 @@
+# Binaries
+main
+*.exe
+*.out
+
+# Git files
+.git
+.gitignore
+
+# Dependency directories
+vendor/
+
+# OS / Editor files
+.DS_Store
+*.swp
+*.swo
+*.tmp
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+bin/
+
+# Test cache
+*.test
+
+# Docker-related
+Dockerfile
+.dockerignore
+
+# Env & secrets
+.env
+.env.*

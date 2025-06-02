@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: go-backend
+spec:
+  template:
+    spec:
+      containers:
+        - image: asia-south1-docker.pkg.dev/big-data-course-451012/go-backend/go-backend:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: env-secret
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: env-secret
+          secret:
+            secretName: go-backend-env
+            items:
+              - key: latest
+                path: ENV_FILE

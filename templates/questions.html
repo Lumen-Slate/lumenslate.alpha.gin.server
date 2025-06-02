@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Question Paper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 40px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .question { margin-bottom: 25px; }
+        .type-header { margin-top: 40px; font-size: 20px; font-weight: bold; }
+        .type-label { font-size: 12px; color: #666; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Question Paper</h1>
+    <p>Generated on {{ now }}</p>
+</div>
+
+{{ $questionIndex := 0 }}
+{{range .Grouped}}
+    {{if $.ShowType}}
+        <div class="type-header">{{.Type}} Questions</div>
+    {{end}}
+
+    {{range $q := .Questions}}
+        {{ $questionIndex = add1 $questionIndex }}
+        <div class="question">
+            <p>
+                <strong>Q{{$questionIndex}}.</strong> {{$q.Question}}
+                {{if $.ShowType}}<span class="type-label">[{{$q.Type}}]</span>{{end}}
+            </p>
+
+            {{if $q.Options}}
+                {{range $j, $opt := $q.Options}}<p>{{$j | add1}}. {{$opt}}</p>{{end}}
+            {{end}}
+
+            {{if $.ShowAnswers}}
+                {{if and (eq $q.Type "MCQ") $q.AnswerIndex}}
+                    <p><strong>Answer:</strong> {{index $q.Options (dereference $q.AnswerIndex)}}</p>
+                {{end}}
+
+                {{if and (eq $q.Type "MSQ") (gt (len $q.AnswerIndices) 0)}}
+                    <p><strong>Answers:</strong>
+                        {{range $idx := $q.AnswerIndices}} {{index $q.Options $idx}} {{end}}
+                    </p>
+                {{end}}
+
+                {{if and (eq $q.Type "NAT") $q.Answer}}
+                    <p><strong>Answer:</strong> {{$q.Answer}}</p>
+                {{end}}
+
+                {{if eq $q.Type "Subjective"}}
+                    {{if $q.IdealAnswer}}<p><strong>Ideal Answer:</strong> {{$q.IdealAnswer}}</p>{{end}}
+                {{end}}
+            {{end}}
+
+        </div>
+    {{end}}
+{{end}}
+
+</body>
+</html>
