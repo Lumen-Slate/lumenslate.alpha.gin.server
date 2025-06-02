@@ -1,0 +1,40 @@
+# Binaries
+/bin/
+/build/
+/dist/
+*.exe
+*.out
+*.test
+server
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Go files
+*.log
+*.tmp
+go.sum
+vendor/
+
+# Env & Secrets
+.env
+*.env
+config/serviceAccountKey.json
+
+# # Swagger generated docs (optional if you regenerate on build)
+# internal/docs/*
+
+# Keep docs folder structure, ignore contents
+!internal/docs/.gitkeep
+
+# Dependency directories (optional)
+node_modules/
+
+# Coverage reports
+coverage.out
+
+# Ignore generated PDF exports
+/media/assignments/
