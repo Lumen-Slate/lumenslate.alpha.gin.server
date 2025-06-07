@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,17 @@ func CreateComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	comment.ID = uuid.New().String() // Auto-generate ID
+
+	// Initialize with default values
+	comment = *model.NewComment()
+	comment.ID = uuid.New().String()
+
+	// Validate the struct
+	if err := common.Validate.Struct(comment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.CreateComment(comment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
 		return
@@ -58,7 +70,7 @@ func DeleteComment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete comment"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted successfully"})
 }
 
 // @Summary Get All Comments
@@ -90,7 +102,16 @@ func UpdateComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	comment.ID = id
+	comment.UpdatedAt = time.Now()
+
+	// Validate the struct
+	if err := common.Validate.Struct(comment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.UpdateComment(id, comment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -104,7 +125,7 @@ func UpdateComment(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Comment ID"
 // @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.Comment
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /comments/{id} [patch]
@@ -115,9 +136,16 @@ func PatchComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchComment(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	// Get the updated comment
+	updated, err := service.PatchComment(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch comment"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Comment updated"})
+
+	c.JSON(http.StatusOK, updated)
 }

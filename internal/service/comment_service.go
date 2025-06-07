@@ -26,6 +26,6 @@ func UpdateComment(id string, updated model.Comment) error {
 	return repository.SaveComment(updated)
 }
 
-func PatchComment(id string, updates map[string]interface{}) error {
+func PatchComment(id string, updates map[string]interface{}) (*model.Comment, error) {
 	return repository.PatchComment(id, updates)
 }

@@ -2,48 +2,70 @@ package repository
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func SaveComment(c model.Comment) error {
-	_, err := firebase.Client.Collection("comments").Doc(c.ID).Set(context.Background(), c)
+	ctx := context.Background()
+	_, err := db.GetCollection(db.CommentCollection).InsertOne(ctx, c)
 	return err
 }
 
 func GetCommentByID(id string) (*model.Comment, error) {
-	doc, err := firebase.Client.Collection("comments").Doc(id).Get(context.Background())
+	ctx := context.Background()
+	var c model.Comment
+	err := db.GetCollection(db.CommentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&c)
 	if err != nil {
 		return nil, err
 	}
-	var c model.Comment
-	doc.DataTo(&c)
 	return &c, nil
 }
 
 func DeleteComment(id string) error {
-	_, err := firebase.Client.Collection("comments").Doc(id).Delete(context.Background())
+	ctx := context.Background()
+	_, err := db.GetCollection(db.CommentCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllComments() ([]model.Comment, error) {
-	iter := firebase.Client.Collection("comments").Documents(context.Background())
+	ctx := context.Background()
+	cursor, err := db.GetCollection(db.CommentCollection).Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []model.Comment
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var c model.Comment
-		doc.DataTo(&c)
-		results = append(results, c)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchComment(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("comments").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchComment(id string, updates map[string]interface{}) (*model.Comment, error) {
+	ctx := context.Background()
+	updates["updatedAt"] = time.Now()
+
+	// First update the document
+	_, err := db.GetCollection(db.CommentCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then fetch the updated document
+	var updated model.Comment
+	err = db.GetCollection(db.CommentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }
