@@ -2,44 +2,52 @@ package repository
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"strconv"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SaveStudent(s model.Student) error {
-	_, err := firebase.Client.Collection("students").Doc(s.ID).Set(context.Background(), s)
+	ctx := context.Background()
+	_, err := db.GetCollection(db.StudentCollection).InsertOne(ctx, s)
 	return err
 }
 
 func GetStudentByID(id string) (*model.Student, error) {
-	doc, err := firebase.Client.Collection("students").Doc(id).Get(context.Background())
+	ctx := context.Background()
+	var s model.Student
+	err := db.GetCollection(db.StudentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&s)
 	if err != nil {
 		return nil, err
 	}
-	var s model.Student
-	doc.DataTo(&s)
 	return &s, nil
 }
 
 func DeleteStudent(id string) error {
-	_, err := firebase.Client.Collection("students").Doc(id).Delete(context.Background())
+	ctx := context.Background()
+	_, err := db.GetCollection(db.StudentCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 	ctx := context.Background()
-	q := firebase.Client.Collection("students").Query
+	filter := bson.M{}
 
+	// Apply email filter if provided
 	if email, ok := filters["email"]; ok && email != "" {
-		q = q.Where("email", "==", email)
-	}
-	if rollNo, ok := filters["rollNo"]; ok && rollNo != "" {
-		q = q.Where("rollNo", "==", rollNo)
+		filter["email"] = email
 	}
 
+	// Apply roll number filter if provided
+	if rollNo, ok := filters["rollNo"]; ok && rollNo != "" {
+		filter["rollNo"] = rollNo
+	}
+
+	// Set up pagination
 	limit := 10
 	offset := 0
 	if l, err := strconv.Atoi(filters["limit"]); err == nil {
@@ -49,21 +57,43 @@ func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 		offset = o
 	}
 
-	iter := q.Offset(offset).Limit(limit).Documents(ctx)
+	opts := options.Find().
+		SetSkip(int64(offset)).
+		SetLimit(int64(limit))
+
+	cursor, err := db.GetCollection(db.StudentCollection).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []model.Student
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var s model.Student
-		doc.DataTo(&s)
-		results = append(results, s)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchStudent(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("students").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchStudent(id string, updates map[string]interface{}) (*model.Student, error) {
+	ctx := context.Background()
+	updates["updatedAt"] = time.Now()
+
+	// Update the document
+	_, err := db.GetCollection(db.StudentCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the updated document
+	var updated model.Student
+	err = db.GetCollection(db.StudentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }

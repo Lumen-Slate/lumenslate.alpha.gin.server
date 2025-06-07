@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,17 @@ func CreateStudent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	student.ID = uuid.New().String() // Auto-generate ID
+
+	// Initialize with default values
+	student = *model.NewStudent()
+	student.ID = uuid.New().String()
+
+	// Validate the struct
+	if err := common.Validate.Struct(student); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.CreateStudent(student); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create student"})
 		return
@@ -58,7 +70,7 @@ func DeleteStudent(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete student"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Student deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Student deleted successfully"})
 }
 
 // @Summary Get All Students
@@ -100,7 +112,16 @@ func UpdateStudent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	student.ID = id
+	student.UpdatedAt = time.Now()
+
+	// Validate the struct
+	if err := common.Validate.Struct(student); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.UpdateStudent(id, student); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -114,7 +135,7 @@ func UpdateStudent(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Student ID"
 // @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.Student
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /students/{id} [patch]
@@ -125,9 +146,16 @@ func PatchStudent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchStudent(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	// Get the updated student
+	updated, err := service.PatchStudent(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch student"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Student updated"})
+
+	c.JSON(http.StatusOK, updated)
 }
