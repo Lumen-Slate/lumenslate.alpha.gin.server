@@ -13,10 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"lumenslate/internal/db"
 	"lumenslate/internal/routes"
 	"lumenslate/internal/routes/questions"
 
-	_ "lumenslate/internal/docs" // Swagger docs
+	_ "lumenslate/internal/docs"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -28,10 +29,7 @@ import (
 // @host            localhost:8080
 // @BasePath        /
 
-func main() {
-	log.Println("🟡 Warming up server...")
-
-	// Attempt to load secret from Cloud Run secret mount
+func init() {
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
 		content, _ := io.ReadAll(file)
@@ -52,13 +50,18 @@ func main() {
 			log.Println("✅ Environment loaded from local .env")
 		}
 	}
+	uri := os.Getenv("MONGO_URI")
+	if err := db.InitMongoDB(uri); err != nil {
+		log.Fatal("Could not connect to MongoDB:", err)
+	}
+}
+
+func main() {
+	log.Println("🟡 Warming up server...")
 
 	// Debug log to confirm env vars are loaded
 	log.Printf("✅ Mongo App Name: %s", strings.Split(strings.Split(os.Getenv("MONGO_URI"), "appName=")[1], "&")[0])
 	log.Printf("✅ PORT: %s", os.Getenv("PORT"))
-
-	// Initialize Firebase
-	// firebase.InitFirestore()
 
 	// Setup Gin
 	router := gin.Default()
@@ -121,5 +124,8 @@ func gracefulShutdown() {
 	<-quit
 
 	log.Println("🛑 Shutting down server...")
+	if err := db.CloseMongoDB(); err != nil {
+		log.Printf("❌ Error closing MongoDB connection: %v", err)
+	}
 	log.Println("✅ Server exited cleanly")
 }
