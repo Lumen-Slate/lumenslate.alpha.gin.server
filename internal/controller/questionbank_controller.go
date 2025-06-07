@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,13 +20,22 @@ import (
 // @Success 201 {object} model.QuestionBank
 // @Router /question-banks [post]
 func CreateQuestionBank(c *gin.Context) {
-	var q model.QuestionBank
-	if err := c.ShouldBindJSON(&q); err != nil {
+	q := model.NewQuestionBank()
+	if err := c.ShouldBindJSON(q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	q.ID = uuid.New().String() // Auto-generate ID
-	if err := service.CreateQuestionBank(q); err != nil {
+
+	// Generate ID before validation
+	q.ID = uuid.New().String()
+
+	// Validate the struct
+	if err := common.Validate.Struct(q); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := service.CreateQuestionBank(*q); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create question bank"})
 		return
 	}
@@ -77,7 +88,7 @@ func GetAllQuestionBanks(c *gin.Context) {
 		"topic":     c.Query("topic"),
 		"name":      c.Query("name"),
 		"teacherId": c.Query("teacherId"),
-		"tags":      c.Query("tags"), // Added tags filter
+		"tags":      c.Query("tags"),
 		"limit":     c.DefaultQuery("limit", "10"),
 		"offset":    c.DefaultQuery("offset", "0"),
 	}
@@ -104,7 +115,15 @@ func UpdateQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Validate the struct
+	if err := common.Validate.Struct(q); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	q.ID = id
+	q.UpdatedAt = time.Now()
 	if err := service.UpdateQuestionBank(id, q); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -118,7 +137,7 @@ func UpdateQuestionBank(c *gin.Context) {
 // @Produce json
 // @Param id path string true "QuestionBank ID"
 // @Param updates body map[string]interface{} true "Updates"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.QuestionBank
 // @Router /question-banks/{id} [patch]
 func PatchQuestionBank(c *gin.Context) {
 	id := c.Param("id")
@@ -127,9 +146,14 @@ func PatchQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchQuestionBank(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	updated, err := service.PatchQuestionBank(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Updated"})
+	c.JSON(http.StatusOK, updated)
 }

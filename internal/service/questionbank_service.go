@@ -26,6 +26,6 @@ func UpdateQuestionBank(id string, updated model.QuestionBank) error {
 	return repo.SaveQuestionBank(updated)
 }
 
-func PatchQuestionBank(id string, updates map[string]interface{}) error {
+func PatchQuestionBank(id string, updates map[string]interface{}) (*model.QuestionBank, error) {
 	return repo.PatchQuestionBank(id, updates)
 }
