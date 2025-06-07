@@ -2,58 +2,79 @@ package repository
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func SaveSubmission(s model.Submission) error {
-	_, err := firebase.Client.Collection("submissions").Doc(s.ID).Set(context.Background(), s)
+	ctx := context.Background()
+	_, err := db.GetCollection(db.SubmissionCollection).InsertOne(ctx, s)
 	return err
 }
 
 func GetSubmissionByID(id string) (*model.Submission, error) {
-	doc, err := firebase.Client.Collection("submissions").Doc(id).Get(context.Background())
+	ctx := context.Background()
+	var s model.Submission
+	err := db.GetCollection(db.SubmissionCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&s)
 	if err != nil {
 		return nil, err
 	}
-	var s model.Submission
-	doc.DataTo(&s)
 	return &s, nil
 }
 
 func DeleteSubmission(id string) error {
-	_, err := firebase.Client.Collection("submissions").Doc(id).Delete(context.Background())
+	ctx := context.Background()
+	_, err := db.GetCollection(db.SubmissionCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllSubmissions(filters map[string]string) ([]model.Submission, error) {
 	ctx := context.Background()
-	q := firebase.Client.Collection("submissions").Query
+	filter := bson.M{}
 
 	if studentId, ok := filters["studentId"]; ok && studentId != "" {
-		q = q.Where("studentId", "==", studentId)
+		filter["studentId"] = studentId
 	}
 	if assignmentId, ok := filters["assignmentId"]; ok && assignmentId != "" {
-		q = q.Where("assignmentId", "==", assignmentId)
+		filter["assignmentId"] = assignmentId
 	}
 
-	iter := q.Documents(ctx)
+	cursor, err := db.GetCollection(db.SubmissionCollection).Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []model.Submission
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var s model.Submission
-		doc.DataTo(&s)
-		results = append(results, s)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchSubmission(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("submissions").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchSubmission(id string, updates map[string]interface{}) (*model.Submission, error) {
+	ctx := context.Background()
+	updates["updatedAt"] = time.Now()
+
+	// Update the document
+	_, err := db.GetCollection(db.SubmissionCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the updated document
+	var updated model.Submission
+	err = db.GetCollection(db.SubmissionCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }

@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,17 @@ func CreateSubmission(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	submission.ID = uuid.New().String() // Auto-generate ID
+
+	// Initialize with default values
+	submission = *model.NewSubmission()
+	submission.ID = uuid.New().String()
+
+	// Validate the submission
+	if err := common.Validate.Struct(submission); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.CreateSubmission(submission); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create submission"})
 		return
@@ -58,7 +70,7 @@ func DeleteSubmission(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete submission"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Submission deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Submission deleted successfully"})
 }
 
 // @Summary Get All Submissions
@@ -67,7 +79,14 @@ func DeleteSubmission(c *gin.Context) {
 // @Success 200 {array} model.Submission
 // @Router /submissions [get]
 func GetAllSubmissions(c *gin.Context) {
-	filters := map[string]string{} // Define appropriate filters if needed
+	filters := make(map[string]string)
+	if studentId := c.Query("studentId"); studentId != "" {
+		filters["studentId"] = studentId
+	}
+	if assignmentId := c.Query("assignmentId"); assignmentId != "" {
+		filters["assignmentId"] = assignmentId
+	}
+
 	submissions, err := service.GetAllSubmissions(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch submissions"})
@@ -91,7 +110,16 @@ func UpdateSubmission(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	submission.ID = id
+	submission.UpdatedAt = time.Now()
+
+	// Validate the submission
+	if err := common.Validate.Struct(submission); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.UpdateSubmission(id, submission); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -105,7 +133,7 @@ func UpdateSubmission(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Submission ID"
 // @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.Submission
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /submissions/{id} [patch]
@@ -116,9 +144,16 @@ func PatchSubmission(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchSubmission(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	// Get the updated submission
+	updated, err := service.PatchSubmission(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch submission"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Submission updated"})
+
+	c.JSON(http.StatusOK, updated)
 }

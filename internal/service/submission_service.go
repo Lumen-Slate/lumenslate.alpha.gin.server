@@ -26,6 +26,6 @@ func UpdateSubmission(id string, updated model.Submission) error {
 	return repository.SaveSubmission(updated)
 }
 
-func PatchSubmission(id string, updates map[string]interface{}) error {
+func PatchSubmission(id string, updates map[string]interface{}) (*model.Submission, error) {
 	return repository.PatchSubmission(id, updates)
 }
