@@ -26,6 +26,6 @@ func UpdatePost(id string, updated model.Post) error {
 	return repo.SavePost(updated)
 }
 
-func PatchPost(id string, updates map[string]interface{}) error {
+func PatchPost(id string, updates map[string]interface{}) (*model.Post, error) {
 	return repo.PatchPost(id, updates)
 }

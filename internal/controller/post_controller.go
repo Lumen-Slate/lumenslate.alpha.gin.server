@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,17 @@ func CreatePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	post.ID = uuid.New().String() // Auto-generate ID
+
+	// Initialize with default values
+	post = *model.NewPost()
+	post.ID = uuid.New().String()
+
+	// Validate the struct
+	if err := common.Validate.Struct(post); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.CreatePost(post); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create post"})
 		return
@@ -58,7 +70,7 @@ func DeletePost(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete post"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Post deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
 }
 
 // @Summary Get All Posts
@@ -98,7 +110,16 @@ func UpdatePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	post.ID = id
+	post.UpdatedAt = time.Now()
+
+	// Validate the struct
+	if err := common.Validate.Struct(post); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.UpdatePost(id, post); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -112,7 +133,7 @@ func UpdatePost(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Post ID"
 // @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.Post
 // @Router /posts/{id} [patch]
 func PatchPost(c *gin.Context) {
 	id := c.Param("id")
@@ -121,9 +142,16 @@ func PatchPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchPost(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	// Get the updated post
+	updated, err := service.PatchPost(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Post updated"})
+
+	c.JSON(http.StatusOK, updated)
 }
