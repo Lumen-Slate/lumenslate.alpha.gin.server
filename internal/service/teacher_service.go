@@ -2,30 +2,30 @@ package service
 
 import (
 	"lumenslate/internal/model"
-	"lumenslate/internal/repository"
+	repo "lumenslate/internal/repository"
 )
 
 func CreateTeacher(t model.Teacher) error {
-	return repository.SaveTeacher(t)
+	return repo.SaveTeacher(t)
 }
 
 func GetTeacher(id string) (*model.Teacher, error) {
-	return repository.GetTeacherByID(id)
+	return repo.GetTeacherByID(id)
 }
 
 func DeleteTeacher(id string) error {
-	return repository.DeleteTeacher(id)
+	return repo.DeleteTeacher(id)
 }
 
 func GetAllTeachers(filters map[string]string) ([]model.Teacher, error) {
-	return repository.GetAllTeachers(filters)
+	return repo.GetAllTeachers(filters)
 }
 
 func UpdateTeacher(id string, updated model.Teacher) error {
 	updated.ID = id
-	return repository.SaveTeacher(updated)
+	return repo.SaveTeacher(updated)
 }
 
-func PatchTeacher(id string, updates map[string]interface{}) error {
-	return repository.PatchTeacher(id, updates)
+func PatchTeacher(id string, updates map[string]interface{}) (*model.Teacher, error) {
+	return repo.PatchTeacher(id, updates)
 }
