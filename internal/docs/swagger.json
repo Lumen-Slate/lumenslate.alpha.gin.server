@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "Backend API for managing assignments, questions, classrooms and more.",
-        "title": "ParableMind API",
+        "title": "Lumen Slate API",
         "contact": {},
         "version": "1.0"
     },

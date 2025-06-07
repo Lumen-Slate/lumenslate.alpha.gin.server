@@ -304,7 +304,7 @@ host: localhost:8080
 info:
   contact: {}
   description: Backend API for managing assignments, questions, classrooms and more.
-  title: ParableMind API
+  title: Lumen Slate API
   version: "1.0"
 paths:
   /assignments:

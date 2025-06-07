@@ -6,13 +6,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"lumenslate/internal/firebase"
 	"lumenslate/internal/routes"
 	"lumenslate/internal/routes/questions"
 
@@ -22,7 +22,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title           ParableMind API
+// @title           Lumen Slate API
 // @version         1.0
 // @description     Backend API for managing assignments, questions, classrooms and more.
 // @host            localhost:8080
@@ -54,11 +54,11 @@ func main() {
 	}
 
 	// Debug log to confirm env vars are loaded
-	log.Printf("✅ FIREBASE_PROJECT_ID: %s", os.Getenv("FIREBASE_PROJECT_ID"))
+	log.Printf("✅ Mongo App Name: %s", strings.Split(strings.Split(os.Getenv("MONGO_URI"), "appName=")[1], "&")[0])
 	log.Printf("✅ PORT: %s", os.Getenv("PORT"))
 
 	// Initialize Firebase
-	firebase.InitFirestore()
+	// firebase.InitFirestore()
 
 	// Setup Gin
 	router := gin.Default()

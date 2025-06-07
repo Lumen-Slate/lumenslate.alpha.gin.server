@@ -3406,7 +3406,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "ParableMind API",
+	Title:            "Lumen Slate API",
 	Description:      "Backend API for managing assignments, questions, classrooms and more.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
