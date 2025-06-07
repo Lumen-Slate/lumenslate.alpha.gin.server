@@ -2,9 +2,11 @@
 package questions
 
 import (
-	"lumenslate/internal/model/questions"
-	service "lumenslate/internal/service/questions"
+	"lumenslate/internal/common"
+	model "lumenslate/internal/model/questions"
+	repo "lumenslate/internal/repository/questions"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,16 +20,33 @@ import (
 // @Success 201 {object} questions.NAT
 // @Router /nats [post]
 func CreateNAT(c *gin.Context) {
-	var n questions.NAT
+	var n model.NAT
 	if err := c.ShouldBindJSON(&n); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	n.ID = uuid.New().String()
-	if err := service.CreateNAT(n); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create NAT"})
+
+	// Create new NAT with default values
+	n = *model.NewNAT()
+	if err := c.ShouldBindJSON(&n); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Generate ID
+	n.ID = uuid.New().String()
+
+	// Validate the struct
+	if err := common.Validate.Struct(n); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := repo.SaveNAT(n); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusCreated, n)
 }
 
@@ -39,7 +58,7 @@ func CreateNAT(c *gin.Context) {
 // @Router /nats/{id} [get]
 func GetNAT(c *gin.Context) {
 	id := c.Param("id")
-	n, err := service.GetNAT(id)
+	n, err := repo.GetNATByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "NAT not found"})
 		return
@@ -54,11 +73,11 @@ func GetNAT(c *gin.Context) {
 // @Router /nats/{id} [delete]
 func DeleteNAT(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteNAT(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete NAT"})
+	if err := repo.DeleteNAT(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "NAT deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "NAT deleted successfully"})
 }
 
 // @Summary Get All NATs
@@ -70,14 +89,20 @@ func DeleteNAT(c *gin.Context) {
 // @Success 200 {array} questions.NAT
 // @Router /nats [get]
 func GetAllNATs(c *gin.Context) {
-	filters := map[string]string{
-		"bankId": c.Query("bankId"),
-		"limit":  c.DefaultQuery("limit", "10"),
-		"offset": c.DefaultQuery("offset", "0"),
+	filters := make(map[string]string)
+	if bankID := c.Query("bankId"); bankID != "" {
+		filters["bankId"] = bankID
 	}
-	nats, err := service.GetAllNATs(filters)
+	if limit := c.Query("limit"); limit != "" {
+		filters["limit"] = limit
+	}
+	if offset := c.Query("offset"); offset != "" {
+		filters["offset"] = offset
+	}
+
+	nats, err := repo.GetAllNATs(filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch NATs"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, nats)
@@ -93,16 +118,26 @@ func GetAllNATs(c *gin.Context) {
 // @Router /nats/{id} [put]
 func UpdateNAT(c *gin.Context) {
 	id := c.Param("id")
-	var n questions.NAT
+	var n model.NAT
 	if err := c.ShouldBindJSON(&n); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	n.ID = id
-	if err := service.UpdateNAT(id, n); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update NAT"})
+	n.UpdatedAt = time.Now()
+
+	// Validate the struct
+	if err := common.Validate.Struct(n); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	if err := repo.SaveNAT(n); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, n)
 }
 
@@ -121,11 +156,17 @@ func PatchNAT(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchNAT(id, updates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch NAT"})
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	updated, err := repo.PatchNAT(id, updates)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "NAT updated"})
+
+	c.JSON(http.StatusOK, updated)
 }
 
 // @Summary Bulk Create NATs
@@ -136,18 +177,27 @@ func PatchNAT(c *gin.Context) {
 // @Success 201 {array} questions.NAT
 // @Router /nats/bulk [post]
 func CreateBulkNATs(c *gin.Context) {
-	var nats []questions.NAT
+	var nats []model.NAT
 	if err := c.ShouldBindJSON(&nats); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Validate each NAT and set timestamps
 	for i := range nats {
 		nats[i].ID = uuid.New().String()
+		nats[i].CreatedAt = time.Now()
+		nats[i].UpdatedAt = time.Now()
+		nats[i].IsActive = true
+
+		if err := common.Validate.Struct(nats[i]); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
-	if err := service.CreateBulkNATs(nats); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create NATs"})
+	if err := repo.SaveBulkNATs(nats); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -2,80 +2,114 @@ package questions
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model/questions"
 	"strconv"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SaveMCQ(m questions.MCQ) error {
-	_, err := firebase.Client.Collection("mcqs").Doc(m.ID).Set(context.Background(), m)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := db.GetCollection(db.MCQCollection).InsertOne(ctx, m)
 	return err
 }
 
 func GetMCQByID(id string) (*questions.MCQ, error) {
-	doc, err := firebase.Client.Collection("mcqs").Doc(id).Get(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var m questions.MCQ
+	err := db.GetCollection(db.MCQCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&m)
 	if err != nil {
 		return nil, err
 	}
-	var m questions.MCQ
-	doc.DataTo(&m)
 	return &m, nil
 }
 
 func DeleteMCQ(id string) error {
-	_, err := firebase.Client.Collection("mcqs").Doc(id).Delete(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := db.GetCollection(db.MCQCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllMCQs(filters map[string]string) ([]questions.MCQ, error) {
-	ctx := context.Background()
-	q := firebase.Client.Collection("mcqs").Query
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	if bankID, ok := filters["bankId"]; ok && bankID != "" {
-		q = q.Where("bankId", "==", bankID)
-	}
+	findOptions := options.Find()
 
-	limit := 10
-	offset := 0
+	// Handle pagination
+	limit := int64(10)
+	offset := int64(0)
 	if l, err := strconv.Atoi(filters["limit"]); err == nil {
-		limit = l
+		limit = int64(l)
 	}
 	if o, err := strconv.Atoi(filters["offset"]); err == nil {
-		offset = o
+		offset = int64(o)
+	}
+	findOptions.SetLimit(limit)
+	findOptions.SetSkip(offset)
+
+	// Build filter
+	filter := bson.M{}
+	if bankID, ok := filters["bankId"]; ok && bankID != "" {
+		filter["bankId"] = bankID
 	}
 
-	iter := q.Offset(offset).Limit(limit).Documents(ctx)
+	cursor, err := db.GetCollection(db.MCQCollection).Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []questions.MCQ
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var m questions.MCQ
-		doc.DataTo(&m)
-		results = append(results, m)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchMCQ(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("mcqs").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchMCQ(id string, updates map[string]interface{}) (*questions.MCQ, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// First update the document
+	_, err := db.GetCollection(db.MCQCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then fetch the updated document
+	var updated questions.MCQ
+	err = db.GetCollection(db.MCQCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }
 
 func SaveBulkMCQs(mcqs []questions.MCQ) error {
-	ctx := context.Background()
-	bw := firebase.Client.BulkWriter(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	for _, m := range mcqs {
-		ref := firebase.Client.Collection("mcqs").Doc(m.ID)
-		if _, err := bw.Create(ref, m); err != nil {
-			return err
-		}
+	// Convert slice to []interface{} for InsertMany
+	documents := make([]interface{}, len(mcqs))
+	for i, m := range mcqs {
+		documents[i] = m
 	}
 
-	bw.End()
-	return nil
+	_, err := db.GetCollection(db.MCQCollection).InsertMany(ctx, documents)
+	return err
 }

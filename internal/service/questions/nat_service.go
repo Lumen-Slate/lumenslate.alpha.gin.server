@@ -26,7 +26,7 @@ func UpdateNAT(id string, updated questions.NAT) error {
 	return repo.SaveNAT(updated)
 }
 
-func PatchNAT(id string, updates map[string]interface{}) error {
+func PatchNAT(id string, updates map[string]interface{}) (*questions.NAT, error) {
 	return repo.PatchNAT(id, updates)
 }
 

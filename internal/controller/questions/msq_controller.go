@@ -2,9 +2,11 @@
 package questions
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model/questions"
 	service "lumenslate/internal/service/questions"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,13 +20,22 @@ import (
 // @Success 201 {object} questions.MSQ
 // @Router /msqs [post]
 func CreateMSQ(c *gin.Context) {
-	var m questions.MSQ
-	if err := c.ShouldBindJSON(&m); err != nil {
+	m := questions.NewMSQ()
+	if err := c.ShouldBindJSON(m); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Generate ID before validation
 	m.ID = uuid.New().String()
-	if err := service.CreateMSQ(m); err != nil {
+
+	// Validate the struct
+	if err := common.Validate.Struct(m); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := service.CreateMSQ(*m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MSQ"})
 		return
 	}
@@ -98,7 +109,15 @@ func UpdateMSQ(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Validate the struct
+	if err := common.Validate.Struct(m); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	m.ID = id
+	m.UpdatedAt = time.Now()
 	if err := service.UpdateMSQ(id, m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update MSQ"})
 		return
@@ -111,8 +130,8 @@ func UpdateMSQ(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "MSQ ID"
-// @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} map[string]string
+// @Param updates body map[string]interface{} true "Updates"
+// @Success 200 {object} questions.MSQ
 // @Router /msqs/{id} [patch]
 func PatchMSQ(c *gin.Context) {
 	id := c.Param("id")
@@ -121,11 +140,16 @@ func PatchMSQ(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchMSQ(id, updates); err != nil {
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	updated, err := service.PatchMSQ(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch MSQ"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "MSQ updated"})
+	c.JSON(http.StatusOK, updated)
 }
 
 // @Summary Bulk Create MSQs
@@ -142,8 +166,18 @@ func CreateBulkMSQs(c *gin.Context) {
 		return
 	}
 
+	now := time.Now()
 	for i := range msqs {
 		msqs[i].ID = uuid.New().String()
+		msqs[i].CreatedAt = now
+		msqs[i].UpdatedAt = now
+		msqs[i].IsActive = true
+
+		// Validate each MSQ
+		if err := common.Validate.Struct(msqs[i]); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	if err := service.CreateBulkMSQs(msqs); err != nil {

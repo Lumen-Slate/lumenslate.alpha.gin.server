@@ -1,13 +1,31 @@
 package questions
 
-import "lumenslate/internal/model"
+import (
+	"lumenslate/internal/model"
+	"time"
+)
 
 type Subjective struct {
-	ID              string           `json:"id" firestore:"id"`
-	BankID          string           `json:"bankId" firestore:"bankId"`
-	Question        string           `json:"question" firestore:"question"`
-	Variable        []model.Variable `json:"variable" firestore:"variable"`
-	Points          int              `json:"points" firestore:"points"`
-	IdealAnswer     *string          `json:"idealAnswer,omitempty" firestore:"idealAnswer,omitempty"`
-	GradingCriteria []string         `json:"gradingCriteria,omitempty" firestore:"gradingCriteria,omitempty"`
+	ID              string           `json:"id,omitempty" bson:"_id" validate:"omitempty"`
+	BankID          string           `json:"bankId" bson:"bankId" validate:"required"`
+	Question        string           `json:"question" bson:"question" validate:"required"`
+	Variable        []model.Variable `json:"variable" bson:"variable" validate:"required,min=0"`
+	Points          int              `json:"points" bson:"points" validate:"required,min=0"`
+	IdealAnswer     *string          `json:"idealAnswer,omitempty" bson:"idealAnswer,omitempty"`
+	GradingCriteria []string         `json:"gradingCriteria,omitempty" bson:"gradingCriteria,omitempty"`
+	CreatedAt       time.Time        `json:"createdAt" bson:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt" bson:"updatedAt"`
+	IsActive        bool             `json:"isActive" bson:"isActive"`
+}
+
+// NewSubjective creates a new Subjective with default values
+func NewSubjective() *Subjective {
+	now := time.Now()
+	return &Subjective{
+		Variable:        make([]model.Variable, 0),
+		GradingCriteria: make([]string, 0),
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		IsActive:        true,
+	}
 }
