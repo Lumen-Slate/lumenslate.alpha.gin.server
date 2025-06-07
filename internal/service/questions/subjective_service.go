@@ -26,7 +26,7 @@ func UpdateSubjective(id string, updated questions.Subjective) error {
 	return repo.SaveSubjective(updated)
 }
 
-func PatchSubjective(id string, updates map[string]interface{}) error {
+func PatchSubjective(id string, updates map[string]interface{}) (*questions.Subjective, error) {
 	return repo.PatchSubjective(id, updates)
 }
 

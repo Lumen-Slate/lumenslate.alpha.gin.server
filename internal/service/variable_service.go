@@ -26,7 +26,7 @@ func UpdateVariable(id string, updated model.Variable) error {
 	return repo.SaveVariable(updated)
 }
 
-func PatchVariable(id string, updates map[string]interface{}) error {
+func PatchVariable(id string, updates map[string]interface{}) (*model.Variable, error) {
 	return repo.PatchVariable(id, updates)
 }
 

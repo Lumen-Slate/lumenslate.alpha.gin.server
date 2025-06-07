@@ -26,7 +26,7 @@ func UpdateMCQ(id string, updated questions.MCQ) error {
 	return repo.SaveMCQ(updated)
 }
 
-func PatchMCQ(id string, updates map[string]interface{}) error {
+func PatchMCQ(id string, updates map[string]interface{}) (*questions.MCQ, error) {
 	return repo.PatchMCQ(id, updates)
 }
 

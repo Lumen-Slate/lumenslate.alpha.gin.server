@@ -1,9 +1,11 @@
 package questions
 
 import (
-	questionsModel "lumenslate/internal/model/questions"
-	questionsService "lumenslate/internal/service/questions"
+	"lumenslate/internal/common"
+	model "lumenslate/internal/model/questions"
+	repo "lumenslate/internal/repository/questions"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,16 +19,30 @@ import (
 // @Success 201 {object} questions.Subjective
 // @Router /subjectives [post]
 func CreateSubjective(c *gin.Context) {
-	var s questionsModel.Subjective
+	var s model.Subjective
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Create new Subjective with default values
+	s = *model.NewSubjective()
+	if err := c.ShouldBindJSON(&s); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Generate ID
 	s.ID = uuid.New().String()
 
-	if err := questionsService.CreateSubjective(s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Subjective"})
+	// Validate the struct
+	if err := common.Validate.Struct(s); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := repo.SaveSubjective(s); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -41,9 +57,9 @@ func CreateSubjective(c *gin.Context) {
 // @Router /subjectives/{id} [get]
 func GetSubjective(c *gin.Context) {
 	id := c.Param("id")
-	s, err := questionsService.GetSubjective(id)
+	s, err := repo.GetSubjectiveByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Subjective not found"})
 		return
 	}
 	c.JSON(http.StatusOK, s)
@@ -56,11 +72,11 @@ func GetSubjective(c *gin.Context) {
 // @Router /subjectives/{id} [delete]
 func DeleteSubjective(c *gin.Context) {
 	id := c.Param("id")
-	if err := questionsService.DeleteSubjective(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete"})
+	if err := repo.DeleteSubjective(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Subjective deleted successfully"})
 }
 
 // @Summary Get all Subjectives
@@ -71,17 +87,23 @@ func DeleteSubjective(c *gin.Context) {
 // @Success 200 {array} questions.Subjective
 // @Router /subjectives [get]
 func GetAllSubjectives(c *gin.Context) {
-	filters := map[string]string{
-		"bankId": c.Query("bankId"),
-		"limit":  c.DefaultQuery("limit", "10"),
-		"offset": c.DefaultQuery("offset", "0"),
+	filters := make(map[string]string)
+	if bankID := c.Query("bankId"); bankID != "" {
+		filters["bankId"] = bankID
 	}
-	items, err := questionsService.GetAllSubjectives(filters)
+	if limit := c.Query("limit"); limit != "" {
+		filters["limit"] = limit
+	}
+	if offset := c.Query("offset"); offset != "" {
+		filters["offset"] = offset
+	}
+
+	subjectives, err := repo.GetAllSubjectives(filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, subjectives)
 }
 
 // @Summary Update Subjective
@@ -94,15 +116,26 @@ func GetAllSubjectives(c *gin.Context) {
 // @Router /subjectives/{id} [put]
 func UpdateSubjective(c *gin.Context) {
 	id := c.Param("id")
-	var s questionsModel.Subjective
+	var s model.Subjective
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := questionsService.UpdateSubjective(id, s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
+
+	s.ID = id
+	s.UpdatedAt = time.Now()
+
+	// Validate the struct
+	if err := common.Validate.Struct(s); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	if err := repo.SaveSubjective(s); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, s)
 }
 
@@ -121,11 +154,17 @@ func PatchSubjective(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := questionsService.PatchSubjective(id, updates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	updated, err := repo.PatchSubjective(id, updates)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Updated"})
+
+	c.JSON(http.StatusOK, updated)
 }
 
 // @Summary Bulk Create Subjectives
@@ -136,18 +175,27 @@ func PatchSubjective(c *gin.Context) {
 // @Success 201 {array} questions.Subjective
 // @Router /subjectives/bulk [post]
 func CreateBulkSubjectives(c *gin.Context) {
-	var subjectives []questionsModel.Subjective
+	var subjectives []model.Subjective
 	if err := c.ShouldBindJSON(&subjectives); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Validate each Subjective and set timestamps
 	for i := range subjectives {
 		subjectives[i].ID = uuid.New().String()
+		subjectives[i].CreatedAt = time.Now()
+		subjectives[i].UpdatedAt = time.Now()
+		subjectives[i].IsActive = true
+
+		if err := common.Validate.Struct(subjectives[i]); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
-	if err := questionsService.CreateBulkSubjectives(subjectives); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create subjectives"})
+	if err := repo.SaveBulkSubjectives(subjectives); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

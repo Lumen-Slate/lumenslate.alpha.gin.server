@@ -2,37 +2,41 @@ package repository
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"strconv"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SaveVariable(v model.Variable) error {
-	_, err := firebase.Client.Collection("variables").Doc(v.ID).Set(context.Background(), v)
+	ctx := context.Background()
+	_, err := db.GetCollection(db.VariableCollection).InsertOne(ctx, v)
 	return err
 }
 
 func GetVariableByID(id string) (*model.Variable, error) {
-	doc, err := firebase.Client.Collection("variables").Doc(id).Get(context.Background())
+	ctx := context.Background()
+	var v model.Variable
+	err := db.GetCollection(db.VariableCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&v)
 	if err != nil {
 		return nil, err
 	}
-	var v model.Variable
-	doc.DataTo(&v)
 	return &v, nil
 }
 
 func DeleteVariable(id string) error {
-	_, err := firebase.Client.Collection("variables").Doc(id).Delete(context.Background())
+	ctx := context.Background()
+	_, err := db.GetCollection(db.VariableCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllVariables(filters map[string]string) ([]model.Variable, error) {
 	ctx := context.Background()
-	q := firebase.Client.Collection("variables").Query
 
+	// Set up pagination options
 	limit := 10
 	offset := 0
 	if l, err := strconv.Atoi(filters["limit"]); err == nil {
@@ -42,37 +46,56 @@ func GetAllVariables(filters map[string]string) ([]model.Variable, error) {
 		offset = o
 	}
 
-	iter := q.Offset(offset).Limit(limit).Documents(ctx)
+	opts := options.Find().
+		SetSkip(int64(offset)).
+		SetLimit(int64(limit))
+
+	cursor, err := db.GetCollection(db.VariableCollection).Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []model.Variable
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var v model.Variable
-		doc.DataTo(&v)
-		results = append(results, v)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchVariable(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("variables").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchVariable(id string, updates map[string]interface{}) (*model.Variable, error) {
+	ctx := context.Background()
+	updates["updatedAt"] = time.Now()
+
+	// Update the document
+	_, err := db.GetCollection(db.VariableCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the updated document
+	var updated model.Variable
+	err = db.GetCollection(db.VariableCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }
 
 func SaveBulkVariables(variables []model.Variable) error {
 	ctx := context.Background()
-	bulkWriter := firebase.Client.BulkWriter(ctx)
-	collection := firebase.Client.Collection("variables")
 
-	for _, v := range variables {
-		docRef := collection.Doc(v.ID)
-		bulkWriter.Create(docRef, v)
+	// Convert variables to interface slice for bulk insert
+	docs := make([]interface{}, len(variables))
+	for i, v := range variables {
+		docs[i] = v
 	}
 
-	// Close the bulk writer and wait for all operations to complete
-	bulkWriter.End()
-
-	return nil
+	_, err := db.GetCollection(db.VariableCollection).InsertMany(ctx, docs)
+	return err
 }

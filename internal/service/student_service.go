@@ -26,6 +26,6 @@ func UpdateStudent(id string, updated model.Student) error {
 	return repository.SaveStudent(updated)
 }
 
-func PatchStudent(id string, updates map[string]interface{}) error {
+func PatchStudent(id string, updates map[string]interface{}) (*model.Student, error) {
 	return repository.PatchStudent(id, updates)
 }

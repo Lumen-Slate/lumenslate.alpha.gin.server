@@ -2,9 +2,11 @@
 package controller
 
 import (
+	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/service"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -23,7 +25,17 @@ func CreateVariable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	variable.ID = uuid.New().String() // Auto-generate ID
+
+	// Initialize with default values
+	variable = *model.NewVariable()
+	variable.ID = uuid.New().String()
+
+	// Validate the variable
+	if err := common.Validate.Struct(variable); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.CreateVariable(variable); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create variable"})
 		return
@@ -58,7 +70,7 @@ func DeleteVariable(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete variable"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Variable deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Variable deleted successfully"})
 }
 
 // @Summary Get All Variables
@@ -96,7 +108,16 @@ func UpdateVariable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	variable.ID = id
+	variable.UpdatedAt = time.Now()
+
+	// Validate the variable
+	if err := common.Validate.Struct(variable); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	if err := service.UpdateVariable(id, variable); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
@@ -110,7 +131,7 @@ func UpdateVariable(c *gin.Context) {
 // @Produce json
 // @Param id path string true "ID"
 // @Param updates body map[string]interface{} true "Updates"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} model.Variable
 // @Router /variables/{id} [patch]
 func PatchVariable(c *gin.Context) {
 	id := c.Param("id")
@@ -119,11 +140,18 @@ func PatchVariable(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := service.PatchVariable(id, updates); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
+
+	// Add updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	// Get the updated variable
+	updated, err := service.PatchVariable(id, updates)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch variable"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Updated"})
+
+	c.JSON(http.StatusOK, updated)
 }
 
 // @Summary Bulk Create Variables
@@ -140,8 +168,18 @@ func CreateBulkVariables(c *gin.Context) {
 		return
 	}
 
+	now := time.Now()
 	for i := range variables {
-		variables[i].ID = uuid.New().String() // Auto-generate IDs
+		variables[i].ID = uuid.New().String()
+		variables[i].CreatedAt = now
+		variables[i].UpdatedAt = now
+		variables[i].IsActive = true
+
+		// Validate each variable
+		if err := common.Validate.Struct(variables[i]); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	if err := service.CreateBulkVariables(variables); err != nil {

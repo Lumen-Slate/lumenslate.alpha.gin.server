@@ -12,7 +12,8 @@ func RegisterAssignmentRoutes(r *gin.Engine) {
 		a.POST("/", controller.CreateAssignment)
 		a.GET("/", controller.GetAllAssignments)
 		a.GET("/:id", controller.GetAssignment)
-		a.PUT("/:id", controller.UpdateAssignment) // ✅ new
+		a.PUT("/:id", controller.UpdateAssignment)
+		a.PATCH("/:id", controller.PatchAssignment)
 		a.DELETE("/:id", controller.DeleteAssignment)
 	}
 }

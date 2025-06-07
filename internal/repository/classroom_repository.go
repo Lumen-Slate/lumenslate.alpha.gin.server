@@ -2,38 +2,59 @@ package repository
 
 import (
 	"context"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"strconv"
 	"strings"
+	"time"
 
-	"cloud.google.com/go/firestore"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SaveClassroom(c model.Classroom) error {
-	_, err := firebase.Client.Collection("classrooms").Doc(c.ID).Set(context.Background(), c)
+	ctx := context.Background()
+	_, err := db.GetCollection(db.ClassroomCollection).InsertOne(ctx, c)
 	return err
 }
 
 func GetClassroomByID(id string) (*model.Classroom, error) {
-	doc, err := firebase.Client.Collection("classrooms").Doc(id).Get(context.Background())
+	ctx := context.Background()
+	var c model.Classroom
+	err := db.GetCollection(db.ClassroomCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&c)
 	if err != nil {
 		return nil, err
 	}
-	var c model.Classroom
-	doc.DataTo(&c)
 	return &c, nil
 }
 
 func DeleteClassroom(id string) error {
-	_, err := firebase.Client.Collection("classrooms").Doc(id).Delete(context.Background())
+	ctx := context.Background()
+	_, err := db.GetCollection(db.ClassroomCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 	ctx := context.Background()
-	q := firebase.Client.Collection("classrooms").Query
+	filter := bson.M{}
 
+	// Apply tags filter if provided
+	if tags, ok := filters["tags"]; ok && tags != "" {
+		tagList := strings.Split(tags, ",")
+		filter["tags"] = bson.M{"$all": tagList}
+	}
+
+	// Apply teacher filter if provided
+	if teacherID, ok := filters["teacherId"]; ok && teacherID != "" {
+		filter["teacherIds"] = teacherID
+	}
+
+	// Apply subject filter if provided
+	if subject, ok := filters["subject"]; ok && subject != "" {
+		filter["subject"] = subject
+	}
+
+	// Set up pagination
 	limit := 10
 	offset := 0
 	if l, err := strconv.Atoi(filters["limit"]); err == nil {
@@ -43,29 +64,43 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 		offset = o
 	}
 
-	// Apply tags filter if provided
-	if tags, ok := filters["tags"]; ok && tags != "" {
-		tagList := strings.Split(tags, ",")
-		for _, tag := range tagList {
-			q = q.Where("tags", "array-contains", tag)
-		}
-	}
+	opts := options.Find().
+		SetSkip(int64(offset)).
+		SetLimit(int64(limit))
 
-	iter := q.Offset(offset).Limit(limit).Documents(ctx)
+	cursor, err := db.GetCollection(db.ClassroomCollection).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var results []model.Classroom
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var c model.Classroom
-		doc.DataTo(&c)
-		results = append(results, c)
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
 
-func PatchClassroom(id string, updates map[string]interface{}) error {
-	_, err := firebase.Client.Collection("classrooms").Doc(id).Set(context.Background(), updates, firestore.MergeAll)
-	return err
+func PatchClassroom(id string, updates map[string]interface{}) (*model.Classroom, error) {
+	ctx := context.Background()
+	updates["updatedAt"] = time.Now()
+
+	// First update the document
+	_, err := db.GetCollection(db.ClassroomCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then fetch the updated document
+	var updated model.Classroom
+	err = db.GetCollection(db.ClassroomCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }

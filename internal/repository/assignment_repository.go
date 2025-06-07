@@ -2,91 +2,124 @@ package repository
 
 import (
 	"context"
-	"log"
-	"lumenslate/internal/firebase"
+	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"strconv"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SaveAssignment(a model.Assignment) error {
-	_, err := firebase.Client.Collection("assignments").Doc(a.ID).Set(context.Background(), a)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := db.GetCollection(db.AssignmentCollection).InsertOne(ctx, a)
 	return err
 }
 
 func GetAssignmentByID(id string) (*model.Assignment, error) {
-	doc, err := firebase.Client.Collection("assignments").Doc(id).Get(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var a model.Assignment
+	err := db.GetCollection(db.AssignmentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&a)
 	if err != nil {
 		return nil, err
 	}
-	var a model.Assignment
-	doc.DataTo(&a)
 	return &a, nil
 }
 
 func DeleteAssignment(id string) error {
-	_, err := firebase.Client.Collection("assignments").Doc(id).Delete(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := db.GetCollection(db.AssignmentCollection).DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 func GetAllAssignments() ([]model.Assignment, error) {
-	iter := firebase.Client.Collection("assignments").Documents(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cursor, err := db.GetCollection(db.AssignmentCollection).Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
 	var assignments []model.Assignment
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		var a model.Assignment
-		doc.DataTo(&a)
-		assignments = append(assignments, a)
+	if err = cursor.All(ctx, &assignments); err != nil {
+		return nil, err
 	}
 	return assignments, nil
 }
 
 func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignment, error) {
-	ctx := context.Background()
-	q := firebase.Client.Collection("assignments").Query
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// Filters
+	findOptions := options.Find()
+
+	// Handle pagination
+	limit := int64(10)
+	offset := int64(0)
+	if l, err := strconv.Atoi(limitStr); err == nil {
+		limit = int64(l)
+	}
+	if o, err := strconv.Atoi(offsetStr); err == nil {
+		offset = int64(o)
+	}
+	findOptions.SetLimit(limit)
+	findOptions.SetSkip(offset)
+
+	// Build filter
+	filter := bson.M{}
 	if points != "" {
-		val, _ := strconv.Atoi(points)
-		q = q.Where("points", "==", val)
+		if val, err := strconv.Atoi(points); err == nil {
+			filter["points"] = val
+		}
 	}
 	if due != "" {
-		t, err := time.Parse(time.RFC3339, due)
-		if err == nil {
-			q = q.Where("dueDate", ">=", t)
-		} else {
-			log.Printf("⚠️ Invalid dueDate format: %v", due)
+		if t, err := time.Parse(time.RFC3339, due); err == nil {
+			filter["dueDate"] = bson.M{"$gte": t}
 		}
 	}
 
-	// Pagination
-	limit, _ := strconv.Atoi(limitStr)
-	offset, _ := strconv.Atoi(offsetStr)
-
-	if limit > 0 {
-		q = q.Limit(limit)
+	cursor, err := db.GetCollection(db.AssignmentCollection).Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, err
 	}
-	iter := q.Documents(ctx)
+	defer cursor.Close(ctx)
 
-	// Apply offset manually
 	var results []model.Assignment
-	i := 0
-	for {
-		doc, err := iter.Next()
-		if err != nil {
-			break
-		}
-		if i < offset {
-			i++
-			continue
-		}
-		var a model.Assignment
-		doc.DataTo(&a)
-		results = append(results, a)
-		i++
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
 	}
 	return results, nil
+}
+
+func PatchAssignment(id string, updates map[string]interface{}) (*model.Assignment, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// First update the document
+	_, err := db.GetCollection(db.AssignmentCollection).UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": updates},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then fetch the updated document
+	var updated model.Assignment
+	err = db.GetCollection(db.AssignmentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&updated)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }

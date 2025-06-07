@@ -27,9 +27,13 @@ func GetAllAssignments() ([]model.Assignment, error) {
 }
 
 func UpdateAssignment(id string, updated model.Assignment) error {
-	return repository.SaveAssignment(updated) // overwrite existing
+	return repository.SaveAssignment(updated)
 }
 
 func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignment, error) {
 	return repository.FilterAssignments(limitStr, offsetStr, points, due)
+}
+
+func PatchAssignment(id string, updates map[string]interface{}) (*model.Assignment, error) {
+	return repository.PatchAssignment(id, updates)
 }
