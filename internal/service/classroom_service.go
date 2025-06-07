@@ -26,6 +26,6 @@ func UpdateClassroom(id string, updated model.Classroom) error {
 	return repo.SaveClassroom(updated)
 }
 
-func PatchClassroom(id string, updates map[string]interface{}) error {
+func PatchClassroom(id string, updates map[string]interface{}) (*model.Classroom, error) {
 	return repo.PatchClassroom(id, updates)
 }
