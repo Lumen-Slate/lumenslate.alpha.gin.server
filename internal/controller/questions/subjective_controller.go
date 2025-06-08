@@ -19,14 +19,10 @@ import (
 // @Success 201 {object} questions.Subjective
 // @Router /subjectives [post]
 func CreateSubjective(c *gin.Context) {
-	var s model.Subjective
-	if err := c.ShouldBindJSON(&s); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	// Create new Subjective with default values
-	s = *model.NewSubjective()
+	s := *model.NewSubjective()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -20,14 +20,16 @@ import (
 // @Success 201 {object} model.Variable
 // @Router /variables [post]
 func CreateVariable(c *gin.Context) {
-	var variable model.Variable
+	// Create new Variable with default values
+	variable := *model.NewVariable()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&variable); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Initialize with default values
-	variable = *model.NewVariable()
+	// Generate ID
 	variable.ID = uuid.New().String()
 
 	// Validate the variable

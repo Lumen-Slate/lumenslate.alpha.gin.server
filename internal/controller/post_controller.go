@@ -20,14 +20,16 @@ import (
 // @Success 201 {object} model.Thread
 // @Router /threads [post]
 func CreateThread(c *gin.Context) {
-	var thread model.Thread
+	// Create new Thread with default values
+	thread := *model.NewThread()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Initialize with default values
-	thread = *model.NewThread()
+	// Generate ID
 	thread.ID = uuid.New().String()
 
 	// Validate the struct

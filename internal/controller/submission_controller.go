@@ -20,14 +20,16 @@ import (
 // @Success 201 {object} model.Submission
 // @Router /submissions [post]
 func CreateSubmission(c *gin.Context) {
-	var submission model.Submission
+	// Create new Submission with default values
+	submission := *model.NewSubmission()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&submission); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Initialize with default values
-	submission = *model.NewSubmission()
+	// Generate ID
 	submission.ID = uuid.New().String()
 
 	// Validate the submission

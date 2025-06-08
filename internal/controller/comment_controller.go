@@ -20,14 +20,16 @@ import (
 // @Success 201 {object} model.Comment
 // @Router /comments [post]
 func CreateComment(c *gin.Context) {
-	var comment model.Comment
+	// Create new Comment with default values
+	comment := *model.NewComment()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Initialize with default values
-	comment = *model.NewComment()
+	// Generate ID
 	comment.ID = uuid.New().String()
 
 	// Validate the struct
