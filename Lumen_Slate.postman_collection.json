@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "7f0edc75-b865-4009-bcee-b043725ff8ff",
+		"_postman_id": "b39cfcdb-696f-4c29-97f3-b0fc6b9b1740",
 		"name": "Lumen_Slate",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "43786789",
-		"_collection_link": "https://shubhams-team-1428.postman.co/workspace/LumenSlate~ce1f7729-00f8-4939-a781-1d6ba807f083/collection/43786789-7f0edc75-b865-4009-bcee-b043725ff8ff?action=share&source=collection_link&creator=43786789"
+		"_exporter_id": "32315525",
+		"_collection_link": "https://crimson-capsule-249854.postman.co/workspace/My-Workspace~abfc4b32-b2f1-4e15-8d54-4a1376f3e469/collection/32315525-b39cfcdb-696f-4c29-97f3-b0fc6b9b1740?action=share&source=collection_link&creator=32315525"
 	},
 	"item": [
 		{
@@ -248,7 +248,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Full Quiz - All Question Types\",\n  \"body\": \"This is a test assignment containing all supported question types.\",\n  \"dueDate\": \"2025-05-15T00:00:00Z\",\n  \"createdAt\": \"2025-04-05T00:00:00Z\",\n  \"points\": 100,\n  \"commentIds\": [\"c1\", \"c2\"],\n  \"mcqs\": [\n    {\n      \"question\": \"What is the capital of France?\",\n      \"options\": [\"Paris\", \"London\", \"Berlin\", \"Madrid\"],\n      \"answer\": 0\n    }\n  ],\n  \"msqs\": [\n    {\n      \"question\": \"Select all prime numbers:\",\n      \"options\": [\"2\", \"4\", \"5\", \"6\"],\n      \"answers\": [0, 2]\n    }\n  ],\n  \"nats\": [\n    {\n      \"question\": \"What is the square root of 144?\",\n      \"answer\": \"12\"\n    }\n  ],\n  \"subjectives\": [\n    {\n      \"question\": \"Explain the theory of relativity in brief.\"\n    }\n  ]\n}\n"
+							"raw": "{\n  \"title\": \"Physics Assignment\",\n  \"body\": \"Complete the following exercises to learn basic Physics\",\n  \"dueDate\": \"2024-04-30T23:59:59Z\",\n  \"points\": 100,\n  \"mcqIds\": [\"0e05ebc4-a821-41b8-becd-e83218115336\"],\n  \"msqIds\": [\"ec2d6437-a2ab-47d4-ab00-e8dec34f86f2\"],\n  \"natIds\": [\"fe6cd180-df7d-4105-b167-a8ad3e3d56d8\"],\n  \"subjectiveIds\": [\"9194be55-0c8e-45e7-9012-7d79d1e39a78\"]\n}"
 						},
 						"url": {
 							"raw": "http://localhost:8080/assignments",
@@ -639,7 +639,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"subject\": \"Mathematics\",\n  \"teacherId\": \"teacher-001\",\n  \"assignmentIds\": [\n    \"assign-1\",\n    \"assign-2\"\n  ],\n  \"credits\": 5,\n   \"tags\": [\"mechanics\", \"thermodynamics\"]\n}"
+							"raw": " {\n    \"subject\": \"Advanced Mathematics\",\n    \"teacherIds\": [\"0692d515-1621-44ea-85e7-a41335858ee2\", \"7b8c9d0e-1f2g-3h4i-5j6k-7l8m9n0o1p2q\"],\n    \"credits\": 4,\n    \"tags\": [\"advanced\", \"mathematics\", \"calculus\", \"algebra\"],\n    \"assignmentIds\": [],\n    \"isActive\": true\n  }"
 						},
 						"url": {
 							"raw": "localhost:8080/classrooms",
@@ -1069,7 +1069,8 @@
 									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -1083,7 +1084,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"id\": \"comment-001\",\n  \"commentBody\": \"This is a test comment\"\n}"
+							"raw": " {\n    \"commentBody\": \"To solve 2x² + 5x - 3 = 0, you can use the quadratic formula: x = (-b ± √(b² - 4ac)) / 2a. In this case, a=2, b=5, and c=-3. Plugging these values in, you get: x = (-5 ± √(25 - 4(2)(-3))) / 4 = (-5 ± √(25 + 24)) / 4 = (-5 ± √49) / 4 = (-5 ± 7) / 4. So x = 0.5 or x = -3.\"\n  }"
 						},
 						"url": {
 							"raw": "localhost:8080/comments",
@@ -1472,7 +1473,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"bankId\": \"bank1\",\n    \"question\": \"What is the capital of Italy?\",\n    \"variableIds\": [\n        \"v1\"\n    ],\n    \"points\": 3,\n    \"options\": [\n        \"Rome\",\n        \"Paris\",\n        \"Madrid\",\n        \"Berlin\"\n    ],\n    \"answerIndex\": 0\n}"
+									"raw": "  {\n    \"type\": \"MCQ\",\n    \"bankId\": \"6aa0c742-2920-4556-9c24-8d41c8be1ffb\",\n    \"question\": \"What is the formula for kinetic energy?\",\n    \"points\": 2,\n    \"options\": [\n      \"KE = mgh\",\n      \"KE = ½mv²\",\n      \"KE = mv\",\n      \"KE = ma\"\n    ],\n    \"answerIndex\": 1\n  }"
 								},
 								"url": {
 									"raw": "http://localhost:8080/mcqs",
@@ -1679,7 +1680,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"bankId\": \"bank1\",\n    \"question\": \"Which of the following are fruits?\",\n    \"variableIds\": [\n        \"v1\"\n    ],\n    \"points\": 4,\n    \"options\": [\n        \"Apple\",\n        \"Carrot\",\n        \"Banana\",\n        \"Potato\"\n    ],\n    \"answerIndices\": [\n        0,\n        2\n    ]\n}"
+									"raw": "  {\n    \"type\": \"MSQ\",\n    \"bankId\": \"6aa0c742-2920-4556-9c24-8d41c8be1ffb\",\n    \"question\": \"Which of the following are vector quantities?\",\n    \"points\": 3,\n    \"options\": [\n      \"Force\",\n      \"Mass\",\n      \"Velocity\",\n      \"Temperature\"\n    ],\n    \"answerIndices\": [0, 2]\n  }"
 								},
 								"url": {
 									"raw": "http://localhost:8080/msqs",
@@ -1886,7 +1887,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"bankId\": \"bank1\",\n    \"question\": \"What is the square root of 64?\",\n    \"variable\": [],\n    \"points\": 2,\n    \"answer\": 8\n}"
+									"raw": "  {\n    \"type\": \"NAT\",\n    \"bankId\": \"6aa0c742-2920-4556-9c24-8d41c8be1ffb\",\n    \"question\": \"A car accelerates from rest to 20 m/s in 5 seconds. What is its acceleration?\",\n    \"points\": 3,\n    \"answer\": 4,\n    \"variable\": [\n    ]\n  }"
 								},
 								"url": {
 									"raw": "http://localhost:8080/nats",
@@ -2093,7 +2094,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"bankId\": \"bank1\",\n    \"question\": \"Explain the theory of relativity.\",\n    \"variable\": [],\n    \"points\": 10,\n    \"idealAnswer\": \"Relativity is a theory developed by Einstein...\",\n    \"gradingCriteria\": [\n        \"Mentioned Einstein\",\n        \"Covered time dilation\",\n        \"Clear explanation\"\n    ]\n}"
+									"raw": "  {\n    \"type\": \"Subjective\",\n    \"bankId\": \"6aa0c742-2920-4556-9c24-8d41c8be1ffb\",\n    \"question\": \"Explain Newton's First Law of Motion and provide real-world examples.\",\n    \"points\": 5,\n    \"gradingCriteria\": [\n      \"Clear statement of the law\",\n      \"Explanation of inertia\",\n      \"Real-world examples provided\",\n      \"Application of the law explained\"\n    ]\n  }"
 								},
 								"url": {
 									"raw": "http://localhost:8080/subjectives",
@@ -2352,16 +2353,16 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Sample Post\",\n  \"body\": \"This is the body of the post.\",\n  \"attachments\": [\n    \"link1\",\n    \"link2\"\n  ],\n  \"studentId\": \"student-123\",\n  \"commentIds\": [\n    \"comment-1\",\n    \"comment-2\"\n  ]\n}"
+							"raw": "  {\n    \"title\": \"Programming Assignment Discussion\",\n    \"body\": \"For the current programming assignment, I'm getting an error when trying to implement the binary search algorithm. The error occurs when the array is empty. Here's my code:\\n\\n```python\\ndef binary_search(arr, target):\\n    left = 0\\n    right = len(arr) - 1\\n    while left <= right:\\n        mid = (left + right) // 2\\n        if arr[mid] == target:\\n            return mid\\n        elif arr[mid] < target:\\n            left = mid + 1\\n        else:\\n            right = mid - 1\\n    return -1\\n```\",\n    \"attachments\": [\"error_log.txt\"],\n    \"userId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n    \"commentIds\": [],\n    \"isActive\": true\n  }"
 						},
 						"url": {
-							"raw": "localhost:8080/posts",
+							"raw": "localhost:8080/threads",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts"
+								"threads"
 							]
 						}
 					},
@@ -2418,7 +2419,8 @@
 									"    });",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -2426,13 +2428,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:8080/posts",
+							"raw": "localhost:8080/threads",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts"
+								"threads"
 							]
 						}
 					},
@@ -2490,13 +2492,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:8080/posts/:id",
+							"raw": "localhost:8080/threads/:id",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts",
+								"threads",
 								":id"
 							],
 							"variable": [
@@ -2574,13 +2576,13 @@
 							"raw": "{\n  \"title\": \"Updated Post\",\n  \"body\": \"Updated body text.\",\n  \"attachments\": [\n    \"link3\"\n  ],\n  \"studentId\": \"student-123\",\n  \"commentIds\": [\n    \"comment-3\"\n  ]\n}"
 						},
 						"url": {
-							"raw": "localhost:8080/posts/:id",
+							"raw": "localhost:8080/threads/:id",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts",
+								"threads",
 								":id"
 							],
 							"variable": [
@@ -2644,22 +2646,22 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Patched Title\"\n}"
+							"raw": "{\n  \"commentIds\":[\"1dcadb18-4fcb-49ec-b05a-68e78fc13e53\"]\n}"
 						},
 						"url": {
-							"raw": "localhost:8080/posts/:id",
+							"raw": "localhost:8080/threads/:id",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts",
+								"threads",
 								":id"
 							],
 							"variable": [
 								{
 									"key": "id",
-									"value": "bc9d3831-cbac-4999-9e87-014a6fa972b7"
+									"value": "1df2f200-d52d-4b05-917f-352bfeca1041"
 								}
 							]
 						}
@@ -2713,13 +2715,13 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "localhost:8080/posts/:id",
+							"raw": "localhost:8080/threads/:id",
 							"host": [
 								"localhost"
 							],
 							"port": "8080",
 							"path": [
-								"posts",
+								"threads",
 								":id"
 							],
 							"variable": [
@@ -2794,7 +2796,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Algebra\",\n  \"topic\": \"Linear Equations\",\n  \"teacherId\": \"647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f\",\n    \"tags\": [\"calculus\", \"limits\", \"continuity\"]\n}"
+							"raw": "  {\n    \"name\": \"Basic Physics: Mechanics\",\n    \"topic\": \"Physics\",\n    \"teacherId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n    \"tags\": [\"mechanics\", \"motion\", \"forces\", \"physics-basics\"],\n    \"description\": \"Fundamental questions about mechanics, including Newton's laws, motion, and basic force calculations.\"\n  }"
 						},
 						"url": {
 							"raw": "localhost:8080/question-banks",
@@ -3258,7 +3260,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"rollNo\": \"12345\",\n  \"classIds\": [\n    \"class-001\",\n    \"class-002\"\n  ]\n}"
+							"raw": "  {\n    \"name\": \"John Smith\",\n    \"email\": \"john.smith@university.edu\",\n    \"rollNo\": \"CS2023001\",\n    \"classIds\": [\"0c60783e-4845-4453-b847-bda088b679de\"],\n    \"isActive\": true\n  }"
 						},
 						"url": {
 							"raw": "localhost:8080/students",
@@ -3591,7 +3593,7 @@
 							"variable": [
 								{
 									"key": "id",
-									"value": "61921930-cf04-4aa7-af38-3967ad33d8ac"
+									"value": "aa93f343-c02a-4fe9-b4f7-f41708772c45"
 								}
 							]
 						}
@@ -3880,7 +3882,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:8080/teachers?limit=10&offset=0",
+							"raw": "localhost:8080/teachers?email=alice@school.com&limit=10&offset=0",
 							"host": [
 								"localhost"
 							],
@@ -3891,8 +3893,7 @@
 							"query": [
 								{
 									"key": "email",
-									"value": "alice@school.com",
-									"disabled": true
+									"value": "alice@school.com"
 								},
 								{
 									"key": "phone",
@@ -3930,7 +3931,7 @@
 							"variable": [
 								{
 									"key": "id",
-									"value": "647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f"
+									"value": "82f22359-3346-49b8-b6bb-2691cc313af7"
 								}
 							]
 						}
@@ -3964,7 +3965,7 @@
 							"variable": [
 								{
 									"key": "id",
-									"value": "647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f"
+									"value": "82f22359-3346-49b8-b6bb-2691cc313af7"
 								}
 							]
 						}
@@ -3998,7 +3999,7 @@
 							"variable": [
 								{
 									"key": "id",
-									"value": "647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f"
+									"value": "82f22359-3346-49b8-b6bb-2691cc313af7"
 								}
 							]
 						}
@@ -4023,7 +4024,7 @@
 							"variable": [
 								{
 									"key": "id",
-									"value": "647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f"
+									"value": "82f22359-3346-49b8-b6bb-2691cc313af7"
 								}
 							]
 						}
@@ -4047,7 +4048,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Speed\",\n    \"namePositions\": [10, 20],\n    \"value\": \"10 m/s\",\n    \"valuePositions\": [30, 40],\n    \"variableType\": \"physical\"\n}"
+							"raw": "  {\n    \"name\": \"x\",\n    \"namePositions\": [15, 16, 45, 46],\n    \"value\": \"5\",\n    \"valuePositions\": [15, 16, 45, 46],\n    \"variableType\": \"number\",\n    \"isActive\": true\n  }"
 						},
 						"url": {
 							"raw": "localhost:8080/variables",

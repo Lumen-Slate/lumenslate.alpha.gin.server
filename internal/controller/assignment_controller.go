@@ -20,14 +20,10 @@ import (
 // @Success 201 {object} model.Assignment
 // @Router /assignments [post]
 func CreateAssignment(c *gin.Context) {
-	var a model.Assignment
-	if err := c.ShouldBindJSON(&a); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	// Create new Assignment with default values
-	a = *model.NewAssignment()
+	a := *model.NewAssignment()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&a); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

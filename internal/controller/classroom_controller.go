@@ -20,14 +20,16 @@ import (
 // @Success 201 {object} model.Classroom
 // @Router /classrooms [post]
 func CreateClassroom(c *gin.Context) {
-	var classroom model.Classroom
+	// Create new Classroom with default values
+	classroom := *model.NewClassroom()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Initialize with default values
-	classroom = *model.NewClassroom()
+	// Generate ID
 	classroom.ID = uuid.New().String()
 
 	// Validate the struct

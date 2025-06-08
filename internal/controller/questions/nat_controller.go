@@ -20,14 +20,10 @@ import (
 // @Success 201 {object} questions.NAT
 // @Router /nats [post]
 func CreateNAT(c *gin.Context) {
-	var n model.NAT
-	if err := c.ShouldBindJSON(&n); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	// Create new NAT with default values
-	n = *model.NewNAT()
+	n := *model.NewNAT()
+
+	// Bind JSON to the struct
 	if err := c.ShouldBindJSON(&n); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
