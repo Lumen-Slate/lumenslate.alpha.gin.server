@@ -1,11 +1,11 @@
-package routes
+// package routes
 
-import (
-	"lumenslate/internal/controller"
+// import (
+// 	"lumenslate/internal/controller"
 
-	"github.com/gin-gonic/gin"
-)
+// 	"github.com/gin-gonic/gin"
+// )
 
-func RegisterExportRoutes(r *gin.Engine) {
-	r.POST("/generate-pdf", controller.GenerateQuestionPDF)
-}
+// func RegisterExportRoutes(r *gin.Engine) {
+// 	r.POST("/generate-pdf", controller.GenerateQuestionPDF)
+// }
