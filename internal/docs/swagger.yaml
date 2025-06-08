@@ -1,16 +1,5 @@
 basePath: /
 definitions:
-  controller.GeneratePDFRequest:
-    properties:
-      questionIds:
-        items:
-          type: string
-        type: array
-      showAnswers:
-        type: boolean
-      showType:
-        type: boolean
-    type: object
   model.Assignment:
     properties:
       body:
@@ -25,26 +14,36 @@ definitions:
         type: string
       id:
         type: string
-      mcqs:
+      isActive:
+        type: boolean
+      mcqIds:
         items:
-          $ref: '#/definitions/model.MCQ'
+          type: string
         type: array
-      msqs:
+      msqIds:
         items:
-          $ref: '#/definitions/model.MSQ'
+          type: string
         type: array
-      nats:
+      natIds:
         items:
-          $ref: '#/definitions/model.NAT'
+          type: string
         type: array
       points:
+        minimum: 0
         type: integer
-      subjectives:
+      subjectiveIds:
         items:
-          $ref: '#/definitions/model.Subjective'
+          type: string
         type: array
       title:
         type: string
+      updatedAt:
+        type: string
+    required:
+    - body
+    - dueDate
+    - points
+    - title
     type: object
   model.Classroom:
     properties:
@@ -52,14 +51,18 @@ definitions:
         items:
           type: string
         type: array
+      createdAt:
+        type: string
       credits:
+        minimum: 0
         type: integer
       id:
         type: string
+      isActive:
+        type: boolean
       subject:
         type: string
       tags:
-        description: Added tags field
         items:
           type: string
         type: array
@@ -67,79 +70,59 @@ definitions:
         items:
           type: string
         type: array
+      updatedAt:
+        type: string
+    required:
+    - credits
+    - subject
+    - teacherIds
     type: object
   model.Comment:
     properties:
       commentBody:
         type: string
+      createdAt:
+        type: string
       id:
         type: string
-    type: object
-  model.MCQ:
-    properties:
-      answer:
-        type: integer
-      options:
-        items:
-          type: string
-        type: array
-      question:
+      isActive:
+        type: boolean
+      updatedAt:
         type: string
-    type: object
-  model.MSQ:
-    properties:
-      answers:
-        items:
-          type: integer
-        type: array
-      options:
-        items:
-          type: string
-        type: array
-      question:
-        type: string
-    type: object
-  model.NAT:
-    properties:
-      answer:
-        type: string
-      question:
-        type: string
-    type: object
-  model.Post:
-    properties:
-      attachments:
-        items:
-          type: string
-        type: array
-      body:
-        type: string
-      commentIds:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      title:
-        type: string
-      userId:
-        type: string
+    required:
+    - commentBody
     type: object
   model.QuestionBank:
     properties:
+      createdAt:
+        type: string
+      description:
+        maxLength: 500
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       name:
+        maxLength: 100
+        minLength: 3
         type: string
       tags:
-        description: Added tags field
         items:
           type: string
+        minItems: 0
         type: array
       teacherId:
         type: string
       topic:
         type: string
+      updatedAt:
+        type: string
+    required:
+    - name
+    - tags
+    - teacherId
+    - topic
     type: object
   model.Student:
     properties:
@@ -147,26 +130,35 @@ definitions:
         items:
           type: string
         type: array
+      createdAt:
+        type: string
       email:
         type: string
       id:
         type: string
+      isActive:
+        type: boolean
       name:
         type: string
       rollNo:
         type: string
-    type: object
-  model.Subjective:
-    properties:
-      question:
+      updatedAt:
         type: string
+    required:
+    - email
+    - name
+    - rollNo
     type: object
   model.Submission:
     properties:
       assignmentId:
         type: string
+      createdAt:
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       mcqAnswers:
         additionalProperties:
           type: string
@@ -187,28 +179,80 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      updatedAt:
+        type: string
+    required:
+    - assignmentId
+    - studentId
     type: object
   model.Teacher:
     properties:
+      createdAt:
+        type: string
       email:
         type: string
       id:
         type: string
+      isActive:
+        type: boolean
       name:
+        maxLength: 100
+        minLength: 3
         type: string
       phone:
         type: string
+      updatedAt:
+        type: string
+    required:
+    - email
+    - name
+    - phone
+    type: object
+  model.Thread:
+    properties:
+      attachments:
+        items:
+          type: string
+        type: array
+      body:
+        type: string
+      commentIds:
+        items:
+          type: string
+        type: array
+      createdAt:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    required:
+    - body
+    - title
+    - userId
     type: object
   model.Variable:
     properties:
+      createdAt:
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       name:
         type: string
       namePositions:
         items:
           type: integer
         type: array
+      updatedAt:
+        type: string
       value:
         type: string
       valuePositions:
@@ -217,50 +261,88 @@ definitions:
         type: array
       variableType:
         type: string
+    required:
+    - name
+    - namePositions
+    - value
+    - valuePositions
+    - variableType
     type: object
   questions.MCQ:
     properties:
       answerIndex:
+        minimum: 0
         type: integer
       bankId:
         type: string
+      createdAt:
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       options:
         items:
           type: string
+        minItems: 2
         type: array
       points:
+        minimum: 1
         type: integer
       question:
+        minLength: 3
+        type: string
+      updatedAt:
         type: string
       variableIds:
         items:
           type: string
         type: array
+    required:
+    - answerIndex
+    - bankId
+    - options
+    - points
+    - question
     type: object
   questions.MSQ:
     properties:
       answerIndices:
         items:
           type: integer
+        minItems: 1
         type: array
       bankId:
         type: string
+      createdAt:
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       options:
         items:
           type: string
+        minItems: 2
         type: array
       points:
+        minimum: 1
         type: integer
       question:
+        minLength: 3
+        type: string
+      updatedAt:
         type: string
       variableIds:
         items:
           type: string
         type: array
+    required:
+    - answerIndices
+    - bankId
+    - options
+    - points
+    - question
     type: object
   questions.NAT:
     properties:
@@ -268,20 +350,37 @@ definitions:
         type: number
       bankId:
         type: string
+      createdAt:
+        type: string
       id:
         type: string
+      isActive:
+        type: boolean
       points:
+        minimum: 1
         type: integer
       question:
+        minLength: 3
+        type: string
+      updatedAt:
         type: string
       variable:
         items:
           $ref: '#/definitions/model.Variable'
+        minItems: 1
         type: array
+    required:
+    - answer
+    - bankId
+    - points
+    - question
+    - variable
     type: object
   questions.Subjective:
     properties:
       bankId:
+        type: string
+      createdAt:
         type: string
       gradingCriteria:
         items:
@@ -291,14 +390,25 @@ definitions:
         type: string
       idealAnswer:
         type: string
+      isActive:
+        type: boolean
       points:
+        minimum: 0
         type: integer
       question:
+        type: string
+      updatedAt:
         type: string
       variable:
         items:
           $ref: '#/definitions/model.Variable'
+        minItems: 0
         type: array
+    required:
+    - bankId
+    - points
+    - question
+    - variable
     type: object
 host: localhost:8080
 info:
@@ -391,6 +501,44 @@ paths:
           schema:
             $ref: '#/definitions/model.Assignment'
       summary: Get Assignment by ID
+      tags:
+      - Assignments
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Assignment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Assignment
       tags:
       - Assignments
     put:
@@ -518,9 +666,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.Classroom'
       summary: Patch Classroom
       tags:
       - Classrooms
@@ -640,9 +786,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.Comment'
         "400":
           description: Bad Request
           schema:
@@ -683,41 +827,6 @@ paths:
       summary: Update Comment
       tags:
       - Comments
-  /generate-pdf:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Question IDs and flags
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/controller.GeneratePDFRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Generate a PDF of mixed question types and return file path
-      tags:
-      - Export
   /mcqs:
     get:
       parameters:
@@ -807,7 +916,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Fields to update
+      - description: Updates
         in: body
         name: updates
         required: true
@@ -820,9 +929,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/questions.MCQ'
       summary: Patch MCQ
       tags:
       - MCQs
@@ -967,7 +1074,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Fields to update
+      - description: Updates
         in: body
         name: updates
         required: true
@@ -980,9 +1087,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/questions.MSQ'
       summary: Patch MSQ
       tags:
       - MSQs
@@ -1196,141 +1301,6 @@ paths:
       summary: Bulk Create NATs
       tags:
       - NATs
-  /posts:
-    get:
-      parameters:
-      - description: Limit
-        in: query
-        name: limit
-        type: string
-      - description: Offset
-        in: query
-        name: offset
-        type: string
-      - description: Filter by user ID
-        in: query
-        name: userId
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Post'
-            type: array
-      summary: Get All Posts
-      tags:
-      - Posts
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Post JSON
-        in: body
-        name: post
-        required: true
-        schema:
-          $ref: '#/definitions/model.Post'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/model.Post'
-      summary: Create Post
-      tags:
-      - Posts
-  /posts/{id}:
-    delete:
-      parameters:
-      - description: Post ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Delete Post
-      tags:
-      - Posts
-    get:
-      parameters:
-      - description: Post ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Post'
-      summary: Get Post by ID
-      tags:
-      - Posts
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: Post ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Fields to update
-        in: body
-        name: updates
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Patch Post
-      tags:
-      - Posts
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Post ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated Post
-        in: body
-        name: post
-        required: true
-        schema:
-          $ref: '#/definitions/model.Post'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Post'
-      summary: Update Post
-      tags:
-      - Posts
   /question-banks:
     get:
       parameters:
@@ -1447,9 +1417,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.QuestionBank'
       summary: Patch QuestionBank
       tags:
       - QuestionBanks
@@ -1586,9 +1554,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.Student'
         "400":
           description: Bad Request
           schema:
@@ -1878,9 +1844,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.Submission'
         "400":
           description: Bad Request
           schema:
@@ -1923,6 +1887,27 @@ paths:
       - Submissions
   /teachers:
     get:
+      parameters:
+      - description: Filter by email
+        in: query
+        name: email
+        type: string
+      - description: Filter by phone
+        in: query
+        name: phone
+        type: string
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
       produces:
       - application/json
       responses:
@@ -1999,7 +1984,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Fields to update
+      - description: Updates
         in: body
         name: updates
         required: true
@@ -2012,22 +1997,8 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Patch a teacher
+            $ref: '#/definitions/model.Teacher'
+      summary: Patch Teacher
       tags:
       - Teachers
     put:
@@ -2055,6 +2026,139 @@ paths:
       summary: Update Teacher
       tags:
       - Teachers
+  /threads:
+    get:
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: userId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Thread'
+            type: array
+      summary: Get All Threads
+      tags:
+      - Threads
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Thread JSON
+        in: body
+        name: thread
+        required: true
+        schema:
+          $ref: '#/definitions/model.Thread'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Thread'
+      summary: Create Thread
+      tags:
+      - Threads
+  /threads/{id}:
+    delete:
+      parameters:
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete Thread
+      tags:
+      - Threads
+    get:
+      parameters:
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Thread'
+      summary: Get Thread by ID
+      tags:
+      - Threads
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Thread'
+      summary: Patch Thread
+      tags:
+      - Threads
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated Thread
+        in: body
+        name: thread
+        required: true
+        schema:
+          $ref: '#/definitions/model.Thread'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Thread'
+      summary: Update Thread
+      tags:
+      - Threads
   /variables:
     get:
       parameters:
@@ -2155,9 +2259,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/model.Variable'
       summary: Patch Variable
       tags:
       - Variables
