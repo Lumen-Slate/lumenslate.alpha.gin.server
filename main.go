@@ -104,7 +104,7 @@ func registerRoutes(router *gin.Engine) {
 	routes.RegisterAssignmentRoutes(router)
 	routes.RegisterClassroomRoutes(router)
 	routes.RegisterCommentRoutes(router)
-	routes.RegisterPostRoutes(router)
+	routes.RegisterThreadRoutes(router)
 	routes.RegisterQuestionBankRoutes(router)
 	routes.RegisterStudentRoutes(router)
 	routes.RegisterSubmissionRoutes(router)

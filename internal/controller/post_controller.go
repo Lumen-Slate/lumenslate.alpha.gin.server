@@ -12,130 +12,130 @@ import (
 	"github.com/google/uuid"
 )
 
-// @Summary Create Post
-// @Tags Posts
+// @Summary Create Thread
+// @Tags Threads
 // @Accept json
 // @Produce json
-// @Param post body model.Post true "Post JSON"
-// @Success 201 {object} model.Post
-// @Router /posts [post]
-func CreatePost(c *gin.Context) {
-	var post model.Post
-	if err := c.ShouldBindJSON(&post); err != nil {
+// @Param thread body model.Thread true "Thread JSON"
+// @Success 201 {object} model.Thread
+// @Router /threads [post]
+func CreateThread(c *gin.Context) {
+	var thread model.Thread
+	if err := c.ShouldBindJSON(&thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Initialize with default values
-	post = *model.NewPost()
-	post.ID = uuid.New().String()
+	thread = *model.NewThread()
+	thread.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(post); err != nil {
+	if err := common.Validate.Struct(thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := service.CreatePost(post); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create post"})
+	if err := service.CreateThread(thread); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create thread"})
 		return
 	}
-	c.JSON(http.StatusCreated, post)
+	c.JSON(http.StatusCreated, thread)
 }
 
-// @Summary Get Post by ID
-// @Tags Posts
+// @Summary Get Thread by ID
+// @Tags Threads
 // @Produce json
-// @Param id path string true "Post ID"
-// @Success 200 {object} model.Post
-// @Router /posts/{id} [get]
-func GetPost(c *gin.Context) {
+// @Param id path string true "Thread ID"
+// @Success 200 {object} model.Thread
+// @Router /threads/{id} [get]
+func GetThread(c *gin.Context) {
 	id := c.Param("id")
-	post, err := service.GetPost(id)
+	thread, err := service.GetThread(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Post not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Thread not found"})
 		return
 	}
-	c.JSON(http.StatusOK, post)
+	c.JSON(http.StatusOK, thread)
 }
 
-// @Summary Delete Post
-// @Tags Posts
-// @Param id path string true "Post ID"
+// @Summary Delete Thread
+// @Tags Threads
+// @Param id path string true "Thread ID"
 // @Success 200 {object} map[string]string
-// @Router /posts/{id} [delete]
-func DeletePost(c *gin.Context) {
+// @Router /threads/{id} [delete]
+func DeleteThread(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeletePost(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete post"})
+	if err := service.DeleteThread(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete thread"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Post deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Thread deleted successfully"})
 }
 
-// @Summary Get All Posts
-// @Tags Posts
+// @Summary Get All Threads
+// @Tags Threads
 // @Produce json
 // @Param limit query string false "Limit"
 // @Param offset query string false "Offset"
 // @Param userId query string false "Filter by user ID"
-// @Success 200 {array} model.Post
-// @Router /posts [get]
-func GetAllPosts(c *gin.Context) {
+// @Success 200 {array} model.Thread
+// @Router /threads [get]
+func GetAllThreads(c *gin.Context) {
 	filters := map[string]string{
 		"limit":  c.DefaultQuery("limit", "10"),
 		"offset": c.DefaultQuery("offset", "0"),
 		"userId": c.Query("userId"),
 	}
-	posts, err := service.GetAllPosts(filters)
+	threads, err := service.GetAllThreads(filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch posts"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch threads"})
 		return
 	}
-	c.JSON(http.StatusOK, posts)
+	c.JSON(http.StatusOK, threads)
 }
 
-// @Summary Update Post
-// @Tags Posts
+// @Summary Update Thread
+// @Tags Threads
 // @Accept json
 // @Produce json
-// @Param id path string true "Post ID"
-// @Param post body model.Post true "Updated Post"
-// @Success 200 {object} model.Post
-// @Router /posts/{id} [put]
-func UpdatePost(c *gin.Context) {
+// @Param id path string true "Thread ID"
+// @Param thread body model.Thread true "Updated Thread"
+// @Success 200 {object} model.Thread
+// @Router /threads/{id} [put]
+func UpdateThread(c *gin.Context) {
 	id := c.Param("id")
-	var post model.Post
-	if err := c.ShouldBindJSON(&post); err != nil {
+	var thread model.Thread
+	if err := c.ShouldBindJSON(&thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	post.ID = id
-	post.UpdatedAt = time.Now()
+	thread.ID = id
+	thread.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(post); err != nil {
+	if err := common.Validate.Struct(thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := service.UpdatePost(id, post); err != nil {
+	if err := service.UpdateThread(id, thread); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
-	c.JSON(http.StatusOK, post)
+	c.JSON(http.StatusOK, thread)
 }
 
-// @Summary Patch Post
-// @Tags Posts
+// @Summary Patch Thread
+// @Tags Threads
 // @Accept json
 // @Produce json
-// @Param id path string true "Post ID"
+// @Param id path string true "Thread ID"
 // @Param updates body map[string]interface{} true "Fields to update"
-// @Success 200 {object} model.Post
-// @Router /posts/{id} [patch]
-func PatchPost(c *gin.Context) {
+// @Success 200 {object} model.Thread
+// @Router /threads/{id} [patch]
+func PatchThread(c *gin.Context) {
 	id := c.Param("id")
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
@@ -146,8 +146,8 @@ func PatchPost(c *gin.Context) {
 	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
 
-	// Get the updated post
-	updated, err := service.PatchPost(id, updates)
+	// Get the updated thread
+	updated, err := service.PatchThread(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return

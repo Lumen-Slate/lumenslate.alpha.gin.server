@@ -6,14 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterPostRoutes(r *gin.Engine) {
-	p := r.Group("/posts")
+func RegisterThreadRoutes(r *gin.Engine) {
+	p := r.Group("/threads")
 	{
-		p.GET("", controller.GetAllPosts)
-		p.GET(":id", controller.GetPost)
-		p.POST("", controller.CreatePost)
-		p.PUT(":id", controller.UpdatePost)
-		p.PATCH(":id", controller.PatchPost)
-		p.DELETE(":id", controller.DeletePost)
+		p.GET("", controller.GetAllThreads)
+		p.GET(":id", controller.GetThread)
+		p.POST("", controller.CreateThread)
+		p.PUT(":id", controller.UpdateThread)
+		p.PATCH(":id", controller.PatchThread)
+		p.DELETE(":id", controller.DeleteThread)
 	}
 }
