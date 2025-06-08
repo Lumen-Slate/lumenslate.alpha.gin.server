@@ -184,6 +184,63 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Assignments"
+                ],
+                "summary": "Patch Assignment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Assignment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Assignment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/classrooms": {
@@ -378,10 +435,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Classroom"
                         }
                     }
                 }
@@ -565,64 +619,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/generate-pdf": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Export"
-                ],
-                "summary": "Generate a PDF of mixed question types and return file path",
-                "parameters": [
-                    {
-                        "description": "Question IDs and flags",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controller.GeneratePDFRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Comment"
                         }
                     },
                     "400": {
@@ -866,7 +863,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Fields to update",
+                        "description": "Updates",
                         "name": "updates",
                         "in": "body",
                         "required": true,
@@ -880,10 +877,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/questions.MCQ"
                         }
                     }
                 }
@@ -1112,7 +1106,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Fields to update",
+                        "description": "Updates",
                         "name": "updates",
                         "in": "body",
                         "required": true,
@@ -1126,10 +1120,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/questions.MSQ"
                         }
                     }
                 }
@@ -1381,213 +1372,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Get All Posts",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by user ID",
-                        "name": "userId",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Post"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Create Post",
-                "parameters": [
-                    {
-                        "description": "Post JSON",
-                        "name": "post",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Post"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/model.Post"
-                        }
-                    }
-                }
-            }
-        },
-        "/posts/{id}": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Get Post by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Post"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Update Post",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Updated Post",
-                        "name": "post",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Post"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Post"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Delete Post",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Patch Post",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Fields to update",
-                        "name": "updates",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/question-banks": {
             "get": {
                 "produces": [
@@ -1804,10 +1588,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.QuestionBank"
                         }
                     }
                 }
@@ -2017,10 +1798,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Student"
                         }
                     },
                     "400": {
@@ -2465,10 +2243,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Submission"
                         }
                     },
                     "400": {
@@ -2501,6 +2276,38 @@ const docTemplate = `{
                     "Teachers"
                 ],
                 "summary": "Get All Teachers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by email",
+                        "name": "email",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by phone",
+                        "name": "phone",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2646,11 +2453,215 @@ const docTemplate = `{
                 "tags": [
                     "Teachers"
                 ],
-                "summary": "Patch a teacher",
+                "summary": "Patch Teacher",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Teacher ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updates",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Teacher"
+                        }
+                    }
+                }
+            }
+        },
+        "/threads": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Get All Threads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "userId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Thread"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Create Thread",
+                "parameters": [
+                    {
+                        "description": "Thread JSON",
+                        "name": "thread",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Thread"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Thread"
+                        }
+                    }
+                }
+            }
+        },
+        "/threads/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Get Thread by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Thread"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Update Thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated Thread",
+                        "name": "thread",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Thread"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Thread"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Delete Thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Patch Thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2670,28 +2681,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Thread"
                         }
                     }
                 }
@@ -2928,10 +2918,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/model.Variable"
                         }
                     }
                 }
@@ -2939,25 +2926,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "controller.GeneratePDFRequest": {
-            "type": "object",
-            "properties": {
-                "questionIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "showAnswers": {
-                    "type": "boolean"
-                },
-                "showType": {
-                    "type": "boolean"
-                }
-            }
-        },
         "model.Assignment": {
             "type": "object",
+            "required": [
+                "body",
+                "dueDate",
+                "points",
+                "title"
+            ],
             "properties": {
                 "body": {
                     "type": "string"
@@ -2977,40 +2953,52 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "mcqs": {
+                "isActive": {
+                    "type": "boolean"
+                },
+                "mcqIds": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.MCQ"
+                        "type": "string"
                     }
                 },
-                "msqs": {
+                "msqIds": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.MSQ"
+                        "type": "string"
                     }
                 },
-                "nats": {
+                "natIds": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.NAT"
+                        "type": "string"
                     }
                 },
                 "points": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
-                "subjectives": {
+                "subjectiveIds": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Subjective"
+                        "type": "string"
                     }
                 },
                 "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
         },
         "model.Classroom": {
             "type": "object",
+            "required": [
+                "credits",
+                "subject",
+                "teacherIds"
+            ],
             "properties": {
                 "assignmentIds": {
                     "type": "array",
@@ -3018,17 +3006,23 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "credits": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "id": {
                     "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
                 },
                 "subject": {
                     "type": "string"
                 },
                 "tags": {
-                    "description": "Added tags field",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -3039,109 +3033,65 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
         "model.Comment": {
             "type": "object",
+            "required": [
+                "commentBody"
+            ],
             "properties": {
                 "commentBody": {
                     "type": "string"
                 },
-                "id": {
+                "createdAt": {
                     "type": "string"
-                }
-            }
-        },
-        "model.MCQ": {
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "type": "integer"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "question": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.MSQ": {
-            "type": "object",
-            "properties": {
-                "answers": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "question": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.NAT": {
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "type": "string"
-                },
-                "question": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Post": {
-            "type": "object",
-            "properties": {
-                "attachments": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "body": {
-                    "type": "string"
-                },
-                "commentIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "id": {
                     "type": "string"
                 },
-                "title": {
-                    "type": "string"
+                "isActive": {
+                    "type": "boolean"
                 },
-                "userId": {
+                "updatedAt": {
                     "type": "string"
                 }
             }
         },
         "model.QuestionBank": {
             "type": "object",
+            "required": [
+                "name",
+                "tags",
+                "teacherId",
+                "topic"
+            ],
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
                 },
                 "tags": {
-                    "description": "Added tags field",
                     "type": "array",
+                    "minItems": 0,
                     "items": {
                         "type": "string"
                     }
@@ -3151,11 +3101,19 @@ const docTemplate = `{
                 },
                 "topic": {
                     "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
         "model.Student": {
             "type": "object",
+            "required": [
+                "email",
+                "name",
+                "rollNo"
+            ],
             "properties": {
                 "classIds": {
                     "type": "array",
@@ -3163,36 +3121,47 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
                 "rollNo": {
                     "type": "string"
-                }
-            }
-        },
-        "model.Subjective": {
-            "type": "object",
-            "properties": {
-                "question": {
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
         },
         "model.Submission": {
             "type": "object",
+            "required": [
+                "assignmentId",
+                "studentId"
+            ],
             "properties": {
                 "assignmentId": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
                 },
                 "mcqAnswers": {
                     "type": "object",
@@ -3223,31 +3192,106 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
         "model.Teacher": {
             "type": "object",
+            "required": [
+                "email",
+                "name",
+                "phone"
+            ],
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Thread": {
+            "type": "object",
+            "required": [
+                "body",
+                "title",
+                "userId"
+            ],
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "body": {
+                    "type": "string"
+                },
+                "commentIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
                     "type": "string"
                 }
             }
         },
         "model.Variable": {
             "type": "object",
+            "required": [
+                "name",
+                "namePositions",
+                "value",
+                "valuePositions",
+                "variableType"
+            ],
             "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isActive": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -3257,6 +3301,9 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                },
+                "updatedAt": {
+                    "type": "string"
                 },
                 "value": {
                     "type": "string"
@@ -3274,26 +3321,46 @@ const docTemplate = `{
         },
         "questions.MCQ": {
             "type": "object",
+            "required": [
+                "answerIndex",
+                "bankId",
+                "options",
+                "points",
+                "question"
+            ],
             "properties": {
                 "answerIndex": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "bankId": {
+                    "type": "string"
+                },
+                "createdAt": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "options": {
                     "type": "array",
+                    "minItems": 2,
                     "items": {
                         "type": "string"
                     }
                 },
                 "points": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "question": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "variableIds": {
@@ -3306,9 +3373,17 @@ const docTemplate = `{
         },
         "questions.MSQ": {
             "type": "object",
+            "required": [
+                "answerIndices",
+                "bankId",
+                "options",
+                "points",
+                "question"
+            ],
             "properties": {
                 "answerIndices": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "integer"
                     }
@@ -3316,19 +3391,31 @@ const docTemplate = `{
                 "bankId": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "options": {
                     "type": "array",
+                    "minItems": 2,
                     "items": {
                         "type": "string"
                     }
                 },
                 "points": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "question": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "variableIds": {
@@ -3341,6 +3428,13 @@ const docTemplate = `{
         },
         "questions.NAT": {
             "type": "object",
+            "required": [
+                "answer",
+                "bankId",
+                "points",
+                "question",
+                "variable"
+            ],
             "properties": {
                 "answer": {
                     "type": "number"
@@ -3348,17 +3442,29 @@ const docTemplate = `{
                 "bankId": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "points": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 },
                 "question": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "variable": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "$ref": "#/definitions/model.Variable"
                     }
@@ -3367,8 +3473,17 @@ const docTemplate = `{
         },
         "questions.Subjective": {
             "type": "object",
+            "required": [
+                "bankId",
+                "points",
+                "question",
+                "variable"
+            ],
             "properties": {
                 "bankId": {
+                    "type": "string"
+                },
+                "createdAt": {
                     "type": "string"
                 },
                 "gradingCriteria": {
@@ -3383,14 +3498,22 @@ const docTemplate = `{
                 "idealAnswer": {
                     "type": "string"
                 },
+                "isActive": {
+                    "type": "boolean"
+                },
                 "points": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "question": {
                     "type": "string"
                 },
+                "updatedAt": {
+                    "type": "string"
+                },
                 "variable": {
                     "type": "array",
+                    "minItems": 0,
                     "items": {
                         "$ref": "#/definitions/model.Variable"
                     }

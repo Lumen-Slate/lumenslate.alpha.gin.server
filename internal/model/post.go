@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-type Post struct {
+type Thread struct {
 	ID          string    `json:"id,omitempty" bson:"_id" validate:"omitempty"`
 	Title       string    `json:"title" bson:"title" validate:"required"`
 	Body        string    `json:"body" bson:"body" validate:"required"`
@@ -14,10 +14,10 @@ type Post struct {
 	IsActive    bool      `json:"isActive" bson:"isActive"`
 }
 
-// NewPost creates a new Post with default values
-func NewPost() *Post {
+// NewThread creates a new Thread with default values
+func NewThread() *Thread {
 	now := time.Now()
-	return &Post{
+	return &Thread{
 		Attachments: make([]string, 0),
 		CommentIDs:  make([]string, 0),
 		CreatedAt:   now,

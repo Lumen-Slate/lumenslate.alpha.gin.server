@@ -5,27 +5,27 @@ import (
 	repo "lumenslate/internal/repository"
 )
 
-func CreatePost(p model.Post) error {
-	return repo.SavePost(p)
+func CreateThread(t model.Thread) error {
+	return repo.SaveThread(t)
 }
 
-func GetPost(id string) (*model.Post, error) {
-	return repo.GetPostByID(id)
+func GetThread(id string) (*model.Thread, error) {
+	return repo.GetThreadByID(id)
 }
 
-func DeletePost(id string) error {
-	return repo.DeletePost(id)
+func DeleteThread(id string) error {
+	return repo.DeleteThread(id)
 }
 
-func GetAllPosts(filters map[string]string) ([]model.Post, error) {
-	return repo.GetAllPosts(filters)
+func GetAllThreads(filters map[string]string) ([]model.Thread, error) {
+	return repo.GetAllThreads(filters)
 }
 
-func UpdatePost(id string, updated model.Post) error {
+func UpdateThread(id string, updated model.Thread) error {
 	updated.ID = id
-	return repo.SavePost(updated)
+	return repo.SaveThread(updated)
 }
 
-func PatchPost(id string, updates map[string]interface{}) (*model.Post, error) {
-	return repo.PatchPost(id, updates)
+func PatchThread(id string, updates map[string]interface{}) (*model.Thread, error) {
+	return repo.PatchThread(id, updates)
 }
