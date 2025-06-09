@@ -1,9 +1,7 @@
 package service
 
 import (
-	"context"
 	"crypto/tls"
-	"time"
 
 	pb "lumenslate/internal/proto/ai_service"
 
@@ -17,12 +15,8 @@ func DialGRPC() (pb.AIServiceClient, *grpc.ClientConn, error) {
 	// TLS credentials for secure connection
 	creds := credentials.NewTLS(&tls.Config{})
 
-	// Context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	// Dial the Cloud Run gRPC service using HTTPS/HTTP2
-	conn, err := grpc.DialContext(ctx, target, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, nil, err
 	}
