@@ -11,7 +11,7 @@ func RegisterAssignmentRoutes(r *gin.Engine) {
 	{
 		a.POST("/", controller.CreateAssignment)
 		a.GET("/", controller.GetAllAssignments)
-		// REMOVED: a.GET("/:id", controller.GetAssignment) - Now handled by gRPC microservice
+		a.GET("/:id", controller.GetAssignment)
 		a.PUT("/:id", controller.UpdateAssignment)
 		a.PATCH("/:id", controller.PatchAssignment)
 		a.DELETE("/:id", controller.DeleteAssignment)

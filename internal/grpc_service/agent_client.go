@@ -113,9 +113,32 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 	responseMessage := "Agent response processed successfully"
 	var responseData interface{}
 
+	// Add debug logging to see the actual response structure
+	log.Printf("=== DEBUG: Raw agent response ===")
+	log.Printf("Raw response: %s", rawAgentResponse)
+
 	if err := json.Unmarshal([]byte(rawAgentResponse), &agentResponse); err == nil {
-		// Successfully parsed JSON, check for database operations
-		if len(agentResponse.QuestionsRequested) > 0 {
+		// Successfully parsed JSON, log what we found
+		log.Printf("=== DEBUG: Parsed agent response structure ===")
+		log.Printf("QuestionsRequested length: %d", len(agentResponse.QuestionsRequested))
+		log.Printf("AssignmentResult is nil: %v", agentResponse.AssignmentResult == nil)
+		log.Printf("AssessmentData is nil: %v", agentResponse.AssessmentData == nil)
+		log.Printf("ReportCardData is nil: %v", agentResponse.ReportCardData == nil)
+
+		// Check for assignment result FIRST (prioritize assessor agent)
+		if agentResponse.AssignmentResult != nil {
+			log.Printf("=== Processing assignment result from assessor agent ===")
+			// Handle assignment result saving (from assessor agent)
+			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, teacherId); err == nil {
+				responseData = assignmentResult
+				agentName = "assessor_agent"
+				responseMessage = "Assignment assessment completed successfully"
+			} else {
+				log.Printf("Error handling assignment result saving: %v", err)
+				return createErrorResponse(teacherId, err.Error(), res), nil
+			}
+		} else if len(agentResponse.QuestionsRequested) > 0 {
+			log.Printf("=== Processing question generation request ===")
 			// Handle question generation (both AGG and AGT)
 			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, teacherId, rawAgentResponse); err == nil {
 				responseData = questionsData
@@ -126,17 +149,8 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 				log.Printf("Error handling question generation: %v", err)
 				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
-		} else if agentResponse.AssignmentResult != nil {
-			// Handle assignment result saving (from assessor agent)
-			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, teacherId); err == nil {
-				responseData = assignmentResult
-				agentName = "assessor_agent"
-				responseMessage = "Assignment assessment completed successfully"
-			} else {
-				log.Printf("Error handling assignment result saving: %v", err)
-				return createErrorResponse(teacherId, err.Error(), res), nil
-			}
 		} else if agentResponse.AssessmentData != nil {
+			log.Printf("=== Processing legacy assessment data ===")
 			// Handle legacy assessment data saving (for backward compatibility)
 			if assessmentData, err := handleAssessmentSaving(agentResponse.AssessmentData, teacherId); err == nil {
 				responseData = assessmentData
@@ -147,6 +161,7 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else if agentResponse.ReportCardData != nil {
+			log.Printf("=== Processing report card generation ===")
 			// Handle report card generation and saving
 			if reportCardData, err := handleReportCardGeneration(agentResponse.ReportCardData, teacherId); err == nil {
 				responseData = reportCardData
@@ -157,6 +172,7 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else {
+			log.Printf("=== Regular agent response without database operations ===")
 			// Regular agent response without database operations
 			responseData = map[string]interface{}{
 				"agentResponse": rawAgentResponse,
@@ -760,10 +776,21 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId s
 
 // handleAssignmentResultSaving processes assignment result data from assessor agent
 func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId string) (map[string]interface{}, error) {
+	log.Printf("=== DEBUG: handleAssignmentResultSaving called ===")
+	log.Printf("TeacherId: %s", teacherId)
+	log.Printf("Raw assignmentResultData type: %T", assignmentResultData)
+	log.Printf("Raw assignmentResultData: %+v", assignmentResultData)
+
 	// Convert interface{} to map[string]interface{}
 	resultMap, ok := assignmentResultData.(map[string]interface{})
 	if !ok {
+		log.Printf("ERROR: Invalid assignment result data format - expected map[string]interface{}, got %T", assignmentResultData)
 		return nil, fmt.Errorf("invalid assignment result data format")
+	}
+
+	log.Printf("=== DEBUG: Assignment result map contents ===")
+	for key, value := range resultMap {
+		log.Printf("Key: '%s', Value: %+v (Type: %T)", key, value, value)
 	}
 
 	// Convert to AssignmentResult model
@@ -772,58 +799,81 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 	// Map the fields from the response
 	if assignmentId, ok := resultMap["assignment_id"].(string); ok {
 		assignmentResult.AssignmentID = assignmentId
+		log.Printf("DEBUG: Found assignment_id: %s", assignmentId)
 	} else {
+		log.Printf("ERROR: assignment_id is required but not found or not a string")
 		return nil, fmt.Errorf("assignment_id is required")
 	}
 
 	if studentId, ok := resultMap["student_id"].(string); ok {
 		assignmentResult.StudentID = studentId
+		log.Printf("DEBUG: Found student_id: %s", studentId)
 	} else {
+		log.Printf("ERROR: student_id is required but not found or not a string")
 		return nil, fmt.Errorf("student_id is required")
 	}
 
 	if totalPoints, ok := resultMap["total_points_awarded"].(float64); ok {
 		assignmentResult.TotalPointsAwarded = int(totalPoints)
+		log.Printf("DEBUG: Found total_points_awarded: %f -> %d", totalPoints, int(totalPoints))
 	}
 
 	if maxPoints, ok := resultMap["total_max_points"].(float64); ok {
 		assignmentResult.TotalMaxPoints = int(maxPoints)
+		log.Printf("DEBUG: Found total_max_points: %f -> %d", maxPoints, int(maxPoints))
 	}
 
 	if percentage, ok := resultMap["percentage_score"].(float64); ok {
 		assignmentResult.PercentageScore = percentage
+		log.Printf("DEBUG: Found percentage_score: %f", percentage)
 	}
 
 	// Convert the results arrays into the proper structs
 	if mcqResults, ok := resultMap["mcq_results"]; ok {
+		log.Printf("DEBUG: Processing mcq_results: %+v", mcqResults)
 		mcqResultsBytes, _ := json.Marshal(mcqResults)
 		var mcqResultsList []model.MCQResult
 		if err := json.Unmarshal(mcqResultsBytes, &mcqResultsList); err == nil {
 			assignmentResult.MCQResults = mcqResultsList
+			log.Printf("DEBUG: Successfully processed %d MCQ results", len(mcqResultsList))
+		} else {
+			log.Printf("ERROR: Failed to unmarshal MCQ results: %v", err)
 		}
 	}
 
 	if msqResults, ok := resultMap["msq_results"]; ok {
+		log.Printf("DEBUG: Processing msq_results: %+v", msqResults)
 		msqResultsBytes, _ := json.Marshal(msqResults)
 		var msqResultsList []model.MSQResult
 		if err := json.Unmarshal(msqResultsBytes, &msqResultsList); err == nil {
 			assignmentResult.MSQResults = msqResultsList
+			log.Printf("DEBUG: Successfully processed %d MSQ results", len(msqResultsList))
+		} else {
+			log.Printf("ERROR: Failed to unmarshal MSQ results: %v", err)
 		}
 	}
 
 	if natResults, ok := resultMap["nat_results"]; ok {
+		log.Printf("DEBUG: Processing nat_results: %+v", natResults)
 		natResultsBytes, _ := json.Marshal(natResults)
 		var natResultsList []model.NATResult
 		if err := json.Unmarshal(natResultsBytes, &natResultsList); err == nil {
 			assignmentResult.NATResults = natResultsList
+			log.Printf("DEBUG: Successfully processed %d NAT results", len(natResultsList))
+		} else {
+			log.Printf("ERROR: Failed to unmarshal NAT results: %v", err)
 		}
 	}
 
 	if subjectiveResults, ok := resultMap["subjective_results"]; ok {
+		log.Printf("DEBUG: Processing subjective_results: %+v", subjectiveResults)
 		subjectiveResultsBytes, _ := json.Marshal(subjectiveResults)
 		var subjectiveResultsList []model.SubjectiveResult
 		if err := json.Unmarshal(subjectiveResultsBytes, &subjectiveResultsList); err == nil {
 			assignmentResult.SubjectiveResults = subjectiveResultsList
+			log.Printf("DEBUG: Successfully processed %d Subjective results", len(subjectiveResultsList))
+		} else {
+			log.Printf("ERROR: Failed to unmarshal Subjective results: %v", err)
 		}
 	}
 
@@ -832,12 +882,20 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 	assignmentResult.CreatedAt = time.Now()
 	assignmentResult.UpdatedAt = time.Now()
 
+	log.Printf("=== DEBUG: About to save assignment result to database ===")
+	log.Printf("AssignmentResult before save: %+v", assignmentResult)
+
 	// Save to database using repository
 	savedResult, err := repository.CreateAssignmentResult(assignmentResult)
 	if err != nil {
+		log.Printf("ERROR: Failed to save assignment result to database: %v", err)
 		return nil, fmt.Errorf("failed to save assignment result: %v", err)
 	}
 	assignmentResult = *savedResult
+
+	log.Printf("=== DEBUG: Successfully saved assignment result ===")
+	log.Printf("Saved AssignmentResult ID: %s", assignmentResult.ID.Hex())
+	log.Printf("Saved AssignmentResult: %+v", assignmentResult)
 
 	// Return the saved assignment result data
 	return map[string]interface{}{

@@ -131,7 +131,35 @@ func CreateAssignment(c *gin.Context) {
 	c.JSON(http.StatusCreated, assignment)
 }
 
-// REMOVED: GetAssignment function - Now handled by gRPC microservice tools
+// @Summary Get Assignment by ID
+// @Tags Assignments
+// @Produce json
+// @Param id path string true "Assignment ID"
+// @Param extended query string false "Extended view with populated relations"
+// @Success 200 {object} model.Assignment
+// @Success 200 {object} serializer.AssignmentExtended
+// @Router /assignments/{id} [get]
+func GetAssignment(c *gin.Context) {
+	id := c.Param("id")
+
+	assignment, err := repo.GetAssignmentByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Assignment not found"})
+		return
+	}
+
+	// Check if extended query param is true
+	extended := c.DefaultQuery("extended", "false") == "true"
+
+	if extended {
+		ext := serializer.NewAssignmentExtended(assignment)
+		c.JSON(http.StatusOK, ext)
+		return
+	}
+
+	// Default plain assignment
+	c.JSON(http.StatusOK, assignment)
+}
 
 // @Summary Delete Assignment
 // @Tags Assignments
