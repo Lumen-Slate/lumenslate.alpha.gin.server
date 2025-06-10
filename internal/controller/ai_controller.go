@@ -79,12 +79,12 @@ type AgentRequest struct {
 }
 
 type RAGAgentRequest struct {
-	TeacherId string                `form:"teacherId" binding:"required"`
-	Role      string                `form:"role" binding:"required"`
-	Message   string                `form:"message"`
-	File      *multipart.FileHeader `form:"file"`
-	CreatedAt string                `form:"createdAt"`
-	UpdatedAt string                `form:"updatedAt"`
+	TeacherId string `json:"teacherId" binding:"required"`
+	Role      string `json:"role" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+	File      string `json:"file"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // GenerateContextHandler godoc
@@ -339,16 +339,11 @@ func AgentHandler(c *gin.Context) {
 
 // RAGAgentHandler godoc
 // @Summary      Call RAG Agent AI method
-// @Description  Process text/file input using RAG agent with file upload support
+// @Description  Process text input using RAG agent for knowledge retrieval
 // @Tags         AI
-// @Accept       multipart/form-data
+// @Accept       json
 // @Produce      json
-// @Param        teacherId formData string true "Teacher ID"
-// @Param        role formData string true "Role"
-// @Param        message formData string false "Message"
-// @Param        file formData file false "File upload"
-// @Param        createdAt formData string false "Created at timestamp"
-// @Param        updatedAt formData string false "Updated at timestamp"
+// @Param        body body controller.RAGAgentRequest true "RAG agent request"
 // @Success      200 {object} map[string]interface{} "RAG agent response"
 // @Failure      400 {object} gin.H "Invalid request"
 // @Failure      500 {object} gin.H "Internal server error"
@@ -356,36 +351,13 @@ func AgentHandler(c *gin.Context) {
 func RAGAgentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent called")
 	var req RAGAgentRequest
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Process file upload if present
-	var fileContent string
-	if req.File != nil {
-		// Open the uploaded file
-		file, err := req.File.Open()
-		if err != nil {
-			log.Printf("[AI] Error opening uploaded file: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to open uploaded file"})
-			return
-		}
-		defer file.Close()
-
-		// Read file content
-		fileBytes, err := io.ReadAll(file)
-		if err != nil {
-			log.Printf("[AI] Error reading file content: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file content"})
-			return
-		}
-
-		// Convert to base64 string for service layer
-		fileContent = base64.StdEncoding.EncodeToString(fileBytes)
-		log.Printf("[AI] File processed: %s, size: %d bytes", req.File.Filename, len(fileBytes))
-	}
+	log.Printf("[AI] RAG Agent Request: %+v", req)
 
 	// Create/verify corpus for the teacher before processing the request
 	log.Printf("[AI] Creating/verifying corpus for teacher: %s", req.TeacherId)
@@ -398,7 +370,7 @@ func RAGAgentHandler(c *gin.Context) {
 	}
 
 	// Call the gRPC microservice
-	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, fileContent)
+	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, "")
 	if err != nil {
 		log.Printf("[AI] Failed to process RAG agent request: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
