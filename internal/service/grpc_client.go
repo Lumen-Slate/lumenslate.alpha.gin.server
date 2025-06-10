@@ -28,7 +28,7 @@ func GenerateContext(question string, keywords []string, language string) (strin
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.GenerateContextRequest{
@@ -53,7 +53,7 @@ func DetectVariables(question string) ([]*pb.DetectedVariable, error) {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.VariableDetectorRequest{Question: question}
@@ -73,7 +73,7 @@ func SegmentQuestion(question string) (string, error) {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.QuestionSegmentationRequest{Question: question}
@@ -93,7 +93,7 @@ func GenerateMCQVariations(question string, options []string, answerIndex int32)
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.MCQRequest{
@@ -117,7 +117,7 @@ func GenerateMSQVariations(question string, options []string, answerIndices []in
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.MSQRequest{
@@ -141,7 +141,7 @@ func FilterAndRandomize(question string, userPrompt string) ([]*pb.RandomizedVar
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := &pb.FilterAndRandomizerRequest{

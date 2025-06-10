@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log"
 	"net/http"
 
 	"lumenslate/internal/service"
@@ -52,16 +53,21 @@ type FilterAndRandomizeRequest struct {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/generate-context [post]
 func GenerateContextHandler(c *gin.Context) {
+	log.Println("[AI] /ai/generate-context called")
 	var req GenerateContextRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	content, err := service.GenerateContext(req.Question, req.Keywords, req.Language)
 	if err != nil {
+		log.Printf("[AI] GenerateContext error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] GenerateContext success")
 	c.JSON(http.StatusOK, gin.H{"content": content})
 }
 
@@ -77,16 +83,21 @@ func GenerateContextHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/detect-variables [post]
 func DetectVariablesHandler(c *gin.Context) {
+	log.Println("[AI] /ai/detect-variables called")
 	var req DetectVariablesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	variables, err := service.DetectVariables(req.Question)
 	if err != nil {
+		log.Printf("[AI] DetectVariables error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] DetectVariables success, count: %d", len(variables))
 	c.JSON(http.StatusOK, gin.H{"variables": variables})
 }
 
@@ -102,16 +113,21 @@ func DetectVariablesHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/segment-question [post]
 func SegmentQuestionHandler(c *gin.Context) {
+	log.Println("[AI] /ai/segment-question called")
 	var req SegmentQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	segmented, err := service.SegmentQuestion(req.Question)
 	if err != nil {
+		log.Printf("[AI] SegmentQuestion error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] SegmentQuestion success")
 	c.JSON(http.StatusOK, gin.H{"segmentedQuestion": segmented})
 }
 
@@ -127,16 +143,21 @@ func SegmentQuestionHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/generate-mcq [post]
 func GenerateMCQVariationsHandler(c *gin.Context) {
+	log.Println("[AI] /ai/generate-mcq called")
 	var req GenerateMCQVariationsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	variations, err := service.GenerateMCQVariations(req.Question, req.Options, req.AnswerIndex)
 	if err != nil {
+		log.Printf("[AI] GenerateMCQVariations error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] GenerateMCQVariations success, count: %d", len(variations))
 	c.JSON(http.StatusOK, gin.H{"variations": variations})
 }
 
@@ -152,16 +173,21 @@ func GenerateMCQVariationsHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/generate-msq [post]
 func GenerateMSQVariationsHandler(c *gin.Context) {
+	log.Println("[AI] /ai/generate-msq called")
 	var req GenerateMSQVariationsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	variations, err := service.GenerateMSQVariations(req.Question, req.Options, req.AnswerIndices)
 	if err != nil {
+		log.Printf("[AI] GenerateMSQVariations error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] GenerateMSQVariations success, count: %d", len(variations))
 	c.JSON(http.StatusOK, gin.H{"variations": variations})
 }
 
@@ -177,15 +203,20 @@ func GenerateMSQVariationsHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/filter-randomize [post]
 func FilterAndRandomizeHandler(c *gin.Context) {
+	log.Println("[AI] /ai/filter-randomize called")
 	var req FilterAndRandomizeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] Request: %+v", req)
 	vars, err := service.FilterAndRandomize(req.Question, req.UserPrompt)
 	if err != nil {
+		log.Printf("[AI] FilterAndRandomize error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("[AI] FilterAndRandomize success, count: %d", len(vars))
 	c.JSON(http.StatusOK, gin.H{"variables": vars})
 }
