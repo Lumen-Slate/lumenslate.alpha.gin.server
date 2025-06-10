@@ -110,6 +110,7 @@ func registerRoutes(router *gin.Engine) {
 	routes.RegisterSubmissionRoutes(router)
 	routes.RegisterTeacherRoutes(router)
 	routes.RegisterVariableRoutes(router)
+	routes.RegisterAIRoutes(router)
 
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
