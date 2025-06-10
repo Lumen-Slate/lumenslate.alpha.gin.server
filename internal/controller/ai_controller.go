@@ -2,9 +2,12 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"regexp"
@@ -66,22 +69,22 @@ type AddCorpusDocumentRequest struct {
 }
 
 type AgentRequest struct {
-	TeacherId string `form:"teacherId" binding:"required"`
-	Role      string `form:"role" binding:"required"`
-	Message   string `form:"message" binding:"required"`
-	File      string `form:"file"`
-	FileType  string `form:"fileType"`
-	CreatedAt string `form:"createdAt"`
-	UpdatedAt string `form:"updatedAt"`
+	TeacherId string                `form:"teacherId" binding:"required"`
+	Role      string                `form:"role" binding:"required"`
+	Message   string                `form:"message" binding:"required"`
+	File      *multipart.FileHeader `form:"file"`
+	FileType  string                `form:"fileType"`
+	CreatedAt string                `form:"createdAt"`
+	UpdatedAt string                `form:"updatedAt"`
 }
 
 type RAGAgentRequest struct {
-	TeacherId string `form:"teacherId" binding:"required"`
-	Role      string `form:"role" binding:"required"`
-	Message   string `form:"message"`
-	File      string `form:"file"`
-	CreatedAt string `form:"createdAt"`
-	UpdatedAt string `form:"updatedAt"`
+	TeacherId string                `form:"teacherId" binding:"required"`
+	Role      string                `form:"role" binding:"required"`
+	Message   string                `form:"message"`
+	File      *multipart.FileHeader `form:"file"`
+	CreatedAt string                `form:"createdAt"`
+	UpdatedAt string                `form:"updatedAt"`
 }
 
 // GenerateContextHandler godoc
@@ -266,11 +269,17 @@ func FilterAndRandomizeHandler(c *gin.Context) {
 
 // AgentHandler godoc
 // @Summary      Call Agent AI method
-// @Description  Calls the Agent gRPC method with the provided data
+// @Description  Calls the Agent gRPC method with the provided data including file upload support
 // @Tags         ai
-// @Accept       json
+// @Accept       multipart/form-data
 // @Produce      json
-// @Param        body  body  controller.AgentRequest  true  "Request body"
+// @Param        teacherId formData string true "Teacher ID"
+// @Param        role formData string true "Role"
+// @Param        message formData string true "Message"
+// @Param        file formData file false "File upload"
+// @Param        fileType formData string false "File type"
+// @Param        createdAt formData string false "Created at timestamp"
+// @Param        updatedAt formData string false "Updated at timestamp"
 // @Success      200   {object}  map[string]interface{}
 // @Failure      400   {object}  map[string]interface{}
 // @Failure      500   {object}  map[string]interface{}
@@ -284,8 +293,34 @@ func AgentHandler(c *gin.Context) {
 		return
 	}
 	log.Printf("[AI] Agent Request: %+v", req)
+
+	// Process file upload if present
+	var fileContent string
+	if req.File != nil {
+		// Open the uploaded file
+		file, err := req.File.Open()
+		if err != nil {
+			log.Printf("[AI] Error opening uploaded file: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to open uploaded file"})
+			return
+		}
+		defer file.Close()
+
+		// Read file content
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			log.Printf("[AI] Error reading file content: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file content"})
+			return
+		}
+
+		// Convert to base64 string for service layer
+		fileContent = base64.StdEncoding.EncodeToString(fileBytes)
+		log.Printf("[AI] File processed: %s, size: %d bytes", req.File.Filename, len(fileBytes))
+	}
+
 	resp, err := service.Agent(
-		req.File,
+		fileContent,
 		req.FileType,
 		req.TeacherId,
 		req.Role,
@@ -304,11 +339,16 @@ func AgentHandler(c *gin.Context) {
 
 // RAGAgentHandler godoc
 // @Summary      Call RAG Agent AI method
-// @Description  Process text/file input using RAG agent without multimodal capabilities
+// @Description  Process text/file input using RAG agent with file upload support
 // @Tags         AI
-// @Accept       json
+// @Accept       multipart/form-data
 // @Produce      json
-// @Param        request body RAGAgentRequest true "RAG Agent Request"
+// @Param        teacherId formData string true "Teacher ID"
+// @Param        role formData string true "Role"
+// @Param        message formData string false "Message"
+// @Param        file formData file false "File upload"
+// @Param        createdAt formData string false "Created at timestamp"
+// @Param        updatedAt formData string false "Updated at timestamp"
 // @Success      200 {object} map[string]interface{} "RAG agent response"
 // @Failure      400 {object} gin.H "Invalid request"
 // @Failure      500 {object} gin.H "Internal server error"
@@ -316,10 +356,35 @@ func AgentHandler(c *gin.Context) {
 func RAGAgentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent called")
 	var req RAGAgentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Process file upload if present
+	var fileContent string
+	if req.File != nil {
+		// Open the uploaded file
+		file, err := req.File.Open()
+		if err != nil {
+			log.Printf("[AI] Error opening uploaded file: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to open uploaded file"})
+			return
+		}
+		defer file.Close()
+
+		// Read file content
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			log.Printf("[AI] Error reading file content: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file content"})
+			return
+		}
+
+		// Convert to base64 string for service layer
+		fileContent = base64.StdEncoding.EncodeToString(fileBytes)
+		log.Printf("[AI] File processed: %s, size: %d bytes", req.File.Filename, len(fileBytes))
 	}
 
 	// Create/verify corpus for the teacher before processing the request
@@ -333,7 +398,7 @@ func RAGAgentHandler(c *gin.Context) {
 	}
 
 	// Call the gRPC microservice
-	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, req.File)
+	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, fileContent)
 	if err != nil {
 		log.Printf("[AI] Failed to process RAG agent request: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
