@@ -8,129 +8,184 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// POST /generate-context
-func GenerateContextHandler(c *gin.Context) {
-	var req struct {
-		Question string   `json:"question"`
-		Keywords []string `json:"keywords"`
-		Language string   `json:"language"`
-	}
+// --- Request Structs for Swagger ---
+type GenerateContextRequest struct {
+	Question string   `json:"question"`
+	Keywords []string `json:"keywords"`
+	Language string   `json:"language"`
+}
 
+type DetectVariablesRequest struct {
+	Question string `json:"question"`
+}
+
+type SegmentQuestionRequest struct {
+	Question string `json:"question"`
+}
+
+type GenerateMCQVariationsRequest struct {
+	Question    string   `json:"question"`
+	Options     []string `json:"options"`
+	AnswerIndex int32    `json:"answerIndex"`
+}
+
+type GenerateMSQVariationsRequest struct {
+	Question      string   `json:"question"`
+	Options       []string `json:"options"`
+	AnswerIndices []int32  `json:"answerIndices"`
+}
+
+type FilterAndRandomizeRequest struct {
+	Question   string `json:"question"`
+	UserPrompt string `json:"userPrompt"`
+}
+
+// GenerateContextHandler godoc
+// @Summary      Generate context for a question
+// @Description  Generates context using AI for the given question, keywords, and language
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.GenerateContextRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/generate-context [post]
+func GenerateContextHandler(c *gin.Context) {
+	var req GenerateContextRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	content, err := service.GenerateContext(req.Question, req.Keywords, req.Language) // use service
+	content, err := service.GenerateContext(req.Question, req.Keywords, req.Language)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"content": content})
 }
 
-// POST /detect-variables
+// DetectVariablesHandler godoc
+// @Summary      Detect variables in a question
+// @Description  Detects variables in the provided question using AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.DetectVariablesRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/detect-variables [post]
 func DetectVariablesHandler(c *gin.Context) {
-	var req struct {
-		Question string `json:"question"`
-	}
-
+	var req DetectVariablesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	variables, err := service.DetectVariables(req.Question) // use service
+	variables, err := service.DetectVariables(req.Question)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"variables": variables})
 }
 
-// POST /segment-question
+// SegmentQuestionHandler godoc
+// @Summary      Segment a question
+// @Description  Segments the provided question using AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.SegmentQuestionRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/segment-question [post]
 func SegmentQuestionHandler(c *gin.Context) {
-	var req struct {
-		Question string `json:"question"`
-	}
-
+	var req SegmentQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	segmented, err := service.SegmentQuestion(req.Question) // use service
+	segmented, err := service.SegmentQuestion(req.Question)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"segmentedQuestion": segmented})
 }
 
-// POST /generate-mcq
+// GenerateMCQVariationsHandler godoc
+// @Summary      Generate MCQ variations
+// @Description  Generates MCQ variations for a question using AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.GenerateMCQVariationsRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/generate-mcq [post]
 func GenerateMCQVariationsHandler(c *gin.Context) {
-	var req struct {
-		Question    string   `json:"question"`
-		Options     []string `json:"options"`
-		AnswerIndex int32    `json:"answerIndex"`
-	}
-
+	var req GenerateMCQVariationsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	variations, err := service.GenerateMCQVariations(req.Question, req.Options, req.AnswerIndex) // use service
+	variations, err := service.GenerateMCQVariations(req.Question, req.Options, req.AnswerIndex)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"variations": variations})
 }
 
-// POST /generate-msq
+// GenerateMSQVariationsHandler godoc
+// @Summary      Generate MSQ variations
+// @Description  Generates MSQ variations for a question using AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.GenerateMSQVariationsRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/generate-msq [post]
 func GenerateMSQVariationsHandler(c *gin.Context) {
-	var req struct {
-		Question      string   `json:"question"`
-		Options       []string `json:"options"`
-		AnswerIndices []int32  `json:"answerIndices"`
-	}
-
+	var req GenerateMSQVariationsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	variations, err := service.GenerateMSQVariations(req.Question, req.Options, req.AnswerIndices) // use service
+	variations, err := service.GenerateMSQVariations(req.Question, req.Options, req.AnswerIndices)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"variations": variations})
 }
 
-// POST /filter-randomize
+// FilterAndRandomizeHandler godoc
+// @Summary      Filter and randomize variables
+// @Description  Filters and randomizes variables in a question using AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.FilterAndRandomizeRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/filter-randomize [post]
 func FilterAndRandomizeHandler(c *gin.Context) {
-	var req struct {
-		Question   string `json:"question"`
-		UserPrompt string `json:"userPrompt"`
-	}
-
+	var req FilterAndRandomizeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	vars, err := service.FilterAndRandomize(req.Question, req.UserPrompt) // use service
+	vars, err := service.FilterAndRandomize(req.Question, req.UserPrompt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"variables": vars})
 }

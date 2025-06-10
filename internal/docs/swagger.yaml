@@ -1,5 +1,57 @@
 basePath: /
 definitions:
+  controller.DetectVariablesRequest:
+    properties:
+      question:
+        type: string
+    type: object
+  controller.FilterAndRandomizeRequest:
+    properties:
+      question:
+        type: string
+      userPrompt:
+        type: string
+    type: object
+  controller.GenerateContextRequest:
+    properties:
+      keywords:
+        items:
+          type: string
+        type: array
+      language:
+        type: string
+      question:
+        type: string
+    type: object
+  controller.GenerateMCQVariationsRequest:
+    properties:
+      answerIndex:
+        type: integer
+      options:
+        items:
+          type: string
+        type: array
+      question:
+        type: string
+    type: object
+  controller.GenerateMSQVariationsRequest:
+    properties:
+      answerIndices:
+        items:
+          type: integer
+        type: array
+      options:
+        items:
+          type: string
+        type: array
+      question:
+        type: string
+    type: object
+  controller.SegmentQuestionRequest:
+    properties:
+      question:
+        type: string
+    type: object
   model.Assignment:
     properties:
       body:
@@ -206,7 +258,6 @@ definitions:
     required:
     - email
     - name
-    - phone
     type: object
   model.Thread:
     properties:
@@ -364,17 +415,15 @@ definitions:
         type: string
       updatedAt:
         type: string
-      variable:
+      variableIds:
         items:
-          $ref: '#/definitions/model.Variable'
-        minItems: 1
+          type: string
         type: array
     required:
     - answer
     - bankId
     - points
     - question
-    - variable
     type: object
   questions.Subjective:
     properties:
@@ -399,16 +448,14 @@ definitions:
         type: string
       updatedAt:
         type: string
-      variable:
+      variableIds:
         items:
-          $ref: '#/definitions/model.Variable'
-        minItems: 0
+          type: string
         type: array
     required:
     - bankId
     - points
     - question
-    - variable
     type: object
 host: localhost:8080
 info:
@@ -417,6 +464,205 @@ info:
   title: Lumen Slate API
   version: "1.0"
 paths:
+  /ai/detect-variables:
+    post:
+      consumes:
+      - application/json
+      description: Detects variables in the provided question using AI
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.DetectVariablesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Detect variables in a question
+      tags:
+      - ai
+  /ai/filter-randomize:
+    post:
+      consumes:
+      - application/json
+      description: Filters and randomizes variables in a question using AI
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.FilterAndRandomizeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Filter and randomize variables
+      tags:
+      - ai
+  /ai/generate-context:
+    post:
+      consumes:
+      - application/json
+      description: Generates context using AI for the given question, keywords, and
+        language
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.GenerateContextRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate context for a question
+      tags:
+      - ai
+  /ai/generate-mcq:
+    post:
+      consumes:
+      - application/json
+      description: Generates MCQ variations for a question using AI
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.GenerateMCQVariationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate MCQ variations
+      tags:
+      - ai
+  /ai/generate-msq:
+    post:
+      consumes:
+      - application/json
+      description: Generates MSQ variations for a question using AI
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.GenerateMSQVariationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate MSQ variations
+      tags:
+      - ai
+  /ai/segment-question:
+    post:
+      consumes:
+      - application/json
+      description: Segments the provided question using AI
+      parameters:
+      - description: Request body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.SegmentQuestionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Segment a question
+      tags:
+      - ai
   /assignments:
     get:
       parameters:
