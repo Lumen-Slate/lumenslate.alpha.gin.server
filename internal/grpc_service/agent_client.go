@@ -32,6 +32,7 @@ type AgentResponse struct {
 	QuestionsRequested []QuestionRequest `json:"questions_requested"`
 	AssessmentData     interface{}       `json:"assessment_data"`
 	AssignmentResult   interface{}       `json:"assignment_result"`
+	AssessmentResult   interface{}       `json:"assessment_result"`
 	ReportCardData     interface{}       `json:"report_card_data"`
 }
 
@@ -122,14 +123,24 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 		log.Printf("=== DEBUG: Parsed agent response structure ===")
 		log.Printf("QuestionsRequested length: %d", len(agentResponse.QuestionsRequested))
 		log.Printf("AssignmentResult is nil: %v", agentResponse.AssignmentResult == nil)
+		log.Printf("AssessmentResult is nil: %v", agentResponse.AssessmentResult == nil)
 		log.Printf("AssessmentData is nil: %v", agentResponse.AssessmentData == nil)
 		log.Printf("ReportCardData is nil: %v", agentResponse.ReportCardData == nil)
 
 		// Check for assignment result FIRST (prioritize assessor agent)
+		// Handle both "assignment_result" and "assessment_result" field names
+		var assignmentResultData interface{}
 		if agentResponse.AssignmentResult != nil {
-			log.Printf("=== Processing assignment result from assessor agent ===")
+			assignmentResultData = agentResponse.AssignmentResult
+			log.Printf("=== Processing assignment result from 'assignment_result' field ===")
+		} else if agentResponse.AssessmentResult != nil {
+			assignmentResultData = agentResponse.AssessmentResult
+			log.Printf("=== Processing assignment result from 'assessment_result' field ===")
+		}
+
+		if assignmentResultData != nil {
 			// Handle assignment result saving (from assessor agent)
-			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, teacherId); err == nil {
+			if assignmentResult, err := handleAssignmentResultSaving(assignmentResultData, teacherId); err == nil {
 				responseData = assignmentResult
 				agentName = "assessor_agent"
 				responseMessage = "Assignment assessment completed successfully"
@@ -897,22 +908,20 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 	log.Printf("Saved AssignmentResult ID: %s", assignmentResult.ID.Hex())
 	log.Printf("Saved AssignmentResult: %+v", assignmentResult)
 
-	// Return the saved assignment result data
+	// Return the saved assignment result data directly (flattened)
 	return map[string]interface{}{
-		"assignmentResultData": map[string]interface{}{
-			"id":                 assignmentResult.ID.Hex(),
-			"assignmentId":       assignmentResult.AssignmentID,
-			"studentId":          assignmentResult.StudentID,
-			"totalPointsAwarded": assignmentResult.TotalPointsAwarded,
-			"totalMaxPoints":     assignmentResult.TotalMaxPoints,
-			"percentageScore":    assignmentResult.PercentageScore,
-			"mcqResults":         assignmentResult.MCQResults,
-			"msqResults":         assignmentResult.MSQResults,
-			"natResults":         assignmentResult.NATResults,
-			"subjectiveResults":  assignmentResult.SubjectiveResults,
-			"createdAt":          assignmentResult.CreatedAt,
-			"updatedAt":          assignmentResult.UpdatedAt,
-		},
+		"id":                 assignmentResult.ID.Hex(),
+		"assignmentId":       assignmentResult.AssignmentID,
+		"studentId":          assignmentResult.StudentID,
+		"totalPointsAwarded": assignmentResult.TotalPointsAwarded,
+		"totalMaxPoints":     assignmentResult.TotalMaxPoints,
+		"percentageScore":    assignmentResult.PercentageScore,
+		"mcqResults":         assignmentResult.MCQResults,
+		"msqResults":         assignmentResult.MSQResults,
+		"natResults":         assignmentResult.NATResults,
+		"subjectiveResults":  assignmentResult.SubjectiveResults,
+		"createdAt":          assignmentResult.CreatedAt,
+		"updatedAt":          assignmentResult.UpdatedAt,
 	}, nil
 }
 
