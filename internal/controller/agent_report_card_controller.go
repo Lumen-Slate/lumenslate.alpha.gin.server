@@ -61,7 +61,33 @@ func GetAgentReportCardByID(c *gin.Context) {
 	c.JSON(http.StatusOK, reportCard)
 }
 
-// REMOVED: GetAgentReportCardsByStudentID function - Now handled by gRPC microservice tools
+// GetAgentReportCardsByStudentID handles GET /api/agent-report-cards/student/:studentId
+func GetAgentReportCardsByStudentID(c *gin.Context) {
+	studentId := c.Param("studentId")
+
+	reportCards, err := repository.GetAgentReportCardsByStudentID(studentId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve agent report cards for student",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if len(reportCards) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":      "No agent report cards found for student",
+			"student_id": studentId,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"agent_report_cards": reportCards,
+		"student_id":         studentId,
+		"total_count":        len(reportCards),
+	})
+}
 
 // CreateAgentReportCard handles POST /api/agent-report-cards
 func CreateAgentReportCard(c *gin.Context) {

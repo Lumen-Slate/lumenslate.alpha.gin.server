@@ -12,7 +12,7 @@ func SetupAgentReportCardRoutes(router *gin.Engine) {
 	{
 		agentReportCardRoutes.GET("/", controller.GetAllAgentReportCards)
 		agentReportCardRoutes.GET("/:id", controller.GetAgentReportCardByID)
-		// REMOVED: agentReportCardRoutes.GET("/student/:studentId", controller.GetAgentReportCardsByStudentID) - Now handled by gRPC microservice
+		agentReportCardRoutes.GET("/student/:studentId", controller.GetAgentReportCardsByStudentID)
 		agentReportCardRoutes.POST("/", controller.CreateAgentReportCard)
 		agentReportCardRoutes.PUT("/:id", controller.UpdateAgentReportCard)
 		agentReportCardRoutes.DELETE("/:id", controller.DeleteAgentReportCard)
