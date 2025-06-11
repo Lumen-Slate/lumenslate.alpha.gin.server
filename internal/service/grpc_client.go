@@ -12,7 +12,7 @@ import (
 
 // DialGRPC establishes a connection to the gRPC server.
 func DialGRPC() (pb.AIServiceClient, *grpc.ClientConn, error) {
-	conn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("0.0.0.0:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, nil, err
 	}
