@@ -1,12 +1,23 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"regexp"
 
 	service "lumenslate/internal/grpc_service"
+	questionModels "lumenslate/internal/model/questions"
+	questionRepo "lumenslate/internal/repository/questions"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"google.golang.org/api/aiplatform/v1"
+	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 )
 
 // --- Request Structs for Swagger ---
@@ -41,12 +52,35 @@ type FilterAndRandomizeRequest struct {
 	UserPrompt string `json:"userPrompt"`
 }
 
+type CreateCorpusRequest struct {
+	CorpusName string `json:"corpusName" binding:"required"`
+}
+
+type DeleteCorpusDocumentRequest struct {
+	CorpusName      string `json:"corpusName" binding:"required"`
+	FileDisplayName string `json:"fileDisplayName" binding:"required"`
+}
+
+type AddCorpusDocumentRequest struct {
+	CorpusName string `json:"corpusName" binding:"required"`
+	FileLink   string `json:"fileLink" binding:"required"`
+}
+
 type AgentRequest struct {
-	UserId    string `form:"userId" binding:"required"`
+	TeacherId string `form:"teacherId" binding:"required"`
 	Role      string `form:"role" binding:"required"`
 	Message   string `form:"message" binding:"required"`
 	File      string `form:"file"`
 	FileType  string `form:"fileType"`
+	CreatedAt string `form:"createdAt"`
+	UpdatedAt string `form:"updatedAt"`
+}
+
+type RAGAgentRequest struct {
+	TeacherId string `form:"teacherId" binding:"required"`
+	Role      string `form:"role" binding:"required"`
+	Message   string `form:"message"`
+	File      string `form:"file"`
 	CreatedAt string `form:"createdAt"`
 	UpdatedAt string `form:"updatedAt"`
 }
@@ -254,7 +288,7 @@ func AgentHandler(c *gin.Context) {
 	resp, err := service.Agent(
 		req.File,
 		req.FileType,
-		req.UserId,
+		req.TeacherId,
 		req.Role,
 		req.Message,
 		req.CreatedAt,
@@ -267,4 +301,934 @@ func AgentHandler(c *gin.Context) {
 	}
 	log.Printf("[AI] Agent success")
 	c.JSON(http.StatusOK, resp)
+}
+
+// RAGAgentHandler godoc
+// @Summary      Call RAG Agent AI method
+// @Description  Process text/file input using RAG agent without multimodal capabilities
+// @Tags         AI
+// @Accept       json
+// @Produce      json
+// @Param        request body RAGAgentRequest true "RAG Agent Request"
+// @Success      200 {object} map[string]interface{} "RAG agent response"
+// @Failure      400 {object} gin.H "Invalid request"
+// @Failure      500 {object} gin.H "Internal server error"
+// @Router       /ai/rag-agent [post]
+func RAGAgentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent called")
+	var req RAGAgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Call the gRPC microservice
+	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, req.File)
+	if err != nil {
+		log.Printf("[AI] Failed to process RAG agent request: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
+		return
+	}
+
+	// Process the agent response to determine data content
+	responseData, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
+	if err != nil {
+		log.Printf("[AI] Failed to process RAG agent response: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent response", "error": err.Error()})
+		return
+	}
+
+	// Return standardized response format (matching /ai/agent structure)
+	standardizedResponse := map[string]interface{}{
+		"message":      "Agent response processed successfully",
+		"teacherId":    resp.GetTeacherId(),
+		"agentName":    resp.GetAgentName(),
+		"data":         responseData,
+		"sessionId":    resp.GetSessionId(),
+		"createdAt":    resp.GetCreatedAt(),
+		"updatedAt":    resp.GetUpdatedAt(),
+		"responseTime": resp.GetResponseTime(),
+		"role":         resp.GetRole(),
+		"feedback":     resp.GetFeedback(),
+	}
+
+	log.Printf("[AI] RAG agent request processed successfully")
+	c.JSON(http.StatusOK, standardizedResponse)
+}
+
+// CreateCorpusHandler godoc
+// @Summary      Create RAG Corpus
+// @Description  Create a new RAG corpus directly in Vertex AI
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.CreateCorpusRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/create-corpus [post]
+func CreateCorpusHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/create-corpus called")
+	var req CreateCorpusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Request: %+v", req)
+
+	// Create corpus using Vertex AI
+	corpusResponse, err := createVertexAICorpus(req.CorpusName)
+	if err != nil {
+		log.Printf("[AI] CreateCorpus error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[AI] CreateCorpus success")
+	c.JSON(http.StatusOK, corpusResponse)
+}
+
+// ListCorpusContentHandler godoc
+// @Summary      List RAG Corpus Content
+// @Description  List all documents/files inside a RAG corpus
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.CreateCorpusRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/list-corpus-content [post]
+func ListCorpusContentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/list-corpus-content called")
+	var req CreateCorpusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Request: %+v", req)
+
+	// List corpus content using Vertex AI
+	contentResponse, err := listVertexAICorpusContent(req.CorpusName)
+	if err != nil {
+		log.Printf("[AI] ListCorpusContent error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[AI] ListCorpusContent success")
+	c.JSON(http.StatusOK, contentResponse)
+}
+
+// createVertexAICorpus creates a RAG corpus directly in Vertex AI
+func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
+	ctx := context.Background()
+
+	// Project configuration - force RAG-compatible location
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	location := "us-central1" // Force to supported RAG region
+
+	// Set up service account credentials path
+	credentialsPath := "service-account.json"
+	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+		// Try relative paths as fallback
+		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		}
+	}
+
+	// Use regional endpoint for RAG operations
+	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+
+	// Create AI Platform service client with regional endpoint
+	service, err := aiplatform.NewService(ctx,
+		option.WithCredentialsFile(credentialsPath),
+		option.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
+	}
+
+	// Clean corpus name for use as display name (similar to Python implementation)
+	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+
+	// Check if corpus already exists
+	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	listCall := service.Projects.Locations.RagCorpora.List(parent)
+
+	existingCorpora, err := listCall.Do()
+	if err != nil {
+		log.Printf("[AI] Warning: Could not check existing corpora: %v", err)
+	} else {
+		// Check if corpus with this display name already exists
+		for _, corpus := range existingCorpora.RagCorpora {
+			if corpus.DisplayName == displayName {
+				return map[string]interface{}{
+					"status":        "info",
+					"message":       fmt.Sprintf("Corpus '%s' already exists", corpusName),
+					"corpusName":    corpus.Name,
+					"displayName":   corpus.DisplayName,
+					"corpusCreated": false,
+				}, nil
+			}
+		}
+	}
+
+	// Create the corpus
+	ragCorpus := &aiplatform.GoogleCloudAiplatformV1RagCorpus{
+		DisplayName: displayName,
+	}
+
+	createCall := service.Projects.Locations.RagCorpora.Create(parent, ragCorpus)
+	operation, err := createCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create corpus: %v", err)
+	}
+
+	return map[string]interface{}{
+		"status":        "success",
+		"message":       fmt.Sprintf("Successfully created corpus '%s'", corpusName),
+		"operationName": operation.Name,
+		"displayName":   displayName,
+		"corpusCreated": true,
+	}, nil
+}
+
+// listVertexAICorpusContent lists all documents/files inside a RAG corpus
+func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error) {
+	ctx := context.Background()
+
+	// Project configuration - force RAG-compatible location
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	location := "us-central1" // Force to supported RAG region
+
+	// Set up service account credentials path
+	credentialsPath := "service-account.json"
+	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+		// Try relative paths as fallback
+		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		}
+	}
+
+	// Use regional endpoint for RAG operations
+	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+
+	// Create AI Platform service client with regional endpoint
+	service, err := aiplatform.NewService(ctx,
+		option.WithCredentialsFile(credentialsPath),
+		option.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
+	}
+
+	// Clean corpus name for use as display name
+	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+
+	// Find the corpus first
+	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	listCall := service.Projects.Locations.RagCorpora.List(parent)
+
+	existingCorpora, err := listCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list corpora: %v", err)
+	}
+
+	var corpusResourceName string
+	var foundCorpus *aiplatform.GoogleCloudAiplatformV1RagCorpus
+
+	// Find the corpus with the matching display name
+	for _, corpus := range existingCorpora.RagCorpora {
+		if corpus.DisplayName == displayName {
+			corpusResourceName = corpus.Name
+			foundCorpus = corpus
+			break
+		}
+	}
+
+	if corpusResourceName == "" {
+		return map[string]interface{}{
+			"status":  "error",
+			"message": fmt.Sprintf("Corpus '%s' not found", corpusName),
+			"files":   []interface{}{},
+		}, nil
+	}
+
+	// List files in the corpus
+	listFilesCall := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName)
+
+	filesResponse, err := listFilesCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
+	}
+
+	// Format the files data in camelCase
+	var files []map[string]interface{}
+	for _, file := range filesResponse.RagFiles {
+		fileData := map[string]interface{}{
+			"name":        file.Name,
+			"displayName": file.DisplayName,
+			"description": file.Description,
+			"createTime":  file.CreateTime,
+			"updateTime":  file.UpdateTime,
+		}
+
+		files = append(files, fileData)
+	}
+
+	return map[string]interface{}{
+		"status":      "success",
+		"message":     fmt.Sprintf("Successfully listed content for corpus '%s'", corpusName),
+		"corpusName":  foundCorpus.Name,
+		"displayName": foundCorpus.DisplayName,
+		"filesCount":  len(files),
+		"files":       files,
+	}, nil
+}
+
+// DeleteCorpusDocumentHandler godoc
+// @Summary      Delete Document from RAG Corpus
+// @Description  Delete a specific document from a RAG corpus using its display name
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.DeleteCorpusDocumentRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/delete-corpus-document [post]
+func DeleteCorpusDocumentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/delete-corpus-document called")
+	var req DeleteCorpusDocumentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Request: %+v", req)
+
+	deleteResponse, err := deleteVertexAICorpusDocument(req.CorpusName, req.FileDisplayName)
+	if err != nil {
+		log.Printf("[AI] Delete corpus document error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to delete document: %v", err)})
+		return
+	}
+
+	log.Printf("[AI] Delete corpus document success")
+	c.JSON(http.StatusOK, deleteResponse)
+}
+
+// AddCorpusDocumentHandler godoc
+// @Summary      Add Document to RAG Corpus
+// @Description  Add a document from Google Drive to a RAG corpus
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.AddCorpusDocumentRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/add-corpus-document [post]
+func AddCorpusDocumentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/add-corpus-document called")
+	var req AddCorpusDocumentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Request: %+v", req)
+
+	addResponse, err := addVertexAICorpusDocument(req.CorpusName, req.FileLink)
+	if err != nil {
+		log.Printf("[AI] Add corpus document error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to add document: %v", err)})
+		return
+	}
+
+	log.Printf("[AI] Add corpus document success")
+	c.JSON(http.StatusOK, addResponse)
+}
+
+// ListAllCorporaHandler godoc
+// @Summary      List All RAG Corpora
+// @Description  List the names of all RAG corpora
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Success      200   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/list-all-corpora [post]
+func ListAllCorporaHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/list-all-corpora called")
+
+	corporaResponse, err := listAllVertexAICorpora()
+	if err != nil {
+		log.Printf("[AI] List all corpora error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to list corpora: %v", err)})
+		return
+	}
+
+	log.Printf("[AI] List all corpora success")
+	c.JSON(http.StatusOK, corporaResponse)
+}
+
+// listAllVertexAICorpora lists all RAG corpora names
+func listAllVertexAICorpora() (map[string]interface{}, error) {
+	ctx := context.Background()
+
+	// Project configuration - force RAG-compatible location
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	location := "us-central1" // Force to supported RAG region
+
+	// Set up service account credentials path
+	credentialsPath := "service-account.json"
+	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+		// Try relative paths as fallback
+		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		}
+	}
+
+	// Use regional endpoint for RAG operations
+	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+
+	// Create AI Platform service client with regional endpoint
+	service, err := aiplatform.NewService(ctx,
+		option.WithCredentialsFile(credentialsPath),
+		option.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
+	}
+
+	// List all corpora
+	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	listCall := service.Projects.Locations.RagCorpora.List(parent)
+
+	existingCorpora, err := listCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list corpora: %v", err)
+	}
+
+	// Format the corpora data in camelCase
+	var corpora []map[string]interface{}
+	for _, corpus := range existingCorpora.RagCorpora {
+		corpusData := map[string]interface{}{
+			"name":        corpus.Name,
+			"displayName": corpus.DisplayName,
+			"createTime":  corpus.CreateTime,
+			"updateTime":  corpus.UpdateTime,
+		}
+		corpora = append(corpora, corpusData)
+	}
+
+	return map[string]interface{}{
+		"status":       "success",
+		"message":      "Successfully listed all corpora",
+		"corporaCount": len(corpora),
+		"corpora":      corpora,
+	}, nil
+}
+
+// deleteVertexAICorpusDocument deletes a specific document from a RAG corpus
+func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[string]interface{}, error) {
+	ctx := context.Background()
+
+	// Project configuration - force RAG-compatible location
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	location := "us-central1" // Force to supported RAG region
+
+	// Set up service account credentials path
+	credentialsPath := "service-account.json"
+	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+		// Try relative paths as fallback
+		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		}
+	}
+
+	// Use regional endpoint for RAG operations
+	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+
+	// Create AI Platform service client with regional endpoint
+	service, err := aiplatform.NewService(ctx,
+		option.WithCredentialsFile(credentialsPath),
+		option.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
+	}
+
+	// Clean corpus name for use as display name
+	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+
+	// Find the corpus first
+	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	listCall := service.Projects.Locations.RagCorpora.List(parent)
+
+	existingCorpora, err := listCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list corpora: %v", err)
+	}
+
+	var corpusResourceName string
+
+	// Find the corpus with the matching display name
+	for _, corpus := range existingCorpora.RagCorpora {
+		if corpus.DisplayName == displayName {
+			corpusResourceName = corpus.Name
+			break
+		}
+	}
+
+	if corpusResourceName == "" {
+		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
+	}
+
+	// List files in the corpus to find the one to delete
+	listFilesCall := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName)
+
+	filesResponse, err := listFilesCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
+	}
+
+	var fileToDelete string
+	for _, file := range filesResponse.RagFiles {
+		if file.DisplayName == fileDisplayName {
+			fileToDelete = file.Name
+			break
+		}
+	}
+
+	if fileToDelete == "" {
+		return nil, fmt.Errorf("file with display name '%s' not found in corpus '%s'", fileDisplayName, corpusName)
+	}
+
+	// Delete the file
+	deleteCall := service.Projects.Locations.RagCorpora.RagFiles.Delete(fileToDelete)
+	operation, err := deleteCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete file: %v", err)
+	}
+
+	return map[string]interface{}{
+		"status":          "success",
+		"message":         fmt.Sprintf("Successfully deleted file '%s' from corpus '%s'", fileDisplayName, corpusName),
+		"operationName":   operation.Name,
+		"deletedFileName": fileDisplayName,
+		"corpusName":      corpusName,
+		"documentDeleted": true,
+	}, nil
+}
+
+// addVertexAICorpusDocument adds a document from Google Drive to a RAG corpus
+func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interface{}, error) {
+	ctx := context.Background()
+
+	// Project configuration - force RAG-compatible location
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	location := "us-central1" // Force to supported RAG region
+
+	// Set up service account credentials path
+	credentialsPath := "service-account.json"
+	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+		// Try relative paths as fallback
+		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
+			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
+		}
+	}
+
+	// Use regional endpoint for RAG operations
+	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+
+	// Create AI Platform service client with regional endpoint
+	service, err := aiplatform.NewService(ctx,
+		option.WithCredentialsFile(credentialsPath),
+		option.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
+	}
+
+	// Clean corpus name for use as display name
+	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+
+	// Find the corpus first
+	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	listCall := service.Projects.Locations.RagCorpora.List(parent)
+
+	existingCorpora, err := listCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list corpora: %v", err)
+	}
+
+	var corpusResourceName string
+
+	// Find the corpus with the matching display name
+	for _, corpus := range existingCorpora.RagCorpora {
+		if corpus.DisplayName == displayName {
+			corpusResourceName = corpus.Name
+			break
+		}
+	}
+
+	if corpusResourceName == "" {
+		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
+	}
+
+	// Extract file ID from Google Drive URL
+	// Expected format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+	re := regexp.MustCompile(`/file/d/([a-zA-Z0-9_-]+)`)
+	matches := re.FindStringSubmatch(fileLink)
+
+	if len(matches) <= 1 {
+		return nil, fmt.Errorf("invalid Google Drive URL format: could not extract file ID")
+	}
+
+	fileID := matches[1]
+
+	// Get the actual filename from Google Drive API
+	fileDisplayName, err := getGoogleDriveFileName(fileID, credentialsPath)
+	if err != nil {
+		log.Printf("[AI] Warning: Could not fetch file name from Google Drive: %v. Using fallback name.", err)
+		// Fallback: use a generic name with file ID
+		fileDisplayName = fmt.Sprintf("gdrive_file_%s", fileID)
+	}
+
+	// Log the file information
+	log.Printf("[AI] Adding file '%s' (ID: %s) to corpus '%s'", fileDisplayName, fileID, corpusName)
+
+	// Create the import request with the configuration to upload from Google Drive
+	importRequest := &aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest{
+		ImportRagFilesConfig: &aiplatform.GoogleCloudAiplatformV1ImportRagFilesConfig{
+			GoogleDriveSource: &aiplatform.GoogleCloudAiplatformV1GoogleDriveSource{
+				ResourceIds: []*aiplatform.GoogleCloudAiplatformV1GoogleDriveSourceResourceId{
+					{
+						ResourceId:   fileID,               // Use the extracted file ID
+						ResourceType: "RESOURCE_TYPE_FILE", // Use the correct enum string name
+					},
+				},
+			},
+		},
+	}
+
+	importCall := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest)
+
+	operation, err := importCall.Do()
+	if err != nil {
+		return nil, fmt.Errorf("failed to add file to corpus: %v", err)
+	}
+
+	return map[string]interface{}{
+		"status":          "success",
+		"message":         fmt.Sprintf("Successfully added file from Google Drive to corpus '%s'", corpusName),
+		"operationName":   operation.Name,
+		"fileDisplayName": fileDisplayName,
+		"sourceUrl":       fileLink,
+		"corpusName":      corpusName,
+		"documentAdded":   true,
+	}, nil
+}
+
+// getGoogleDriveFileName fetches the actual filename from Google Drive API
+func getGoogleDriveFileName(fileID, credentialsPath string) (string, error) {
+	ctx := context.Background()
+
+	// Create Google Drive service client
+	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(credentialsPath))
+	if err != nil {
+		return "", fmt.Errorf("failed to create Drive service: %v", err)
+	}
+
+	// Get file metadata
+	file, err := driveService.Files.Get(fileID).Fields("name").Do()
+	if err != nil {
+		return "", fmt.Errorf("failed to get file metadata: %v", err)
+	}
+
+	return file.Name, nil
+}
+
+// processRAGAgentResponse processes the agent response from Python microservice
+// If it's structured JSON with questions, saves them to MongoDB and returns question IDs
+// If it's regular text, returns it as-is
+func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, error) {
+	log.Printf("[AI] Processing RAG agent response for teacherId: %s", teacherId)
+
+	// Try to parse as JSON to see if it contains structured questions
+	var questionsData map[string]interface{}
+	if err := json.Unmarshal([]byte(agentResponse), &questionsData); err != nil {
+		// Not valid JSON, return as regular text response
+		log.Printf("[AI] Agent response is not JSON, returning as text")
+		return agentResponse, nil
+	}
+
+	// Check if this looks like question data (has mcq, msq, nat, or subjective fields)
+	hasQuestions := false
+	for _, key := range []string{"mcq", "msq", "nat", "subjective"} {
+		if _, exists := questionsData[key]; exists {
+			hasQuestions = true
+			break
+		}
+	}
+
+	if !hasQuestions {
+		// JSON but not question data, return the parsed JSON
+		log.Printf("[AI] JSON response doesn't contain questions, returning as-is")
+		return questionsData, nil
+	}
+
+	// This is structured question data, save to MongoDB and return IDs
+	log.Printf("[AI] Processing structured question data")
+
+	result := map[string][]string{
+		"mcqs":        []string{},
+		"msqs":        []string{},
+		"nats":        []string{},
+		"subjectives": []string{},
+	}
+
+	// Process MCQ questions
+	if mcqData, exists := questionsData["mcq"]; exists {
+		if mcqArray, ok := mcqData.([]interface{}); ok {
+			for _, mcqInterface := range mcqArray {
+				if mcqMap, ok := mcqInterface.(map[string]interface{}); ok {
+					id, err := saveMCQQuestion(mcqMap, teacherId)
+					if err != nil {
+						log.Printf("[AI] Error saving MCQ question: %v", err)
+						continue
+					}
+					result["mcqs"] = append(result["mcqs"], id)
+				}
+			}
+		}
+	}
+
+	// Process MSQ questions
+	if msqData, exists := questionsData["msq"]; exists {
+		if msqArray, ok := msqData.([]interface{}); ok {
+			for _, msqInterface := range msqArray {
+				if msqMap, ok := msqInterface.(map[string]interface{}); ok {
+					id, err := saveMSQQuestion(msqMap, teacherId)
+					if err != nil {
+						log.Printf("[AI] Error saving MSQ question: %v", err)
+						continue
+					}
+					result["msqs"] = append(result["msqs"], id)
+				}
+			}
+		}
+	}
+
+	// Process NAT questions
+	if natData, exists := questionsData["nat"]; exists {
+		if natArray, ok := natData.([]interface{}); ok {
+			for _, natInterface := range natArray {
+				if natMap, ok := natInterface.(map[string]interface{}); ok {
+					id, err := saveNATQuestion(natMap, teacherId)
+					if err != nil {
+						log.Printf("[AI] Error saving NAT question: %v", err)
+						continue
+					}
+					result["nats"] = append(result["nats"], id)
+				}
+			}
+		}
+	}
+
+	// Process Subjective questions
+	if subjectiveData, exists := questionsData["subjective"]; exists {
+		if subjectiveArray, ok := subjectiveData.([]interface{}); ok {
+			for _, subjectiveInterface := range subjectiveArray {
+				if subjectiveMap, ok := subjectiveInterface.(map[string]interface{}); ok {
+					id, err := saveSubjectiveQuestion(subjectiveMap, teacherId)
+					if err != nil {
+						log.Printf("[AI] Error saving Subjective question: %v", err)
+						continue
+					}
+					result["subjectives"] = append(result["subjectives"], id)
+				}
+			}
+		}
+	}
+
+	log.Printf("[AI] Question processing complete. Saved %d MCQs, %d MSQs, %d NATs, %d Subjectives",
+		len(result["mcqs"]), len(result["msqs"]), len(result["nats"]), len(result["subjectives"]))
+
+	return result, nil
+}
+
+// saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
+func saveMCQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+	mcq := questionModels.NewMCQ()
+	mcq.ID = primitive.NewObjectID().Hex()
+	mcq.BankID = teacherId // Use teacherId as bankId for now
+
+	// Extract question data
+	if question, ok := questionData["question"].(string); ok {
+		mcq.Question = question
+	}
+
+	if points, ok := questionData["points"].(float64); ok {
+		mcq.Points = int(points)
+	}
+
+	if difficulty, ok := questionData["difficulty"].(string); ok {
+		mcq.Difficulty = difficulty
+	}
+
+	if subject, ok := questionData["subject"].(string); ok {
+		mcq.Subject = subject
+	}
+
+	if answerIndex, ok := questionData["answerIndex"].(float64); ok {
+		mcq.AnswerIndex = int(answerIndex)
+	}
+
+	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
+		options := make([]string, len(optionsInterface))
+		for i, opt := range optionsInterface {
+			if optStr, ok := opt.(string); ok {
+				options[i] = optStr
+			}
+		}
+		mcq.Options = options
+	}
+
+	if err := questionRepo.SaveMCQ(*mcq); err != nil {
+		return "", fmt.Errorf("failed to save MCQ: %v", err)
+	}
+
+	return mcq.ID, nil
+}
+
+// saveMSQQuestion saves an MSQ question to MongoDB and returns its ID
+func saveMSQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+	msq := questionModels.NewMSQ()
+	msq.ID = primitive.NewObjectID().Hex()
+	msq.BankID = teacherId
+
+	if question, ok := questionData["question"].(string); ok {
+		msq.Question = question
+	}
+
+	if points, ok := questionData["points"].(float64); ok {
+		msq.Points = int(points)
+	}
+
+	if difficulty, ok := questionData["difficulty"].(string); ok {
+		msq.Difficulty = difficulty
+	}
+
+	if subject, ok := questionData["subject"].(string); ok {
+		msq.Subject = subject
+	}
+
+	if answerIndicesInterface, ok := questionData["answerIndices"].([]interface{}); ok {
+		answerIndices := make([]int, len(answerIndicesInterface))
+		for i, idx := range answerIndicesInterface {
+			if idxFloat, ok := idx.(float64); ok {
+				answerIndices[i] = int(idxFloat)
+			}
+		}
+		msq.AnswerIndices = answerIndices
+	}
+
+	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
+		options := make([]string, len(optionsInterface))
+		for i, opt := range optionsInterface {
+			if optStr, ok := opt.(string); ok {
+				options[i] = optStr
+			}
+		}
+		msq.Options = options
+	}
+
+	if err := questionRepo.SaveMSQ(*msq); err != nil {
+		return "", fmt.Errorf("failed to save MSQ: %v", err)
+	}
+
+	return msq.ID, nil
+}
+
+// saveNATQuestion saves a NAT question to MongoDB and returns its ID
+func saveNATQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+	nat := questionModels.NewNAT()
+	nat.ID = primitive.NewObjectID().Hex()
+	nat.BankID = teacherId
+
+	if question, ok := questionData["question"].(string); ok {
+		nat.Question = question
+	}
+
+	if points, ok := questionData["points"].(float64); ok {
+		nat.Points = int(points)
+	}
+
+	if difficulty, ok := questionData["difficulty"].(string); ok {
+		nat.Difficulty = difficulty
+	}
+
+	if subject, ok := questionData["subject"].(string); ok {
+		nat.Subject = subject
+	}
+
+	if answer, ok := questionData["answer"].(float64); ok {
+		nat.Answer = answer
+	}
+
+	if err := questionRepo.SaveNAT(*nat); err != nil {
+		return "", fmt.Errorf("failed to save NAT: %v", err)
+	}
+
+	return nat.ID, nil
+}
+
+// saveSubjectiveQuestion saves a Subjective question to MongoDB and returns its ID
+func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+	subjective := questionModels.NewSubjective()
+	subjective.ID = primitive.NewObjectID().Hex()
+	subjective.BankID = teacherId
+
+	if question, ok := questionData["question"].(string); ok {
+		subjective.Question = question
+	}
+
+	if points, ok := questionData["points"].(float64); ok {
+		subjective.Points = int(points)
+	}
+
+	if difficulty, ok := questionData["difficulty"].(string); ok {
+		subjective.Difficulty = difficulty
+	}
+
+	if subject, ok := questionData["subject"].(string); ok {
+		subjective.Subject = subject
+	}
+
+	if idealAnswer, ok := questionData["idealAnswer"].(string); ok {
+		subjective.IdealAnswer = &idealAnswer
+	}
+
+	if gradingCriteriaInterface, ok := questionData["gradingCriteria"].([]interface{}); ok {
+		criteria := make([]string, len(gradingCriteriaInterface))
+		for i, criterion := range gradingCriteriaInterface {
+			if criterionStr, ok := criterion.(string); ok {
+				criteria[i] = criterionStr
+			}
+		}
+		subjective.GradingCriteria = criteria
+	}
+
+	if err := questionRepo.SaveSubjective(*subjective); err != nil {
+		return "", fmt.Errorf("failed to save Subjective: %v", err)
+	}
+
+	return subjective.ID, nil
 }

@@ -78,7 +78,7 @@ type AssessmentData struct {
 	TargetGoals                string `json:"target_goals,omitempty"`
 }
 
-func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (map[string]interface{}, error) {
+func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string) (map[string]interface{}, error) {
 	client, conn, err := DialGRPC()
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 	req := &pb.AgentRequest{
 		File:      file,
 		FileType:  fileType,
-		UserId:    userId,
+		TeacherId: teacherId,
 		Role:      role,
 		Message:   message,
 		CreatedAt: createdAt,
@@ -99,7 +99,7 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 	}
 	res, err := client.Agent(ctx, req)
 	if err != nil {
-		return createErrorResponse(userId, err.Error(), res), nil
+		return createErrorResponse(teacherId, err.Error(), res), nil
 	}
 
 	// Get the raw agent response
@@ -115,43 +115,43 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 		// Successfully parsed JSON, check for database operations
 		if len(agentResponse.QuestionsRequested) > 0 {
 			// Handle question generation
-			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, userId); err == nil {
+			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, teacherId); err == nil {
 				responseData = questionsData
 				agentName = "assignment_generator_general"
 				responseMessage = "Assignment generated successfully"
 			} else {
 				log.Printf("Error handling question generation: %v", err)
-				return createErrorResponse(userId, err.Error(), res), nil
+				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else if agentResponse.AssignmentResult != nil {
 			// Handle assignment result saving (from assessor agent)
-			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, userId); err == nil {
+			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, teacherId); err == nil {
 				responseData = assignmentResult
 				agentName = "assessor_agent"
 				responseMessage = "Assignment assessment completed successfully"
 			} else {
 				log.Printf("Error handling assignment result saving: %v", err)
-				return createErrorResponse(userId, err.Error(), res), nil
+				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else if agentResponse.AssessmentData != nil {
 			// Handle legacy assessment data saving (for backward compatibility)
-			if assessmentData, err := handleAssessmentSaving(agentResponse.AssessmentData, userId); err == nil {
+			if assessmentData, err := handleAssessmentSaving(agentResponse.AssessmentData, teacherId); err == nil {
 				responseData = assessmentData
 				agentName = "assessor_agent"
 				responseMessage = "Subject assessment report processed successfully"
 			} else {
 				log.Printf("Error handling assessment saving: %v", err)
-				return createErrorResponse(userId, err.Error(), res), nil
+				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else if agentResponse.ReportCardData != nil {
 			// Handle report card generation and saving
-			if reportCardData, err := handleReportCardGeneration(agentResponse.ReportCardData, userId); err == nil {
+			if reportCardData, err := handleReportCardGeneration(agentResponse.ReportCardData, teacherId); err == nil {
 				responseData = reportCardData
 				agentName = "report_card_generator"
 				responseMessage = "Report card generated and saved successfully"
 			} else {
 				log.Printf("Error handling report card generation: %v", err)
-				return createErrorResponse(userId, err.Error(), res), nil
+				return createErrorResponse(teacherId, err.Error(), res), nil
 			}
 		} else {
 			// Regular agent response without database operations
@@ -169,7 +169,7 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 	// Return the standardized response format
 	return map[string]interface{}{
 		"message":      responseMessage,
-		"teacherId":    res.GetUserId(),
+		"teacherId":    res.GetTeacherId(),
 		"agentName":    agentName,
 		"data":         responseData,
 		"sessionId":    res.GetSessionId(),
@@ -181,7 +181,7 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 	}, nil
 }
 
-func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map[string]interface{} {
+func createErrorResponse(teacherId, errorMessage string, res *pb.AgentResponse) map[string]interface{} {
 	var sessionId, createdAt, updatedAt, responseTime, feedback string
 	if res != nil {
 		sessionId = res.GetSessionId()
@@ -193,7 +193,7 @@ func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map
 
 	return map[string]interface{}{
 		"message":      errorMessage,
-		"teacherId":    userId,
+		"teacherId":    teacherId,
 		"agentName":    "root_agent",
 		"data":         map[string]interface{}{},
 		"sessionId":    sessionId,
@@ -205,9 +205,9 @@ func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map
 	}
 }
 
-func handleQuestionGeneration(questionsRequested []QuestionRequest, userId string) (map[string]interface{}, error) {
+func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId string) (map[string]interface{}, error) {
 	// Debug: Check what's actually in the database
-	log.Printf("=== DEBUG: Starting question generation for user: %s ===", userId)
+	log.Printf("=== DEBUG: Starting question generation for teacher: %s ===", teacherId)
 	log.Printf("DEBUG: Total requests received: %d", len(questionsRequested))
 
 	// Show the raw requests first
@@ -412,7 +412,7 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 	}, nil
 }
 
-func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) (map[string]interface{}, error) {
+func handleAssessmentSaving(assessmentDataInterface interface{}, teacherId string) (map[string]interface{}, error) {
 	// Parse the assessment data
 	assessmentBytes, err := json.Marshal(assessmentDataInterface)
 	if err != nil {
@@ -487,7 +487,7 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 	// Create SubjectReport object
 	now := time.Now()
 	subjectReport := model.SubjectReport{
-		UserID:      userId,
+		UserID:      teacherId,
 		StudentID:   studentID,
 		StudentName: assessmentData.StudentName,
 		Subject:     subject,
@@ -682,7 +682,7 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 	}, nil
 }
 
-func handleReportCardGeneration(reportCardDataInterface interface{}, userId string) (map[string]interface{}, error) {
+func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId string) (map[string]interface{}, error) {
 	// The report card agent returns structured data that we should save to database
 	// and pass through to the frontend
 
@@ -710,7 +710,7 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, userId stri
 
 	// Create the AgentReportCard with metadata
 	agentReportCard := model.AgentReportCard{
-		UserID:     userId,
+		UserID:     teacherId,
 		ReportCard: agentReportCardData,
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
@@ -738,7 +738,7 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, userId stri
 }
 
 // handleAssignmentResultSaving processes assignment result data from assessor agent
-func handleAssignmentResultSaving(assignmentResultData interface{}, userId string) (map[string]interface{}, error) {
+func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId string) (map[string]interface{}, error) {
 	// Convert interface{} to map[string]interface{}
 	resultMap, ok := assignmentResultData.(map[string]interface{})
 	if !ok {
@@ -835,4 +835,94 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, userId strin
 			"updatedAt":          assignmentResult.UpdatedAt,
 		},
 	}, nil
+}
+
+// TODO: Uncomment this function after regenerating proto files with:
+// protoc --go_out=. --go-grpc_out=. internal/proto/ai_service.proto
+/*
+func RAGAgent(teacherId, role, message, file, createdAt, updatedAt string) (map[string]interface{}, error) {
+	client, conn, err := DialGRPC()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req := &pb.RAGAgentRequest{
+		TeacherId: teacherId,
+		Role:      role,
+		Message:   message,
+		File:      file,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+	res, err := client.RAGAgent(ctx, req)
+	if err != nil {
+		return createRAGErrorResponse(teacherId, err.Error(), res), nil
+	}
+
+	// Return the standardized response format for RAG Agent
+	return map[string]interface{}{
+		"message":       res.GetMessage(),
+		"teacherId":     res.GetTeacherId(),
+		"agentName":     res.GetAgentName(),
+		"agentResponse": res.GetAgentResponse(),
+		"sessionId":     res.GetSessionId(),
+		"createdAt":     res.GetCreatedAt(),
+		"updatedAt":     res.GetUpdatedAt(),
+		"responseTime":  res.GetResponseTime(),
+		"role":          res.GetRole(),
+		"feedback":      res.GetFeedback(),
+	}, nil
+}
+
+func createRAGErrorResponse(teacherId, errorMessage string, res *pb.RAGAgentResponse) map[string]interface{} {
+	var sessionId, createdAt, updatedAt, responseTime, feedback string
+	if res != nil {
+		sessionId = res.GetSessionId()
+		createdAt = res.GetCreatedAt()
+		updatedAt = res.GetUpdatedAt()
+		responseTime = res.GetResponseTime()
+		feedback = res.GetFeedback()
+	}
+
+	return map[string]interface{}{
+		"message":       errorMessage,
+		"teacherId":     teacherId,
+		"agentName":     "rag_agent",
+		"agentResponse": errorMessage,
+		"sessionId":     sessionId,
+		"createdAt":     createdAt,
+		"updatedAt":     updatedAt,
+		"responseTime":  responseTime,
+		"role":          "agent",
+		"feedback":      feedback,
+	}
+}
+*/
+
+func RAGAgentClient(teacherId, message, file string) (*pb.RAGAgentResponse, error) {
+	client, conn, err := DialGRPC()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req := &pb.RAGAgentRequest{
+		TeacherId: teacherId,
+		Message:   message,
+		File:      file,
+	}
+
+	resp, err := client.RAGAgent(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call RAG agent: %v", err)
+	}
+
+	return resp, nil
 }

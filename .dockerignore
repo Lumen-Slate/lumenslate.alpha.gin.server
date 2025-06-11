@@ -31,3 +31,5 @@ bin/
 # Docker-related
 Dockerfile
 .dockerignore
+
+service-account.json

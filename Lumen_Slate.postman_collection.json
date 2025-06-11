@@ -147,6 +147,208 @@
 			]
 		},
 		{
+			"name": "RAG Agent",
+			"item": [
+				{
+					"name": "create rag corpus",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"corpusName\": \"my_test_corpus\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent/create-corpus",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent",
+								"create-corpus"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "list corpus content",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"corpusName\": \"my_test_corpus\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent/list-corpus-content",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent",
+								"list-corpus-content"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete corpus document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"corpusName\": \"my_test_corpus\",\n    \"fileDisplayName\": \"gdrive_file_123abc\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent/delete-corpus-document",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent",
+								"delete-corpus-document"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "add corpus document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"corpusName\": \"my_test_corpus\",\n    \"fileLink\": \"https://drive.google.com/file/d/1AbCdE2fGhI3jKlMnO4pQrS5tUvWxYz/view?usp=sharing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent/add-corpus-document",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent",
+								"add-corpus-document"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "list all corpora",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent/list-all-corpora",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent",
+								"list-all-corpora"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "rag agent chat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"teacherId\": \"123\",\n    \"message\": \"What is the capital of France? Explain based on the documents in my corpus.\",\n    \"file\": \"\",\n    \"role\": \"user\",\n    \"createdAt\": \"2024-01-15T10:30:00Z\",\n    \"updatedAt\": \"2024-01-15T10:30:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/ai/rag-agent",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"ai",
+								"rag-agent"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Assignment API",
 			"item": [
 				{

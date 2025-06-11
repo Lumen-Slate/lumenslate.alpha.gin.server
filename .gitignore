@@ -37,3 +37,5 @@ coverage.out
 
 # Ignore generated PDF exports
 /media/assignments/
+
+service-account.json
