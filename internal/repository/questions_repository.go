@@ -153,15 +153,6 @@ func GetQuestionsBySubject(subject model.Subject) ([]model.Questions, error) {
 
 		log.Printf("DEBUG: Found %d questions in collection '%s' for subject '%s'", len(results), collectionName, subject)
 
-		// Add collection type to each question for identification
-		for i := range results {
-			if results[i].ID == "" {
-				results[i].ID = fmt.Sprintf("%s_question_%d", collectionName, i)
-			} else {
-				results[i].ID = fmt.Sprintf("%s_%s", collectionName, results[i].ID)
-			}
-		}
-
 		allResults = append(allResults, results...)
 	}
 
@@ -213,15 +204,6 @@ func GetQuestionsBySubjectAndDifficulty(subject model.Subject, difficulty model.
 		cursor.Close(ctx)
 
 		log.Printf("DEBUG: Found %d questions in collection '%s' for subject '%s' and difficulty '%s'", len(results), collectionName, subject, difficulty)
-
-		// Add collection type to each question for identification
-		for i := range results {
-			if results[i].ID == "" {
-				results[i].ID = fmt.Sprintf("%s_question_%d", collectionName, i)
-			} else {
-				results[i].ID = fmt.Sprintf("%s_%s", collectionName, results[i].ID)
-			}
-		}
 
 		allResults = append(allResults, results...)
 	}
