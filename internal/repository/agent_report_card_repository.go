@@ -81,28 +81,7 @@ func GetAgentReportCardByID(id string) (*model.AgentReportCard, error) {
 	return &result, nil
 }
 
-// GetAgentReportCardsByStudentID retrieves all agent report cards for a specific student
-func GetAgentReportCardsByStudentID(studentId string) ([]model.AgentReportCard, error) {
-	collection := db.GetCollection("report_cards")
-
-	filter := bson.M{"reportCard.studentId": studentId}
-	opts := options.Find().SetSort(bson.M{"createdAt": -1})
-
-	cursor, err := collection.Find(context.TODO(), filter, opts)
-	if err != nil {
-		log.Printf("Error finding agent report cards by student ID: %v", err)
-		return nil, err
-	}
-	defer cursor.Close(context.TODO())
-
-	var results []model.AgentReportCard
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		log.Printf("Error decoding agent report cards: %v", err)
-		return nil, err
-	}
-
-	return results, nil
-}
+// REMOVED: GetAgentReportCardsByStudentID function - Now handled by gRPC microservice tools
 
 // CreateAgentReportCard creates a new agent report card
 func CreateAgentReportCard(reportCard model.AgentReportCard) (*model.AgentReportCard, error) {

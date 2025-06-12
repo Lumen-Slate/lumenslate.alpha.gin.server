@@ -27,10 +27,11 @@ func NewClassroomExtended(c *model.Classroom) *ClassroomExtended {
 		}
 	}
 
+	// REMOVED: Assignment details fetching - Now handled by gRPC microservice
+	// Assignment IDs are still available in the classroom data if needed
 	for _, aid := range c.AssignmentIDs {
-		if a, err := repo.GetAssignmentByID(aid); err == nil {
-			assignments = append(assignments, a)
-		}
+		// Skip assignment detail fetching since GetAssignmentByID was moved to gRPC microservice
+		_ = aid // Placeholder to avoid unused variable warning
 	}
 
 	return &ClassroomExtended{

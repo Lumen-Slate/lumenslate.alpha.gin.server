@@ -19,17 +19,7 @@ func SaveAssignment(a model.Assignment) error {
 	return err
 }
 
-func GetAssignmentByID(id string) (*model.Assignment, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var a model.Assignment
-	err := db.GetCollection(db.AssignmentCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&a)
-	if err != nil {
-		return nil, err
-	}
-	return &a, nil
-}
+// REMOVED: GetAssignmentByID function - Now handled by gRPC microservice tools
 
 func DeleteAssignment(id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
