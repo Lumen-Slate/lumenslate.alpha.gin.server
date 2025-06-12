@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/gin-contrib/cors"
@@ -35,22 +33,16 @@ func init() {
 
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
-		content, _ := io.ReadAll(file)
-		log.Println("📄 ENV_FILE loaded from /secrets:\n" + string(content))
+		_, _ = io.ReadAll(file)
 
 		if err := godotenv.Load("/secrets/ENV_FILE"); err != nil {
-			log.Println("❌ Failed to load /secrets/ENV_FILE:", err)
 		} else {
-			log.Println("✅ Environment loaded from /secrets/ENV_FILE")
 		}
 	} else {
 		// Fallback to local development .env file
-		log.Println("⚠️  /secrets/ENV_FILE not found, trying local .env")
 
 		if err := godotenv.Load(); err != nil {
-			log.Println("❌ Failed to load local .env:", err)
 		} else {
-			log.Println("✅ Environment loaded from local .env")
 		}
 	}
 
@@ -61,23 +53,12 @@ func init() {
 }
 
 func main() {
-	log.Println("🟡 Warming up server...")
-
 	// Set Gin log mode based on environment
 	if os.Getenv("GO_ENV") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
-
-	// Debug log to confirm env vars are loaded
-	if uri := os.Getenv("MONGO_URI"); strings.Contains(uri, "appName=") {
-		appName := strings.Split(strings.Split(uri, "appName=")[1], "&")[0]
-		log.Printf("✅ Mongo App Name: %s", appName)
-	} else {
-		log.Println("⚠️ Mongo URI does not contain appName parameter.")
-	}
-	log.Printf("✅ PORT: %s", os.Getenv("PORT"))
 
 	// Setup Gin
 	router := gin.Default()
@@ -104,10 +85,6 @@ func main() {
 		port = "8080"
 	}
 	address := "0.0.0.0:" + port // ✅ REQUIRED for Cloud Run
-
-	// Log endpoints
-	fmt.Printf("✅ Server running on %s\n", address)
-	fmt.Printf("📘 Swagger docs available at /docs/index.html\n")
 
 	// Run the server in a goroutine for graceful shutdown
 	go func() {
@@ -158,13 +135,6 @@ func logADCIdentity() {
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("❌ Failed to read response from metadata server: %v", err)
-		return
-	}
-
-	log.Printf("🔐 Cloud Run is using service account: %s", string(body))
 }
 
 func gracefulShutdown() {

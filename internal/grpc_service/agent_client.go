@@ -472,9 +472,7 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 	}
 
 	// Convert the entire response to camelCase (including nested structs)
-	log.Printf("Converting entire response to camelCase...")
 	camelCaseResponseData := convertKeysToCamelCase(responseData)
-	log.Printf("✓ Successfully converted all fields to camelCase")
 
 	// Type assert back to map[string]interface{} for return
 	finalResponseData, ok := camelCaseResponseData.(map[string]interface{})
@@ -483,11 +481,6 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 		return responseData, nil // Fallback to original data
 	}
 
-	log.Printf("=== QUESTION GENERATION RESPONSE ===")
-	log.Printf("Response data: %+v", finalResponseData)
-	log.Printf("=== HANDLE QUESTION GENERATION END ===")
-
-	// Return the camelCase response structure
 	return finalResponseData, nil
 }
 

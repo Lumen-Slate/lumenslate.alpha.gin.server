@@ -15,7 +15,6 @@ func GetProjectID() string {
 		ctx := context.Background()
 		projectID, err := metadata.ProjectIDWithContext(ctx)
 		if err == nil {
-			log.Println("🌐 Project ID fetched from GCE metadata server.")
 			return projectID
 		}
 		log.Printf("⚠️ Metadata server error: %v", err)
