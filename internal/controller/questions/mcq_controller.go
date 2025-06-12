@@ -35,6 +35,17 @@ func CreateMCQ(c *gin.Context) {
 		return
 	}
 
+	// Additional business logic validation
+	if len(m.Options) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Options array cannot be empty"})
+		return
+	}
+
+	if m.AnswerIndex >= len(m.Options) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "AnswerIndex must be within the bounds of options array"})
+		return
+	}
+
 	if err := service.CreateMCQ(*m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MCQ"})
 		return

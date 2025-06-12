@@ -10,7 +10,7 @@ type NAT struct {
 	Question    string    `json:"question" bson:"question" validate:"required,min=3"`
 	VariableIDs []string  `json:"variableIds" bson:"variableIds" validate:"omitempty"`
 	Points      int       `json:"points" bson:"points" validate:"required,min=1"`
-	Answer      float64   `json:"answer" bson:"answer" validate:"required"`
+	Answer      float64   `json:"answer" bson:"answer"`
 	CreatedAt   time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt" bson:"updatedAt"`
 	IsActive    bool      `json:"isActive" bson:"isActive"`
@@ -21,6 +21,7 @@ func NewNAT() *NAT {
 	now := time.Now()
 	return &NAT{
 		VariableIDs: make([]string, 0),
+		Answer:      0.0,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 		IsActive:    true,
