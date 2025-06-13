@@ -426,7 +426,7 @@ func ListCorpusContentHandler(c *gin.Context) {
 // createVertexAICorpus creates a RAG corpus directly in Vertex AI
 func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ctx := context.Background()
-
+	// comment
 	// Project configuration - force RAG-compatible location
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
