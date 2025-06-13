@@ -14,6 +14,7 @@ import (
 	pb "lumenslate/internal/proto/ai_service"
 	"lumenslate/internal/repository"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -114,10 +115,11 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 	if err := json.Unmarshal([]byte(rawAgentResponse), &agentResponse); err == nil {
 		// Successfully parsed JSON, check for database operations
 		if len(agentResponse.QuestionsRequested) > 0 {
-			// Handle question generation
-			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, teacherId); err == nil {
+			// Handle question generation (both AGG and AGT)
+			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, teacherId, rawAgentResponse); err == nil {
 				responseData = questionsData
-				agentName = "assignment_generator_general"
+				// Determine agent name based on the request - both AGG and AGT use same handler
+				agentName = "assignment_generator_general" // Both AGG and AGT return this structure
 				responseMessage = "Assignment generated successfully"
 			} else {
 				log.Printf("Error handling question generation: %v", err)
@@ -160,10 +162,12 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 			}
 		}
 	} else {
-		// Couldn't parse as JSON, treat as regular response
-		responseData = map[string]interface{}{
-			"agentResponse": rawAgentResponse,
-		}
+		// Couldn't parse as JSON, this is likely from general_chat_agent
+		// Put the response in the message field and leave data empty
+		log.Printf("[AI] Agent response is not valid JSON, treating as general chat response")
+		responseMessage = rawAgentResponse
+		responseData = map[string]interface{}{}
+		agentName = "general_chat_agent"
 	}
 
 	// Return the standardized response format
@@ -205,10 +209,31 @@ func createErrorResponse(teacherId, errorMessage string, res *pb.AgentResponse) 
 	}
 }
 
-func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId string) (map[string]interface{}, error) {
+func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId string, rawAgentResponse string) (map[string]interface{}, error) {
 	// Debug: Check what's actually in the database
 	log.Printf("=== DEBUG: Starting question generation for teacher: %s ===", teacherId)
 	log.Printf("DEBUG: Total requests received: %d", len(questionsRequested))
+
+	// Parse the raw agent response to extract title and body
+	var agentResponseData map[string]interface{}
+	var assignmentTitle, assignmentBody string
+
+	if err := json.Unmarshal([]byte(rawAgentResponse), &agentResponseData); err == nil {
+		if title, ok := agentResponseData["title"].(string); ok {
+			assignmentTitle = title
+		}
+		if body, ok := agentResponseData["body"].(string); ok {
+			assignmentBody = body
+		}
+	}
+
+	// Default values if not provided by agent
+	if assignmentTitle == "" {
+		assignmentTitle = "Generated Assignment"
+	}
+	if assignmentBody == "" {
+		assignmentBody = "Assignment generated from agent request"
+	}
 
 	// Show the raw requests first
 	for i, req := range questionsRequested {
@@ -243,43 +268,34 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 		}
 	}
 
-	totalSubjectsRequested := len(subjectRequests)
-	totalQuestionsReturned := 0
-	subjects := []map[string]interface{}{}
+	// Collect all selected questions and their IDs for assignment creation
+	var allSelectedQuestions []model.Questions
+	mcqCount := 0
+	msqCount := 0
+	natCount := 0
+	subjectiveCount := 0
+
+	// Track question IDs by type for assignment
+	var mcqIds []string
+	var msqIds []string
+	var natIds []string
+	var subjectiveIds []string
 
 	for subjectKey, requests := range subjectRequests {
 		// Convert subject string to Subject enum
 		subject, validSubject := model.GetSubjectFromString(subjectKey)
-		displaySubject := strings.Title(subjectKey)
 
 		log.Printf("DEBUG: Subject conversion - key: '%s' -> enum: '%s', valid: %v", subjectKey, subject, validSubject)
 
 		if !validSubject {
-			// Invalid subject
-			totalRequested := 0
-			for _, req := range requests {
-				totalRequested += req.NumberOfQuestions
-			}
-			subjectData := map[string]interface{}{
-				"subject":                 displaySubject,
-				"questionsRequestedCount": totalRequested,
-				"questionsAvailableCount": 0,
-				"questionsReturnedCount":  0,
-				"questions":               []map[string]interface{}{},
-				"message":                 fmt.Sprintf("Subject '%s' is not supported. Available subjects: Math, Science, English, History, Geography", displaySubject),
-			}
-			subjects = append(subjects, subjectData)
+			log.Printf("DEBUG: Skipping invalid subject: %s", subjectKey)
 			continue
 		}
 
 		// Process all requests for this subject
-		allQuestionsForSubject := []model.Questions{}
-		totalRequested := 0
-
 		for _, req := range requests {
 			numQuestions := req.NumberOfQuestions
 			difficulty := strings.ToLower(strings.TrimSpace(req.Difficulty))
-			totalRequested += numQuestions
 
 			log.Printf("DEBUG: Processing request - subject: '%s', difficulty: '%s', count: %d", subject, difficulty, numQuestions)
 
@@ -320,15 +336,7 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 
 			log.Printf("DEBUG: Database query result - subject: '%s', available: %d, requested: %d", subject, len(availableQuestions), numQuestions)
 
-			if len(availableQuestions) == 0 {
-				// No questions available for this difficulty
-				log.Printf("DEBUG: No questions found for subject '%s' with difficulty '%s'", subject, difficulty)
-				continue
-			} else if numQuestions > len(availableQuestions) {
-				// Not enough questions for this difficulty, skip this request
-				log.Printf("DEBUG: Not enough questions - requested: %d, available: %d", numQuestions, len(availableQuestions))
-				continue
-			} else {
+			if len(availableQuestions) >= numQuestions {
 				// Randomly sample the requested number of questions
 				rand.Seed(time.Now().UnixNano())
 				selectedQuestions := make([]model.Questions, numQuestions)
@@ -336,79 +344,75 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 				for i := 0; i < numQuestions; i++ {
 					selectedQuestions[i] = availableQuestions[perm[i]]
 				}
-				allQuestionsForSubject = append(allQuestionsForSubject, selectedQuestions...)
+				allSelectedQuestions = append(allSelectedQuestions, selectedQuestions...)
+
+				// Count questions by type and collect IDs
+				for _, q := range selectedQuestions {
+					// Since model.Questions doesn't have clear type indicators,
+					// we'll determine type based on available fields
+					if len(q.Options) > 0 {
+						// Has options - could be MCQ or MSQ
+						// For now, treat all as MCQ since we can't distinguish easily
+						mcqCount++
+						mcqIds = append(mcqIds, q.ID)
+					} else if q.Answer != "" {
+						// No options but has answer - check if numeric (NAT) or text (Subjective)
+						if _, err := strconv.ParseFloat(q.Answer, 64); err == nil {
+							natCount++
+							natIds = append(natIds, q.ID)
+						} else {
+							subjectiveCount++
+							subjectiveIds = append(subjectiveIds, q.ID)
+						}
+					}
+				}
+
 				log.Printf("DEBUG: Successfully selected %d questions for subject '%s'", numQuestions, subject)
+			} else {
+				log.Printf("DEBUG: Not enough questions - requested: %d, available: %d", numQuestions, len(availableQuestions))
 			}
-		}
-
-		// Get total available questions for this subject
-		totalAvailable, err := repository.CountQuestionsBySubject(subject)
-		if err != nil {
-			log.Printf("DEBUG: Error counting questions for subject '%s': %v", subject, err)
-			totalAvailable = 0
-		}
-
-		log.Printf("DEBUG: Final counts - subject: '%s', total available: %d, total requested: %d, total selected: %d", subject, totalAvailable, totalRequested, len(allQuestionsForSubject))
-
-		// Check if we got all requested questions
-		if len(allQuestionsForSubject) < totalRequested {
-			subjectData := map[string]interface{}{
-				"subject":                 displaySubject,
-				"questionsRequestedCount": totalRequested,
-				"questionsAvailableCount": int(totalAvailable),
-				"questionsReturnedCount":  0,
-				"questions":               []map[string]interface{}{},
-				"message":                 fmt.Sprintf("Could not fulfill all requests for %s. Some difficulty levels may not have enough questions available.", displaySubject),
-			}
-			subjects = append(subjects, subjectData)
-		} else if len(allQuestionsForSubject) == 0 {
-			subjectData := map[string]interface{}{
-				"subject":                 displaySubject,
-				"questionsRequestedCount": totalRequested,
-				"questionsAvailableCount": int(totalAvailable),
-				"questionsReturnedCount":  0,
-				"questions":               []map[string]interface{}{},
-				"message":                 fmt.Sprintf("No questions available for %s with the requested difficulty levels", displaySubject),
-			}
-			subjects = append(subjects, subjectData)
-		} else {
-			// Successfully got all requested questions
-			// Format questions for response
-			formattedQuestions := make([]map[string]interface{}, len(allQuestionsForSubject))
-			for i, q := range allQuestionsForSubject {
-				questionData := map[string]interface{}{
-					"questionId": q.ID,
-					"question":   q.Question,
-					"type":       "MCQ", // Default to MCQ, you can enhance this based on your question structure
-					"answer":     q.Answer,
-					"difficulty": string(q.Difficulty),
-				}
-
-				// Add options only for MCQ and MSQ types
-				if len(q.Options) > 0 {
-					questionData["options"] = q.Options
-				}
-
-				formattedQuestions[i] = questionData
-			}
-
-			subjectData := map[string]interface{}{
-				"subject":                 displaySubject,
-				"questionsRequestedCount": totalRequested,
-				"questionsAvailableCount": int(totalAvailable),
-				"questionsReturnedCount":  len(formattedQuestions),
-				"questions":               formattedQuestions,
-			}
-
-			totalQuestionsReturned += len(formattedQuestions)
-			subjects = append(subjects, subjectData)
 		}
 	}
 
+	// Create assignment if we have selected questions
+	if len(allSelectedQuestions) == 0 {
+		return nil, fmt.Errorf("no questions could be selected for the assignment")
+	}
+
+	// Create assignment using existing assignment repository
+	assignment := model.Assignment{
+		ID:            uuid.New().String(),
+		Title:         assignmentTitle,
+		Body:          assignmentBody,
+		DueDate:       time.Now().AddDate(0, 0, 7), // Default due date 7 days from now
+		Points:        len(allSelectedQuestions),   // 1 point per question
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+		IsActive:      true,
+		CommentIds:    []string{},
+		MCQIds:        mcqIds,
+		MSQIds:        msqIds,
+		NATIds:        natIds,
+		SubjectiveIds: subjectiveIds,
+	}
+
+	// Save assignment to database
+	if err := repository.SaveAssignment(assignment); err != nil {
+		return nil, fmt.Errorf("failed to save assignment: %v", err)
+	}
+
+	log.Printf("DEBUG: Assignment created successfully with ID: %s", assignment.ID)
+	log.Printf("DEBUG: Question counts - MCQ: %d, MSQ: %d, NAT: %d, Subjective: %d", mcqCount, msqCount, natCount, subjectiveCount)
+
+	// Return the new simplified response structure
 	return map[string]interface{}{
-		"totalSubjectsRequested": totalSubjectsRequested,
-		"totalQuestionsReturned": totalQuestionsReturned,
-		"subjects":               subjects,
+		"assignmentId":    assignment.ID,
+		"title":           assignment.Title,
+		"body":            assignment.Body,
+		"mcqCount":        mcqCount,
+		"msqCount":        msqCount,
+		"natCount":        natCount,
+		"subjectiveCount": subjectiveCount,
 	}, nil
 }
 
