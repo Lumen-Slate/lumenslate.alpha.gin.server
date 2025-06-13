@@ -81,6 +81,38 @@ type AssessmentData struct {
 	TargetGoals                string `json:"target_goals,omitempty"`
 }
 
+// toCamelCase converts snake_case string to camelCase
+func toCamelCase(s string) string {
+	parts := strings.Split(s, "_")
+	for i := 1; i < len(parts); i++ {
+		if len(parts[i]) > 0 {
+			parts[i] = strings.ToUpper(string(parts[i][0])) + parts[i][1:]
+		}
+	}
+	return strings.Join(parts, "")
+}
+
+// convertKeysToCamelCase recursively converts all keys in a map/slice from snake_case to camelCase
+func convertKeysToCamelCase(data interface{}) interface{} {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for key, value := range v {
+			camelKey := toCamelCase(key)
+			result[camelKey] = convertKeysToCamelCase(value)
+		}
+		return result
+	case []interface{}:
+		result := make([]interface{}, len(v))
+		for i, item := range v {
+			result[i] = convertKeysToCamelCase(item)
+		}
+		return result
+	default:
+		return data
+	}
+}
+
 func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string) (map[string]interface{}, error) {
 	log.Printf("=== AGENT FUNCTION START ===")
 	log.Printf("Input parameters - file: '%s', fileType: '%s', teacherId: '%s', role: '%s', message length: %d",
@@ -95,9 +127,9 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 	defer conn.Close()
 	log.Printf("Successfully established gRPC connection")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	log.Printf("Created context with 30 second timeout")
+	log.Printf("Created context with 60 second timeout")
 
 	req := &pb.AgentRequest{
 		File:      file,
@@ -137,6 +169,18 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 
 	if err := json.Unmarshal([]byte(rawAgentResponse), &agentResponse); err == nil {
 		log.Printf("✓ Successfully parsed JSON response")
+
+		// Handle report card field name mismatch: microservice returns "report_card" but we expect "report_card_data"
+		if agentResponse.ReportCardData == nil {
+			var rawMap map[string]interface{}
+			if err := json.Unmarshal([]byte(rawAgentResponse), &rawMap); err == nil {
+				if reportCardData, exists := rawMap["report_card"]; exists {
+					agentResponse.ReportCardData = reportCardData
+					log.Printf("✓ Found 'report_card' field and mapped it to ReportCardData")
+				}
+			}
+		}
+
 		// Successfully parsed JSON, log what we found
 		log.Printf("=== PARSED AGENT RESPONSE STRUCTURE ===")
 		log.Printf("QuestionsRequested count: %d", len(agentResponse.QuestionsRequested))
@@ -1058,30 +1102,10 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId s
 	log.Printf("Teacher ID: %s", teacherId)
 	log.Printf("Report card data type: %T", reportCardDataInterface)
 
-	// The report card agent returns structured data that we should save to database
-	// and pass through to the frontend
-	reportCardMap, ok := reportCardDataInterface.(map[string]interface{})
-	if !ok {
-		log.Printf("ERROR: Invalid report card data format - expected map[string]interface{}, got %T", reportCardDataInterface)
-		return nil, fmt.Errorf("invalid report card data format")
-	}
-	log.Printf("✓ Successfully cast to map[string]interface{}")
-	log.Printf("Report card map keys: %v", func() []string {
-		keys := make([]string, 0, len(reportCardMap))
-		for k := range reportCardMap {
-			keys = append(keys, k)
-		}
-		return keys
-	}())
-
-	// Extract the report_card from the agent's response
-	log.Printf("Looking for 'report_card' field in agent response...")
-	reportCardData, exists := reportCardMap["report_card"]
-	if !exists {
-		log.Printf("ERROR: No 'report_card' field found in agent response")
-		return nil, fmt.Errorf("no report_card field found in agent response")
-	}
-	log.Printf("✓ Found 'report_card' field (type: %T)", reportCardData)
+	// The report card data is now pre-extracted from the agent response
+	// We can directly use it to save to database and pass through to the frontend
+	reportCardData := reportCardDataInterface
+	log.Printf("✓ Using pre-extracted report card data (type: %T)", reportCardData)
 
 	// Convert the report card data to our model structure
 	log.Printf("Converting report card data to model structure...")
@@ -1126,17 +1150,23 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId s
 
 	// Prepare response data
 	log.Printf("Preparing response data...")
+
+	// Convert all keys in the report card data to camelCase
+	log.Printf("Converting report card keys from snake_case to camelCase...")
+	camelCaseReportCard := convertKeysToCamelCase(reportCardData)
+	log.Printf("✓ Successfully converted all keys to camelCase")
+
 	responseData := map[string]interface{}{
-		"reportCard": reportCardData,
+		"reportCard": camelCaseReportCard,
 	}
 
 	// Add database metadata if save was successful
 	if savedReportCard != nil {
 		responseData["databaseId"] = savedReportCard.ID.Hex()
-		responseData["savedAt"] = savedReportCard.CreatedAt
+		responseData["savedAt"] = savedReportCard.CreatedAt.Format("2006-01-02T15:04:05.000Z")
 		log.Printf("Added database metadata to response:")
 		log.Printf("  Database ID: %s", savedReportCard.ID.Hex())
-		log.Printf("  Saved At: %s", savedReportCard.CreatedAt.Format("2006-01-02 15:04:05"))
+		log.Printf("  Saved At: %s", savedReportCard.CreatedAt.Format("2006-01-02T15:04:05.000Z"))
 	} else {
 		log.Printf("No database metadata available (save failed)")
 	}
@@ -1149,6 +1179,12 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId s
 		}
 		return keys
 	}())
+	log.Printf("Response structure:")
+	log.Printf("  - reportCard: Contains complete report card data (all keys converted to camelCase)")
+	if _, exists := responseData["databaseId"]; exists {
+		log.Printf("  - databaseId: MongoDB ObjectId as hex string")
+		log.Printf("  - savedAt: ISO timestamp of database save")
+	}
 	log.Printf("=== HANDLE REPORT CARD GENERATION END ===")
 
 	return responseData, nil
