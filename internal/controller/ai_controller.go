@@ -323,6 +323,16 @@ func RAGAgentHandler(c *gin.Context) {
 		return
 	}
 
+	// Create/verify corpus for the teacher before processing the request
+	log.Printf("[AI] Creating/verifying corpus for teacher: %s", req.TeacherId)
+	corpusResponse, err := createVertexAICorpus(req.TeacherId)
+	if err != nil {
+		log.Printf("[AI] Warning: Could not create/verify corpus for teacher %s: %v", req.TeacherId, err)
+		// Continue processing even if corpus creation fails
+	} else {
+		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
+	}
+
 	// Call the gRPC microservice
 	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, req.File)
 	if err != nil {
@@ -331,8 +341,8 @@ func RAGAgentHandler(c *gin.Context) {
 		return
 	}
 
-	// Process the agent response to determine data content
-	responseData, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
+	// Process the agent response to determine data content and message
+	responseData, responseMessage, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
 	if err != nil {
 		log.Printf("[AI] Failed to process RAG agent response: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent response", "error": err.Error()})
@@ -341,7 +351,7 @@ func RAGAgentHandler(c *gin.Context) {
 
 	// Return standardized response format (matching /ai/agent structure)
 	standardizedResponse := map[string]interface{}{
-		"message":      "Agent response processed successfully",
+		"message":      responseMessage,
 		"teacherId":    resp.GetTeacherId(),
 		"agentName":    resp.GetAgentName(),
 		"data":         responseData,
@@ -962,20 +972,20 @@ func getGoogleDriveFileName(fileID, credentialsPath string) (string, error) {
 // processRAGAgentResponse processes the agent response from Python microservice
 // If it's structured JSON with questions, saves them to MongoDB and returns question IDs
 // If it's regular text, returns it as-is
-func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, error) {
+func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, string, error) {
 	log.Printf("[AI] Processing RAG agent response for teacherId: %s", teacherId)
 
 	// Try to parse as JSON to see if it contains structured questions
 	var questionsData map[string]interface{}
 	if err := json.Unmarshal([]byte(agentResponse), &questionsData); err != nil {
-		// Not valid JSON, return as regular text response
-		log.Printf("[AI] Agent response is not JSON, returning as text")
-		return agentResponse, nil
+		// Not valid JSON, return as regular text response in message field
+		log.Printf("[AI] Agent response is not JSON, returning as text message")
+		return nil, agentResponse, nil
 	}
 
-	// Check if this looks like question data (has mcq, msq, nat, or subjective fields)
+	// Check if this looks like question data (has mcq/mcqs, msq/msqs, nat/nats, or subjective/subjectives fields)
 	hasQuestions := false
-	for _, key := range []string{"mcq", "msq", "nat", "subjective"} {
+	for _, key := range []string{"mcq", "mcqs", "msq", "msqs", "nat", "nats", "subjective", "subjectives"} {
 		if _, exists := questionsData[key]; exists {
 			hasQuestions = true
 			break
@@ -983,89 +993,111 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, erro
 	}
 
 	if !hasQuestions {
-		// JSON but not question data, return the parsed JSON
-		log.Printf("[AI] JSON response doesn't contain questions, returning as-is")
-		return questionsData, nil
+		// JSON but not question data, return the parsed JSON in data field
+		log.Printf("[AI] JSON response doesn't contain questions, returning as data")
+		return questionsData, "", nil
 	}
 
 	// This is structured question data, save to MongoDB and return IDs
 	log.Printf("[AI] Processing structured question data")
 
-	result := map[string][]string{
+	result := map[string]interface{}{
 		"mcqs":        []string{},
 		"msqs":        []string{},
 		"nats":        []string{},
 		"subjectives": []string{},
+		"questions":   questionsData, // Include the original question data
 	}
 
-	// Process MCQ questions
-	if mcqData, exists := questionsData["mcq"]; exists {
+	// Process MCQ questions (handle both "mcq" and "mcqs")
+	var mcqData interface{}
+	var exists bool
+	if mcqData, exists = questionsData["mcq"]; !exists {
+		mcqData, exists = questionsData["mcqs"]
+	}
+	if exists {
 		if mcqArray, ok := mcqData.([]interface{}); ok {
 			for _, mcqInterface := range mcqArray {
 				if mcqMap, ok := mcqInterface.(map[string]interface{}); ok {
-					id, err := saveMCQQuestion(mcqMap, teacherId)
-					if err != nil {
-						log.Printf("[AI] Error saving MCQ question: %v", err)
-						continue
-					}
-					result["mcqs"] = append(result["mcqs"], id)
+					_ = mcqMap // Suppress unused variable warning
+					// id, err := saveMCQQuestion(mcqMap, teacherId)
+					// if err != nil {
+					// 	log.Printf("[AI] Error saving MCQ question: %v", err)
+					// 	continue
+					// }
+					// result["mcqs"] = append(result["mcqs"].([]string), id)
 				}
 			}
 		}
 	}
 
-	// Process MSQ questions
-	if msqData, exists := questionsData["msq"]; exists {
+	// Process MSQ questions (handle both "msq" and "msqs")
+	var msqData interface{}
+	if msqData, exists = questionsData["msq"]; !exists {
+		msqData, exists = questionsData["msqs"]
+	}
+	if exists {
 		if msqArray, ok := msqData.([]interface{}); ok {
 			for _, msqInterface := range msqArray {
 				if msqMap, ok := msqInterface.(map[string]interface{}); ok {
-					id, err := saveMSQQuestion(msqMap, teacherId)
-					if err != nil {
-						log.Printf("[AI] Error saving MSQ question: %v", err)
-						continue
-					}
-					result["msqs"] = append(result["msqs"], id)
+					_ = msqMap // Suppress unused variable warning
+					// id, err := saveMSQQuestion(msqMap, teacherId)
+					// if err != nil {
+					// 	log.Printf("[AI] Error saving MSQ question: %v", err)
+					// 	continue
+					// }
+					// result["msqs"] = append(result["msqs"].([]string), id)
 				}
 			}
 		}
 	}
 
-	// Process NAT questions
-	if natData, exists := questionsData["nat"]; exists {
+	// Process NAT questions (handle both "nat" and "nats")
+	var natData interface{}
+	if natData, exists = questionsData["nat"]; !exists {
+		natData, exists = questionsData["nats"]
+	}
+	if exists {
 		if natArray, ok := natData.([]interface{}); ok {
 			for _, natInterface := range natArray {
 				if natMap, ok := natInterface.(map[string]interface{}); ok {
-					id, err := saveNATQuestion(natMap, teacherId)
-					if err != nil {
-						log.Printf("[AI] Error saving NAT question: %v", err)
-						continue
-					}
-					result["nats"] = append(result["nats"], id)
+					_ = natMap // Suppress unused variable warning
+					// id, err := saveNATQuestion(natMap, teacherId)
+					// if err != nil {
+					// 	log.Printf("[AI] Error saving NAT question: %v", err)
+					// 	continue
+					// }
+					// result["nats"] = append(result["nats"].([]string), id)
 				}
 			}
 		}
 	}
 
-	// Process Subjective questions
-	if subjectiveData, exists := questionsData["subjective"]; exists {
+	// Process Subjective questions (handle both "subjective" and "subjectives")
+	var subjectiveData interface{}
+	if subjectiveData, exists = questionsData["subjective"]; !exists {
+		subjectiveData, exists = questionsData["subjectives"]
+	}
+	if exists {
 		if subjectiveArray, ok := subjectiveData.([]interface{}); ok {
 			for _, subjectiveInterface := range subjectiveArray {
 				if subjectiveMap, ok := subjectiveInterface.(map[string]interface{}); ok {
-					id, err := saveSubjectiveQuestion(subjectiveMap, teacherId)
-					if err != nil {
-						log.Printf("[AI] Error saving Subjective question: %v", err)
-						continue
-					}
-					result["subjectives"] = append(result["subjectives"], id)
+					_ = subjectiveMap // Suppress unused variable warning
+					// id, err := saveSubjectiveQuestion(subjectiveMap, teacherId)
+					// if err != nil {
+					// 	log.Printf("[AI] Error saving Subjective question: %v", err)
+					// 	continue
+					// }
+					// result["subjectives"] = append(result["subjectives"].([]string), id)
 				}
 			}
 		}
 	}
 
 	log.Printf("[AI] Question processing complete. Saved %d MCQs, %d MSQs, %d NATs, %d Subjectives",
-		len(result["mcqs"]), len(result["msqs"]), len(result["nats"]), len(result["subjectives"]))
+		len(result["mcqs"].([]string)), len(result["msqs"].([]string)), len(result["nats"].([]string)), len(result["subjectives"].([]string)))
 
-	return result, nil
+	return result, "", nil
 }
 
 // saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
