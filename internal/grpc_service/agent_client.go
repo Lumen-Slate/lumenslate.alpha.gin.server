@@ -1402,6 +1402,15 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 
 	// Return the saved assignment result data directly (flattened)
 	log.Printf("=== BUILDING RESPONSE ===")
+
+	// Convert result arrays to camelCase for consistent frontend consumption
+	log.Printf("Converting result arrays to camelCase...")
+	camelCaseMcqResults := convertKeysToCamelCase(assignmentResult.MCQResults)
+	camelCaseMsqResults := convertKeysToCamelCase(assignmentResult.MSQResults)
+	camelCaseNatResults := convertKeysToCamelCase(assignmentResult.NATResults)
+	camelCaseSubjectiveResults := convertKeysToCamelCase(assignmentResult.SubjectiveResults)
+	log.Printf("✓ Successfully converted all result arrays to camelCase")
+
 	responseData := map[string]interface{}{
 		"id":                 assignmentResult.ID.Hex(),
 		"assignmentId":       assignmentResult.AssignmentID,
@@ -1409,10 +1418,10 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 		"totalPointsAwarded": assignmentResult.TotalPointsAwarded,
 		"totalMaxPoints":     assignmentResult.TotalMaxPoints,
 		"percentageScore":    assignmentResult.PercentageScore,
-		"mcqResults":         assignmentResult.MCQResults,
-		"msqResults":         assignmentResult.MSQResults,
-		"natResults":         assignmentResult.NATResults,
-		"subjectiveResults":  assignmentResult.SubjectiveResults,
+		"mcqResults":         camelCaseMcqResults,
+		"msqResults":         camelCaseMsqResults,
+		"natResults":         camelCaseNatResults,
+		"subjectiveResults":  camelCaseSubjectiveResults,
 		"createdAt":          assignmentResult.CreatedAt,
 		"updatedAt":          assignmentResult.UpdatedAt,
 	}
@@ -1422,7 +1431,7 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 	log.Printf("  Assignment ID: %s", responseData["assignmentId"])
 	log.Printf("  Student ID: %s", responseData["studentId"])
 	log.Printf("  Total Points: %d/%d (%.2f%%)", responseData["totalPointsAwarded"], responseData["totalMaxPoints"], responseData["percentageScore"])
-	log.Printf("  Results count - MCQ: %d, MSQ: %d, NAT: %d, Subjective: %d",
+	log.Printf("  Results count - MCQ: %d, MSQ: %d, NAT: %d, Subjective: %d (all in camelCase)",
 		len(assignmentResult.MCQResults), len(assignmentResult.MSQResults),
 		len(assignmentResult.NATResults), len(assignmentResult.SubjectiveResults))
 	log.Printf("=== HANDLE ASSIGNMENT RESULT SAVING END ===")
