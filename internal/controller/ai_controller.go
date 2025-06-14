@@ -658,6 +658,16 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	}
 	log.Printf("[AI] Request: %+v", req)
 
+	// Check if corpus exists, create if it doesn't
+	log.Printf("[AI] Checking if corpus '%s' exists before adding document", req.CorpusName)
+	corpusResponse, err := createVertexAICorpus(req.CorpusName)
+	if err != nil {
+		log.Printf("[AI] Warning: Could not create/verify corpus '%s': %v", req.CorpusName, err)
+		// Continue with document addition even if corpus creation fails
+	} else {
+		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
+	}
+
 	addResponse, err := addVertexAICorpusDocument(req.CorpusName, req.FileLink)
 	if err != nil {
 		log.Printf("[AI] Add corpus document error: %v", err)
