@@ -294,8 +294,41 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 	log.Printf("Response Time: %s", res.GetResponseTime())
 	log.Printf("=== AGENT FUNCTION END ===")
 
-	// Return the standardized response format
-	return finalResponse, nil
+	// Convert the entire response to camelCase (including nested structs)
+	log.Printf("Converting entire response to camelCase...")
+
+	// First, convert structs to JSON then back to map[string]interface{} to ensure proper conversion
+	log.Printf("Converting structs to JSON for proper camelCase conversion...")
+	jsonBytes, err := json.Marshal(finalResponse)
+	if err != nil {
+		log.Printf("ERROR: Failed to marshal response data to JSON: %v", err)
+		return finalResponse, nil
+	}
+
+	var jsonMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonMap); err != nil {
+		log.Printf("ERROR: Failed to unmarshal response data from JSON: %v", err)
+		return finalResponse, nil
+	}
+	log.Printf("✓ Successfully converted structs to map[string]interface{}")
+
+	// Now apply camelCase conversion to the properly converted data
+	camelCaseResponseData := convertKeysToCamelCase(jsonMap)
+	log.Printf("✓ Successfully converted all fields to camelCase")
+
+	// Type assert back to map[string]interface{} for return
+	finalResponseData, ok := camelCaseResponseData.(map[string]interface{})
+	if !ok {
+		log.Printf("ERROR: Failed to convert response data to map[string]interface{}")
+		return finalResponse, nil // Fallback to original data
+	}
+
+	log.Printf("=== QUESTION GENERATION RESPONSE ===")
+	log.Printf("Response data: %+v", finalResponseData)
+	log.Printf("=== HANDLE QUESTION GENERATION END ===")
+
+	// Return the camelCase response structure
+	return finalResponseData, nil
 }
 
 func createErrorResponse(teacherId, errorMessage string, res *pb.AgentResponse) map[string]interface{} {
@@ -608,12 +641,24 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 		"subjectiveCount": subjectiveCount,
 	}
 
+	// Convert the entire response to camelCase (including nested structs)
+	log.Printf("Converting entire response to camelCase...")
+	camelCaseResponseData := convertKeysToCamelCase(responseData)
+	log.Printf("✓ Successfully converted all fields to camelCase")
+
+	// Type assert back to map[string]interface{} for return
+	finalResponseData, ok := camelCaseResponseData.(map[string]interface{})
+	if !ok {
+		log.Printf("ERROR: Failed to convert response data to map[string]interface{}")
+		return responseData, nil // Fallback to original data
+	}
+
 	log.Printf("=== QUESTION GENERATION RESPONSE ===")
-	log.Printf("Response data: %+v", responseData)
+	log.Printf("Response data: %+v", finalResponseData)
 	log.Printf("=== HANDLE QUESTION GENERATION END ===")
 
-	// Return the new simplified response structure
-	return responseData, nil
+	// Return the camelCase response structure
+	return finalResponseData, nil
 }
 
 func handleAssessmentSaving(assessmentDataInterface interface{}, teacherId string) (map[string]interface{}, error) {
@@ -1084,17 +1129,32 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, teacherId strin
 		"assessmentData": assessmentDataResponse,
 	}
 
+	// Convert the entire response to camelCase (including nested structs)
+	log.Printf("Converting entire response to camelCase...")
+	camelCaseResponseData := convertKeysToCamelCase(finalResponse)
+	log.Printf("✓ Successfully converted all fields to camelCase")
+
+	// Type assert back to map[string]interface{} for return
+	finalResponseData, ok := camelCaseResponseData.(map[string]interface{})
+	if !ok {
+		log.Printf("ERROR: Failed to convert response data to map[string]interface{}")
+		return finalResponse, nil // Fallback to original data
+	}
+
 	log.Printf("Built response with %d fields in assessmentData", responseFieldCount)
 	log.Printf("Final response keys: %v", func() []string {
-		keys := make([]string, 0, len(assessmentDataResponse))
-		for k := range assessmentDataResponse {
-			keys = append(keys, k)
+		if assessmentData, exists := finalResponseData["assessmentData"].(map[string]interface{}); exists {
+			keys := make([]string, 0, len(assessmentData))
+			for k := range assessmentData {
+				keys = append(keys, k)
+			}
+			return keys
 		}
-		return keys
+		return []string{}
 	}())
 	log.Printf("=== HANDLE ASSESSMENT SAVING END ===")
 
-	return finalResponse, nil
+	return finalResponseData, nil
 }
 
 func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId string) (map[string]interface{}, error) {
@@ -1403,14 +1463,6 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 	// Return the saved assignment result data directly (flattened)
 	log.Printf("=== BUILDING RESPONSE ===")
 
-	// Convert result arrays to camelCase for consistent frontend consumption
-	log.Printf("Converting result arrays to camelCase...")
-	camelCaseMcqResults := convertKeysToCamelCase(assignmentResult.MCQResults)
-	camelCaseMsqResults := convertKeysToCamelCase(assignmentResult.MSQResults)
-	camelCaseNatResults := convertKeysToCamelCase(assignmentResult.NATResults)
-	camelCaseSubjectiveResults := convertKeysToCamelCase(assignmentResult.SubjectiveResults)
-	log.Printf("✓ Successfully converted all result arrays to camelCase")
-
 	responseData := map[string]interface{}{
 		"id":                 assignmentResult.ID.Hex(),
 		"assignmentId":       assignmentResult.AssignmentID,
@@ -1418,25 +1470,37 @@ func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId st
 		"totalPointsAwarded": assignmentResult.TotalPointsAwarded,
 		"totalMaxPoints":     assignmentResult.TotalMaxPoints,
 		"percentageScore":    assignmentResult.PercentageScore,
-		"mcqResults":         camelCaseMcqResults,
-		"msqResults":         camelCaseMsqResults,
-		"natResults":         camelCaseNatResults,
-		"subjectiveResults":  camelCaseSubjectiveResults,
+		"mcqResults":         assignmentResult.MCQResults,
+		"msqResults":         assignmentResult.MSQResults,
+		"natResults":         assignmentResult.NATResults,
+		"subjectiveResults":  assignmentResult.SubjectiveResults,
 		"createdAt":          assignmentResult.CreatedAt,
 		"updatedAt":          assignmentResult.UpdatedAt,
 	}
 
+	// Convert the entire response to camelCase (including nested structs)
+	log.Printf("Converting entire response to camelCase...")
+	camelCaseResponseData := convertKeysToCamelCase(responseData)
+	log.Printf("✓ Successfully converted all fields to camelCase")
+
+	// Type assert back to map[string]interface{} for return
+	finalResponseData, ok := camelCaseResponseData.(map[string]interface{})
+	if !ok {
+		log.Printf("ERROR: Failed to convert response data to map[string]interface{}")
+		return responseData, nil // Fallback to original data
+	}
+
 	log.Printf("Response data summary:")
-	log.Printf("  Database ID: %s", responseData["id"])
-	log.Printf("  Assignment ID: %s", responseData["assignmentId"])
-	log.Printf("  Student ID: %s", responseData["studentId"])
-	log.Printf("  Total Points: %d/%d (%.2f%%)", responseData["totalPointsAwarded"], responseData["totalMaxPoints"], responseData["percentageScore"])
+	log.Printf("  Database ID: %s", finalResponseData["id"])
+	log.Printf("  Assignment ID: %s", finalResponseData["assignmentId"])
+	log.Printf("  Student ID: %s", finalResponseData["studentId"])
+	log.Printf("  Total Points: %v/%v (%.2f%%)", finalResponseData["totalPointsAwarded"], finalResponseData["totalMaxPoints"], finalResponseData["percentageScore"])
 	log.Printf("  Results count - MCQ: %d, MSQ: %d, NAT: %d, Subjective: %d (all in camelCase)",
 		len(assignmentResult.MCQResults), len(assignmentResult.MSQResults),
 		len(assignmentResult.NATResults), len(assignmentResult.SubjectiveResults))
 	log.Printf("=== HANDLE ASSIGNMENT RESULT SAVING END ===")
 
-	return responseData, nil
+	return finalResponseData, nil
 }
 
 // TODO: Uncomment this function after regenerating proto files with:
