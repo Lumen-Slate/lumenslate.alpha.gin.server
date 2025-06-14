@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"time"
 
 	service "lumenslate/internal/grpc_service"
 	questionModels "lumenslate/internal/model/questions"
@@ -867,22 +868,41 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	// Clean corpus name for use as display name
 	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
 
-	// Find the corpus first
+	// Find the corpus with retry mechanism (for newly created corpora)
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
-	existingCorpora, err := service.Projects.Locations.RagCorpora.List(parent).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list corpora: %v", err)
-	}
-
 	var corpusResourceName string
-	for _, corpus := range existingCorpora.RagCorpora {
-		if corpus.DisplayName == displayName {
-			corpusResourceName = corpus.Name
-			break
+
+	// Retry up to 3 times with increasing delays to allow corpus propagation
+	maxRetries := 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		log.Printf("[AI] Attempting to find corpus '%s' (attempt %d/%d)", corpusName, attempt, maxRetries)
+
+		existingCorpora, err := service.Projects.Locations.RagCorpora.List(parent).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list corpora: %v", err)
+		}
+
+		for _, corpus := range existingCorpora.RagCorpora {
+			if corpus.DisplayName == displayName {
+				corpusResourceName = corpus.Name
+				log.Printf("[AI] Found corpus '%s' with resource name: %s", corpusName, corpusResourceName)
+				break
+			}
+		}
+
+		if corpusResourceName != "" {
+			break // Found the corpus, exit retry loop
+		}
+
+		if attempt < maxRetries {
+			sleepDuration := time.Duration(attempt*2) * time.Second // 2s, 4s delays
+			log.Printf("[AI] Corpus '%s' not found, retrying in %v...", corpusName, sleepDuration)
+			time.Sleep(sleepDuration)
 		}
 	}
+
 	if corpusResourceName == "" {
-		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
+		return nil, fmt.Errorf("corpus '%s' not found after %d attempts", corpusName, maxRetries)
 	}
 
 	// Extract file ID from Google Drive URL
