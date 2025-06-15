@@ -4,7 +4,7 @@ package questions
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model/questions"
-	service "lumenslate/internal/service/questions"
+	repo "lumenslate/internal/repository/questions"
 	"net/http"
 	"time"
 
@@ -35,7 +35,7 @@ func CreateMSQ(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateMSQ(*m); err != nil {
+	if err := repo.SaveMSQ(*m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MSQ"})
 		return
 	}
@@ -50,7 +50,7 @@ func CreateMSQ(c *gin.Context) {
 // @Router /msqs/{id} [get]
 func GetMSQ(c *gin.Context) {
 	id := c.Param("id")
-	m, err := service.GetMSQ(id)
+	m, err := repo.GetMSQByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "MSQ not found"})
 		return
@@ -65,7 +65,7 @@ func GetMSQ(c *gin.Context) {
 // @Router /msqs/{id} [delete]
 func DeleteMSQ(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteMSQ(id); err != nil {
+	if err := repo.DeleteMSQ(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete MSQ"})
 		return
 	}
@@ -86,7 +86,7 @@ func GetAllMSQs(c *gin.Context) {
 		"limit":  c.DefaultQuery("limit", "10"),
 		"offset": c.DefaultQuery("offset", "0"),
 	}
-	msqs, err := service.GetAllMSQs(filters)
+	msqs, err := repo.GetAllMSQs(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch MSQs"})
 		return
@@ -118,7 +118,7 @@ func UpdateMSQ(c *gin.Context) {
 
 	m.ID = id
 	m.UpdatedAt = time.Now()
-	if err := service.UpdateMSQ(id, m); err != nil {
+	if err := repo.SaveMSQ(m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update MSQ"})
 		return
 	}
@@ -144,7 +144,7 @@ func PatchMSQ(c *gin.Context) {
 	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
 
-	updated, err := service.PatchMSQ(id, updates)
+	updated, err := repo.PatchMSQ(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch MSQ"})
 		return
@@ -180,7 +180,7 @@ func CreateBulkMSQs(c *gin.Context) {
 		}
 	}
 
-	if err := service.CreateBulkMSQs(msqs); err != nil {
+	if err := repo.SaveBulkMSQs(msqs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MSQs"})
 		return
 	}

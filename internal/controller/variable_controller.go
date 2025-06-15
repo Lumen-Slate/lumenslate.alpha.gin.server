@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateVariable(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateVariable(variable); err != nil {
+	if err := repo.SaveVariable(variable); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create variable"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateVariable(c *gin.Context) {
 // @Router /variables/{id} [get]
 func GetVariable(c *gin.Context) {
 	id := c.Param("id")
-	variable, err := service.GetVariable(id)
+	variable, err := repo.GetVariableByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Variable not found"})
 		return
@@ -68,7 +68,7 @@ func GetVariable(c *gin.Context) {
 // @Router /variables/{id} [delete]
 func DeleteVariable(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteVariable(id); err != nil {
+	if err := repo.DeleteVariable(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete variable"})
 		return
 	}
@@ -87,7 +87,7 @@ func GetAllVariables(c *gin.Context) {
 		"limit":  c.DefaultQuery("limit", "10"),
 		"offset": c.DefaultQuery("offset", "0"),
 	}
-	variables, err := service.GetAllVariables(filters)
+	variables, err := repo.GetAllVariables(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch variables"})
 		return
@@ -120,7 +120,7 @@ func UpdateVariable(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateVariable(id, variable); err != nil {
+	if err := repo.SaveVariable(variable); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -147,7 +147,7 @@ func PatchVariable(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated variable
-	updated, err := service.PatchVariable(id, updates)
+	updated, err := repo.PatchVariable(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch variable"})
 		return
@@ -184,7 +184,7 @@ func CreateBulkVariables(c *gin.Context) {
 		}
 	}
 
-	if err := service.CreateBulkVariables(variables); err != nil {
+	if err := repo.SaveBulkVariables(variables); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create variables"})
 		return
 	}

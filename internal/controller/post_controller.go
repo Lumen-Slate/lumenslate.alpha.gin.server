@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateThread(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateThread(thread); err != nil {
+	if err := repo.SaveThread(thread); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create thread"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateThread(c *gin.Context) {
 // @Router /threads/{id} [get]
 func GetThread(c *gin.Context) {
 	id := c.Param("id")
-	thread, err := service.GetThread(id)
+	thread, err := repo.GetThreadByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Thread not found"})
 		return
@@ -68,7 +68,7 @@ func GetThread(c *gin.Context) {
 // @Router /threads/{id} [delete]
 func DeleteThread(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteThread(id); err != nil {
+	if err := repo.DeleteThread(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete thread"})
 		return
 	}
@@ -89,7 +89,7 @@ func GetAllThreads(c *gin.Context) {
 		"offset": c.DefaultQuery("offset", "0"),
 		"userId": c.Query("userId"),
 	}
-	threads, err := service.GetAllThreads(filters)
+	threads, err := repo.GetAllThreads(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch threads"})
 		return
@@ -122,7 +122,7 @@ func UpdateThread(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateThread(id, thread); err != nil {
+	if err := repo.SaveThread(thread); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -149,7 +149,7 @@ func PatchThread(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated thread
-	updated, err := service.PatchThread(id, updates)
+	updated, err := repo.PatchThread(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return

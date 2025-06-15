@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -25,17 +25,12 @@ func CreateTeacher(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Generate ID before validation
 	t.ID = uuid.New().String()
-
-	// Validate the struct
 	if err := common.Validate.Struct(t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	if err := service.CreateTeacher(*t); err != nil {
+	if err := repo.SaveTeacher(*t); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create teacher"})
 		return
 	}
@@ -50,7 +45,7 @@ func CreateTeacher(c *gin.Context) {
 // @Router /teachers/{id} [get]
 func GetTeacher(c *gin.Context) {
 	id := c.Param("id")
-	teacher, err := service.GetTeacher(id)
+	teacher, err := repo.GetTeacherByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Teacher not found"})
 		return
@@ -65,7 +60,7 @@ func GetTeacher(c *gin.Context) {
 // @Router /teachers/{id} [delete]
 func DeleteTeacher(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteTeacher(id); err != nil {
+	if err := repo.DeleteTeacher(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete teacher"})
 		return
 	}
@@ -90,7 +85,7 @@ func GetAllTeachers(c *gin.Context) {
 		"limit":  c.DefaultQuery("limit", "10"),
 		"offset": c.DefaultQuery("offset", "0"),
 	}
-	teachers, err := service.GetAllTeachers(filters)
+	teachers, err := repo.GetAllTeachers(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch teachers"})
 		return
@@ -113,16 +108,13 @@ func UpdateTeacher(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Validate the struct
 	if err := common.Validate.Struct(t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	t.ID = id
 	t.UpdatedAt = time.Now()
-	if err := service.UpdateTeacher(id, t); err != nil {
+	if err := repo.SaveTeacher(t); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -144,11 +136,8 @@ func PatchTeacher(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
-
-	updated, err := service.PatchTeacher(id, updates)
+	updated, err := repo.PatchTeacher(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch teacher"})
 		return
