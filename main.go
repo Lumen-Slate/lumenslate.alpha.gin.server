@@ -100,10 +100,10 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	address := ":" + port
+	address := "0.0.0.0:" + port // ✅ REQUIRED for Cloud Run
 
 	// Log endpoints
-	fmt.Printf("✅ Server running on port %s\n", port)
+	fmt.Printf("✅ Server running on %s\n", address)
 	fmt.Printf("📘 Swagger docs available at /docs/index.html\n")
 
 	// Run the server in a goroutine for graceful shutdown
