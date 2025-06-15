@@ -73,6 +73,11 @@ func GetAllNATs(filters map[string]string) ([]questions.NAT, error) {
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}
+
+	// Ensure we return an empty slice instead of nil
+	if results == nil {
+		results = make([]questions.NAT, 0)
+	}
 	return results, nil
 }
 

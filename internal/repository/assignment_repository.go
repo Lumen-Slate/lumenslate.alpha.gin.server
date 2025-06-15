@@ -95,7 +95,7 @@ func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignm
 
 	var results []model.Assignment
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Assignment, 0), nil
 	}
 	return results, nil
 }

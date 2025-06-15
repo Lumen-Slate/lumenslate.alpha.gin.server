@@ -84,6 +84,11 @@ func GetAllQuestionBanks(filters map[string]string) ([]model.QuestionBank, error
 	if err = cursor.All(ctx, &results); err != nil {
 		return nil, err
 	}
+
+	// Ensure we return an empty slice instead of nil
+	if results == nil {
+		results = make([]model.QuestionBank, 0)
+	}
 	return results, nil
 }
 

@@ -76,7 +76,7 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 
 	var results []model.Classroom
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Classroom, 0), nil
 	}
 	return results, nil
 }

@@ -64,7 +64,7 @@ func GetAllThreads(filters map[string]string) ([]model.Thread, error) {
 
 	var results []model.Thread
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Thread, 0), nil
 	}
 	return results, nil
 }

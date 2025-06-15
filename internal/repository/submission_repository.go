@@ -50,7 +50,7 @@ func GetAllSubmissions(filters map[string]string) ([]model.Submission, error) {
 
 	var results []model.Submission
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Submission, 0), nil
 	}
 	return results, nil
 }

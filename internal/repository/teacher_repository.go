@@ -88,7 +88,7 @@ func GetAllTeachers(filters map[string]string) ([]model.Teacher, error) {
 
 	var results []model.Teacher
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Teacher, 0), nil
 	}
 	return results, nil
 }

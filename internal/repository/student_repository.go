@@ -69,7 +69,7 @@ func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 
 	var results []model.Student
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Student, 0), nil
 	}
 	return results, nil
 }
