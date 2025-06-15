@@ -41,7 +41,7 @@ func GetAllComments() ([]model.Comment, error) {
 
 	var results []model.Comment
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Comment, 0), nil
 	}
 	return results, nil
 }

@@ -58,7 +58,7 @@ func GetAllVariables(filters map[string]string) ([]model.Variable, error) {
 
 	var results []model.Variable
 	if err = cursor.All(ctx, &results); err != nil {
-		return nil, err
+		return make([]model.Variable, 0), nil
 	}
 	return results, nil
 }
