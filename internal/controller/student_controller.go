@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateStudent(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateStudent(student); err != nil {
+	if err := repo.SaveStudent(student); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create student"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateStudent(c *gin.Context) {
 // @Router /students/{id} [get]
 func GetStudent(c *gin.Context) {
 	id := c.Param("id")
-	student, err := service.GetStudent(id)
+	student, err := repo.GetStudentByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Student not found"})
 		return
@@ -68,7 +68,7 @@ func GetStudent(c *gin.Context) {
 // @Router /students/{id} [delete]
 func DeleteStudent(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteStudent(id); err != nil {
+	if err := repo.DeleteStudent(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete student"})
 		return
 	}
@@ -91,7 +91,7 @@ func GetAllStudents(c *gin.Context) {
 		"email":  c.Query("email"),
 		"rollNo": c.Query("rollNo"),
 	}
-	students, err := service.GetAllStudents(filters)
+	students, err := repo.GetAllStudents(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch students"})
 		return
@@ -124,7 +124,7 @@ func UpdateStudent(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateStudent(id, student); err != nil {
+	if err := repo.SaveStudent(student); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -153,7 +153,7 @@ func PatchStudent(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated student
-	updated, err := service.PatchStudent(id, updates)
+	updated, err := repo.PatchStudent(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch student"})
 		return

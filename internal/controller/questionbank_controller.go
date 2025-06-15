@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -25,17 +25,12 @@ func CreateQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Generate ID before validation
 	q.ID = uuid.New().String()
-
-	// Validate the struct
 	if err := common.Validate.Struct(q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	if err := service.CreateQuestionBank(*q); err != nil {
+	if err := repo.SaveQuestionBank(*q); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create question bank"})
 		return
 	}
@@ -50,7 +45,7 @@ func CreateQuestionBank(c *gin.Context) {
 // @Router /question-banks/{id} [get]
 func GetQuestionBank(c *gin.Context) {
 	id := c.Param("id")
-	q, err := service.GetQuestionBank(id)
+	q, err := repo.GetQuestionBankByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 		return
@@ -65,7 +60,7 @@ func GetQuestionBank(c *gin.Context) {
 // @Router /question-banks/{id} [delete]
 func DeleteQuestionBank(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteQuestionBank(id); err != nil {
+	if err := repo.DeleteQuestionBank(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete"})
 		return
 	}
@@ -92,7 +87,7 @@ func GetAllQuestionBanks(c *gin.Context) {
 		"limit":     c.DefaultQuery("limit", "10"),
 		"offset":    c.DefaultQuery("offset", "0"),
 	}
-	items, err := service.GetAllQuestionBanks(filters)
+	items, err := repo.GetAllQuestionBanks(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch"})
 		return
@@ -115,16 +110,13 @@ func UpdateQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Validate the struct
 	if err := common.Validate.Struct(q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	q.ID = id
 	q.UpdatedAt = time.Now()
-	if err := service.UpdateQuestionBank(id, q); err != nil {
+	if err := repo.SaveQuestionBank(q); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -146,11 +138,8 @@ func PatchQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
-
-	updated, err := service.PatchQuestionBank(id, updates)
+	updated, err := repo.PatchQuestionBank(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return

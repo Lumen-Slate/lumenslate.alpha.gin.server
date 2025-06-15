@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateClassroom(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateClassroom(classroom); err != nil {
+	if err := repo.SaveClassroom(classroom); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create classroom"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateClassroom(c *gin.Context) {
 // @Router /classrooms/{id} [get]
 func GetClassroom(c *gin.Context) {
 	id := c.Param("id")
-	classroom, err := service.GetClassroom(id)
+	classroom, err := repo.GetClassroomByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Classroom not found"})
 		return
@@ -68,7 +68,7 @@ func GetClassroom(c *gin.Context) {
 // @Router /classrooms/{id} [delete]
 func DeleteClassroom(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteClassroom(id); err != nil {
+	if err := repo.DeleteClassroom(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete classroom"})
 		return
 	}
@@ -90,7 +90,7 @@ func GetAllClassrooms(c *gin.Context) {
 		"teacherId": c.Query("teacherId"),
 		"tags":      c.Query("tags"),
 	}
-	classrooms, err := service.GetAllClassrooms(filters)
+	classrooms, err := repo.GetAllClassrooms(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch classrooms"})
 		return
@@ -123,7 +123,7 @@ func UpdateClassroom(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateClassroom(id, classroom); err != nil {
+	if err := repo.SaveClassroom(classroom); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -150,7 +150,7 @@ func PatchClassroom(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated classroom
-	updated, err := service.PatchClassroom(id, updates)
+	updated, err := repo.PatchClassroom(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
 		return

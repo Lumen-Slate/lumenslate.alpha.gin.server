@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateComment(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateComment(comment); err != nil {
+	if err := repo.SaveComment(comment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateComment(c *gin.Context) {
 // @Router /comments/{id} [get]
 func GetComment(c *gin.Context) {
 	id := c.Param("id")
-	comment, err := service.GetComment(id)
+	comment, err := repo.GetCommentByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Comment not found"})
 		return
@@ -68,7 +68,7 @@ func GetComment(c *gin.Context) {
 // @Router /comments/{id} [delete]
 func DeleteComment(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteComment(id); err != nil {
+	if err := repo.DeleteComment(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete comment"})
 		return
 	}
@@ -81,7 +81,7 @@ func DeleteComment(c *gin.Context) {
 // @Success 200 {array} model.Comment
 // @Router /comments [get]
 func GetAllComments(c *gin.Context) {
-	comments, err := service.GetAllComments()
+	comments, err := repo.GetAllComments()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch comments"})
 		return
@@ -114,7 +114,7 @@ func UpdateComment(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateComment(id, comment); err != nil {
+	if err := repo.SaveComment(comment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -143,7 +143,7 @@ func PatchComment(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated comment
-	updated, err := service.PatchComment(id, updates)
+	updated, err := repo.PatchComment(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch comment"})
 		return

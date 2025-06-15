@@ -4,7 +4,7 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
-	"lumenslate/internal/service"
+	repo "lumenslate/internal/repository"
 	"net/http"
 	"time"
 
@@ -38,7 +38,7 @@ func CreateSubmission(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateSubmission(submission); err != nil {
+	if err := repo.SaveSubmission(submission); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create submission"})
 		return
 	}
@@ -53,7 +53,7 @@ func CreateSubmission(c *gin.Context) {
 // @Router /submissions/{id} [get]
 func GetSubmission(c *gin.Context) {
 	id := c.Param("id")
-	submission, err := service.GetSubmission(id)
+	submission, err := repo.GetSubmissionByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Submission not found"})
 		return
@@ -68,7 +68,7 @@ func GetSubmission(c *gin.Context) {
 // @Router /submissions/{id} [delete]
 func DeleteSubmission(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteSubmission(id); err != nil {
+	if err := repo.DeleteSubmission(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete submission"})
 		return
 	}
@@ -89,7 +89,7 @@ func GetAllSubmissions(c *gin.Context) {
 		filters["assignmentId"] = assignmentId
 	}
 
-	submissions, err := service.GetAllSubmissions(filters)
+	submissions, err := repo.GetAllSubmissions(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch submissions"})
 		return
@@ -122,7 +122,7 @@ func UpdateSubmission(c *gin.Context) {
 		return
 	}
 
-	if err := service.UpdateSubmission(id, submission); err != nil {
+	if err := repo.SaveSubmission(submission); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
@@ -151,7 +151,7 @@ func PatchSubmission(c *gin.Context) {
 	updates["updatedAt"] = time.Now()
 
 	// Get the updated submission
-	updated, err := service.PatchSubmission(id, updates)
+	updated, err := repo.PatchSubmission(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch submission"})
 		return

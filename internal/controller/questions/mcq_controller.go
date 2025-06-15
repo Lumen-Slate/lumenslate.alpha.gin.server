@@ -4,7 +4,7 @@ package questions
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model/questions"
-	service "lumenslate/internal/service/questions"
+	repo "lumenslate/internal/repository/questions"
 	"net/http"
 	"time"
 
@@ -46,7 +46,7 @@ func CreateMCQ(c *gin.Context) {
 		return
 	}
 
-	if err := service.CreateMCQ(*m); err != nil {
+	if err := repo.SaveMCQ(*m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MCQ"})
 		return
 	}
@@ -61,7 +61,7 @@ func CreateMCQ(c *gin.Context) {
 // @Router /mcqs/{id} [get]
 func GetMCQ(c *gin.Context) {
 	id := c.Param("id")
-	m, err := service.GetMCQ(id)
+	m, err := repo.GetMCQByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "MCQ not found"})
 		return
@@ -76,7 +76,7 @@ func GetMCQ(c *gin.Context) {
 // @Router /mcqs/{id} [delete]
 func DeleteMCQ(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.DeleteMCQ(id); err != nil {
+	if err := repo.DeleteMCQ(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete MCQ"})
 		return
 	}
@@ -96,7 +96,7 @@ func GetAllMCQs(c *gin.Context) {
 		"limit":  c.DefaultQuery("limit", "10"),
 		"offset": c.DefaultQuery("offset", "0"),
 	}
-	mcqs, err := service.GetAllMCQs(filters)
+	mcqs, err := repo.GetAllMCQs(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch MCQs"})
 		return
@@ -128,7 +128,7 @@ func UpdateMCQ(c *gin.Context) {
 
 	m.ID = id
 	m.UpdatedAt = time.Now()
-	if err := service.UpdateMCQ(id, m); err != nil {
+	if err := repo.SaveMCQ(m); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update MCQ"})
 		return
 	}
@@ -154,7 +154,7 @@ func PatchMCQ(c *gin.Context) {
 	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
 
-	updated, err := service.PatchMCQ(id, updates)
+	updated, err := repo.PatchMCQ(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch MCQ"})
 		return
@@ -190,7 +190,7 @@ func CreateBulkMCQs(c *gin.Context) {
 		}
 	}
 
-	if err := service.CreateBulkMCQs(mcqs); err != nil {
+	if err := repo.SaveBulkMCQs(mcqs); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create MCQs"})
 		return
 	}

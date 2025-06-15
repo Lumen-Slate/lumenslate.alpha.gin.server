@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"lumenslate/internal/service"
+	service "lumenslate/internal/grpc_service"
 
 	"github.com/gin-gonic/gin"
 )
