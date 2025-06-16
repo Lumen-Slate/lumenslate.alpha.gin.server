@@ -50,6 +50,7 @@ func init() {
 			log.Println("✅ Environment loaded from local .env")
 		}
 	}
+
 	uri := os.Getenv("MONGO_URI")
 	if err := db.InitMongoDB(uri); err != nil {
 		log.Fatal("Could not connect to MongoDB:", err)
@@ -59,8 +60,20 @@ func init() {
 func main() {
 	log.Println("🟡 Warming up server...")
 
+	// Set Gin log mode based on environment
+	if os.Getenv("GO_ENV") == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+
 	// Debug log to confirm env vars are loaded
-	log.Printf("✅ Mongo App Name: %s", strings.Split(strings.Split(os.Getenv("MONGO_URI"), "appName=")[1], "&")[0])
+	if uri := os.Getenv("MONGO_URI"); strings.Contains(uri, "appName=") {
+		appName := strings.Split(strings.Split(uri, "appName=")[1], "&")[0]
+		log.Printf("✅ Mongo App Name: %s", appName)
+	} else {
+		log.Println("⚠️ Mongo URI does not contain appName parameter.")
+	}
 	log.Printf("✅ PORT: %s", os.Getenv("PORT"))
 
 	// Setup Gin
@@ -86,8 +99,8 @@ func main() {
 	address := ":" + port
 
 	// Log endpoints
-	fmt.Printf("✅ Server running at:       http://localhost:%s\n", port)
-	fmt.Printf("📘 Swagger docs available:  http://localhost:%s/docs/index.html\n", port)
+	fmt.Printf("✅ Server running on port %s\n", port)
+	fmt.Printf("📘 Swagger docs available at /docs/index.html\n")
 
 	// Run the server in a goroutine for graceful shutdown
 	go func() {
