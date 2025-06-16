@@ -912,6 +912,215 @@ func (x *VariableFilter) GetOptions() []string {
 	return nil
 }
 
+// --- /agent_service.proto ---
+type AgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	File          string                 `protobuf:"bytes,1,opt,name=file,proto3" json:"file,omitempty"`
+	FileType      string                 `protobuf:"bytes,2,opt,name=fileType,proto3" json:"fileType,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=userId,proto3" json:"userId,omitempty"`
+	Role          string                 `protobuf:"bytes,4,opt,name=role,proto3" json:"role,omitempty"`
+	Message       string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,7,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentRequest) Reset() {
+	*x = AgentRequest{}
+	mi := &file_internal_proto_ai_service_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentRequest) ProtoMessage() {}
+
+func (x *AgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_ai_service_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentRequest.ProtoReflect.Descriptor instead.
+func (*AgentRequest) Descriptor() ([]byte, []int) {
+	return file_internal_proto_ai_service_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AgentRequest) GetFile() string {
+	if x != nil {
+		return x.File
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetFileType() string {
+	if x != nil {
+		return x.FileType
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AgentRequest) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type AgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // generic success or error message
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	AgentName     string                 `protobuf:"bytes,3,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	AgentResponse string                 `protobuf:"bytes,4,opt,name=agent_response,json=agentResponse,proto3" json:"agent_response,omitempty"` // structured JSON as string
+	SessionId     string                 `protobuf:"bytes,5,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,6,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,7,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
+	ResponseTime  string                 `protobuf:"bytes,8,opt,name=response_time,json=responseTime,proto3" json:"response_time,omitempty"`
+	Role          string                 `protobuf:"bytes,9,opt,name=role,proto3" json:"role,omitempty"`          // teacher, student
+	Feedback      string                 `protobuf:"bytes,10,opt,name=feedback,proto3" json:"feedback,omitempty"` // positive, negative, default=null
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentResponse) Reset() {
+	*x = AgentResponse{}
+	mi := &file_internal_proto_ai_service_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentResponse) ProtoMessage() {}
+
+func (x *AgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_ai_service_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentResponse.ProtoReflect.Descriptor instead.
+func (*AgentResponse) Descriptor() ([]byte, []int) {
+	return file_internal_proto_ai_service_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AgentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetAgentResponse() string {
+	if x != nil {
+		return x.AgentResponse
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetResponseTime() string {
+	if x != nil {
+		return x.ResponseTime
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AgentResponse) GetFeedback() string {
+	if x != nil {
+		return x.Feedback
+	}
+	return ""
+}
+
 var File_internal_proto_ai_service_proto protoreflect.FileDescriptor
 
 const file_internal_proto_ai_service_proto_rawDesc = "" +
@@ -976,14 +1185,37 @@ const file_internal_proto_ai_service_proto_rawDesc = "" +
 	"\afilters\x18\x03 \x01(\v2\x1a.ai_service.VariableFilterR\afilters\"@\n" +
 	"\x0eVariableFilter\x12\x14\n" +
 	"\x05range\x18\x01 \x03(\x05R\x05range\x12\x18\n" +
-	"\aoptions\x18\x02 \x03(\tR\aoptions2\xa8\x04\n" +
+	"\aoptions\x18\x02 \x03(\tR\aoptions\"\xc0\x01\n" +
+	"\fAgentRequest\x12\x12\n" +
+	"\x04file\x18\x01 \x01(\tR\x04file\x12\x1a\n" +
+	"\bfileType\x18\x02 \x01(\tR\bfileType\x12\x16\n" +
+	"\x06userId\x18\x03 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04role\x18\x04 \x01(\tR\x04role\x12\x18\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\x12\x1c\n" +
+	"\tcreatedAt\x18\x06 \x01(\tR\tcreatedAt\x12\x1c\n" +
+	"\tupdatedAt\x18\a \x01(\tR\tupdatedAt\"\xb8\x02\n" +
+	"\rAgentResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x03 \x01(\tR\tagentName\x12%\n" +
+	"\x0eagent_response\x18\x04 \x01(\tR\ragentResponse\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x05 \x01(\tR\tsessionId\x12\x1c\n" +
+	"\tcreatedAt\x18\x06 \x01(\tR\tcreatedAt\x12\x1c\n" +
+	"\tupdatedAt\x18\a \x01(\tR\tupdatedAt\x12#\n" +
+	"\rresponse_time\x18\b \x01(\tR\fresponseTime\x12\x12\n" +
+	"\x04role\x18\t \x01(\tR\x04role\x12\x1a\n" +
+	"\bfeedback\x18\n" +
+	" \x01(\tR\bfeedback2\xe6\x04\n" +
 	"\tAIService\x12Z\n" +
 	"\x0fGenerateContext\x12\".ai_service.GenerateContextRequest\x1a#.ai_service.GenerateContextResponse\x12\\\n" +
 	"\x0fDetectVariables\x12#.ai_service.VariableDetectorRequest\x1a$.ai_service.VariableDetectorResponse\x12d\n" +
 	"\x0fSegmentQuestion\x12'.ai_service.QuestionSegmentationRequest\x1a(.ai_service.QuestionSegmentationResponse\x12I\n" +
 	"\x15GenerateMCQVariations\x12\x16.ai_service.MCQRequest\x1a\x18.ai_service.MCQVariation\x12I\n" +
 	"\x15GenerateMSQVariations\x12\x16.ai_service.MSQRequest\x1a\x18.ai_service.MSQVariation\x12e\n" +
-	"\x12FilterAndRandomize\x12&.ai_service.FilterAndRandomizerRequest\x1a'.ai_service.FilterAndRandomizerResponseB&Z$internal/proto/ai_service;ai_serviceb\x06proto3"
+	"\x12FilterAndRandomize\x12&.ai_service.FilterAndRandomizerRequest\x1a'.ai_service.FilterAndRandomizerResponse\x12<\n" +
+	"\x05Agent\x12\x18.ai_service.AgentRequest\x1a\x19.ai_service.AgentResponseB&Z$internal/proto/ai_service;ai_serviceb\x06proto3"
 
 var (
 	file_internal_proto_ai_service_proto_rawDescOnce sync.Once
@@ -997,7 +1229,7 @@ func file_internal_proto_ai_service_proto_rawDescGZIP() []byte {
 	return file_internal_proto_ai_service_proto_rawDescData
 }
 
-var file_internal_proto_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_internal_proto_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_internal_proto_ai_service_proto_goTypes = []any{
 	(*GenerateContextRequest)(nil),       // 0: ai_service.GenerateContextRequest
 	(*GenerateContextResponse)(nil),      // 1: ai_service.GenerateContextResponse
@@ -1016,6 +1248,8 @@ var file_internal_proto_ai_service_proto_goTypes = []any{
 	(*FilterAndRandomizerResponse)(nil),  // 14: ai_service.FilterAndRandomizerResponse
 	(*RandomizedVariable)(nil),           // 15: ai_service.RandomizedVariable
 	(*VariableFilter)(nil),               // 16: ai_service.VariableFilter
+	(*AgentRequest)(nil),                 // 17: ai_service.AgentRequest
+	(*AgentResponse)(nil),                // 18: ai_service.AgentResponse
 }
 var file_internal_proto_ai_service_proto_depIdxs = []int32{
 	4,  // 0: ai_service.VariableDetectorResponse.variables:type_name -> ai_service.DetectedVariable
@@ -1029,14 +1263,16 @@ var file_internal_proto_ai_service_proto_depIdxs = []int32{
 	7,  // 8: ai_service.AIService.GenerateMCQVariations:input_type -> ai_service.MCQRequest
 	10, // 9: ai_service.AIService.GenerateMSQVariations:input_type -> ai_service.MSQRequest
 	13, // 10: ai_service.AIService.FilterAndRandomize:input_type -> ai_service.FilterAndRandomizerRequest
-	1,  // 11: ai_service.AIService.GenerateContext:output_type -> ai_service.GenerateContextResponse
-	3,  // 12: ai_service.AIService.DetectVariables:output_type -> ai_service.VariableDetectorResponse
-	6,  // 13: ai_service.AIService.SegmentQuestion:output_type -> ai_service.QuestionSegmentationResponse
-	8,  // 14: ai_service.AIService.GenerateMCQVariations:output_type -> ai_service.MCQVariation
-	11, // 15: ai_service.AIService.GenerateMSQVariations:output_type -> ai_service.MSQVariation
-	14, // 16: ai_service.AIService.FilterAndRandomize:output_type -> ai_service.FilterAndRandomizerResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
+	17, // 11: ai_service.AIService.Agent:input_type -> ai_service.AgentRequest
+	1,  // 12: ai_service.AIService.GenerateContext:output_type -> ai_service.GenerateContextResponse
+	3,  // 13: ai_service.AIService.DetectVariables:output_type -> ai_service.VariableDetectorResponse
+	6,  // 14: ai_service.AIService.SegmentQuestion:output_type -> ai_service.QuestionSegmentationResponse
+	8,  // 15: ai_service.AIService.GenerateMCQVariations:output_type -> ai_service.MCQVariation
+	11, // 16: ai_service.AIService.GenerateMSQVariations:output_type -> ai_service.MSQVariation
+	14, // 17: ai_service.AIService.FilterAndRandomize:output_type -> ai_service.FilterAndRandomizerResponse
+	18, // 18: ai_service.AIService.Agent:output_type -> ai_service.AgentResponse
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1053,7 +1289,7 @@ func file_internal_proto_ai_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_ai_service_proto_rawDesc), len(file_internal_proto_ai_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
