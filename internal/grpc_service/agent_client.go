@@ -13,6 +13,7 @@ import (
 	"lumenslate/internal/model"
 	pb "lumenslate/internal/proto/ai_service"
 	"lumenslate/internal/repository"
+	quest "lumenslate/internal/repository/questions"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -347,24 +348,40 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId st
 				allSelectedQuestions = append(allSelectedQuestions, selectedQuestions...)
 
 				// Count questions by type and collect IDs
+				// Instead of using the generic Questions model, we need to query each collection directly
+				// to properly determine question types
 				for _, q := range selectedQuestions {
-					// Since model.Questions doesn't have clear type indicators,
-					// we'll determine type based on available fields
-					if len(q.Options) > 0 {
-						// Has options - could be MCQ or MSQ
-						// For now, treat all as MCQ since we can't distinguish easily
+					questionID := q.ID
+
+					// Check if this is an MCQ
+					if mcq, err := quest.GetMCQByID(questionID); err == nil && mcq != nil {
 						mcqCount++
-						mcqIds = append(mcqIds, q.ID)
-					} else if q.Answer != "" {
-						// No options but has answer - check if numeric (NAT) or text (Subjective)
-						if _, err := strconv.ParseFloat(q.Answer, 64); err == nil {
-							natCount++
-							natIds = append(natIds, q.ID)
-						} else {
-							subjectiveCount++
-							subjectiveIds = append(subjectiveIds, q.ID)
-						}
+						mcqIds = append(mcqIds, questionID)
+						continue
 					}
+
+					// Check if this is an MSQ
+					if msq, err := quest.GetMSQByID(questionID); err == nil && msq != nil {
+						msqCount++
+						msqIds = append(msqIds, questionID)
+						continue
+					}
+
+					// Check if this is a NAT
+					if nat, err := quest.GetNATByID(questionID); err == nil && nat != nil {
+						natCount++
+						natIds = append(natIds, questionID)
+						continue
+					}
+
+					// Check if this is a Subjective
+					if subjective, err := quest.GetSubjectiveByID(questionID); err == nil && subjective != nil {
+						subjectiveCount++
+						subjectiveIds = append(subjectiveIds, questionID)
+						continue
+					}
+
+					log.Printf("WARNING: Question ID %s could not be found in any specific collection", questionID)
 				}
 
 				log.Printf("DEBUG: Successfully selected %d questions for subject '%s'", numQuestions, subject)
