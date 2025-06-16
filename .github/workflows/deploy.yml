@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📅 Checkout repository
         uses: actions/checkout@v3
 
       - name: 🔐 Authenticate to Google Cloud
@@ -40,4 +40,4 @@ jobs:
             --memory 1.5Gi \
             --port 8080 \
             --allow-unauthenticated \
-            --set-env-vars MONGO_URI=${{ secrets.MONGO_URI }},GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=${{ secrets.GOOGLE_CLOUD_LOCATION }},GOOGLE_GENAI_USE_VERTEXAI=${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }},GRPC_SERVICE_URL=${{ secrets.GRPC_SERVICE_URL }},GCP_SA_KEY=${{ secrets.GCP_SA_KEY }}
+            --set-env-vars MONGO_URI=${{ secrets.MONGO_URI }},GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=${{ secrets.GOOGLE_CLOUD_LOCATION }},GOOGLE_GENAI_USE_VERTEXAI=${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }},GRPC_SERVICE_URL=${{ secrets.GRPC_SERVICE_URL }}

@@ -434,24 +434,17 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 		location = "us-central1" // Default fallback
 	}
 
-	// Set up service account credentials path
-	credentialsPath, err := getServiceAccountJSONPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
-	}
-
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
-	// Create AI Platform service client with regional endpoint
+	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithCredentialsFile(credentialsPath),
-		option.WithEndpoint(endpoint))
+		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
 
-	// Clean corpus name for use as display name (similar to Python implementation)
+	// Clean corpus name for use as display name
 	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
 
 	// Check if corpus already exists
@@ -462,7 +455,6 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	if err != nil {
 		log.Printf("[AI] Warning: Could not check existing corpora: %v", err)
 	} else {
-		// Check if corpus with this display name already exists
 		for _, corpus := range existingCorpora.RagCorpora {
 			if corpus.DisplayName == displayName {
 				return map[string]interface{}{
@@ -480,7 +472,6 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ragCorpus := &aiplatform.GoogleCloudAiplatformV1RagCorpus{
 		DisplayName: displayName,
 	}
-
 	createCall := service.Projects.Locations.RagCorpora.Create(parent, ragCorpus)
 	operation, err := createCall.Do()
 	if err != nil {
@@ -507,19 +498,12 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 		location = "us-central1" // Default fallback
 	}
 
-	// Set up service account credentials path
-	credentialsPath, err := getServiceAccountJSONPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
-	}
-
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
-	// Create AI Platform service client with regional endpoint
+	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithCredentialsFile(credentialsPath),
-		option.WithEndpoint(endpoint))
+		option.WithEndpoint(endpoint)) // ⬅️ removed WithCredentialsFile
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -539,7 +523,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	var corpusResourceName string
 	var foundCorpus *aiplatform.GoogleCloudAiplatformV1RagCorpus
 
-	// Find the corpus with the matching display name
+	// Match by displayName
 	for _, corpus := range existingCorpora.RagCorpora {
 		if corpus.DisplayName == displayName {
 			corpusResourceName = corpus.Name
@@ -556,26 +540,23 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 		}, nil
 	}
 
-	// List files in the corpus
+	// List files inside the corpus
 	listFilesCall := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName)
-
 	filesResponse, err := listFilesCall.Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
 	}
 
-	// Format the files data in camelCase
+	// Format files response
 	var files []map[string]interface{}
 	for _, file := range filesResponse.RagFiles {
-		fileData := map[string]interface{}{
+		files = append(files, map[string]interface{}{
 			"name":        file.Name,
 			"displayName": file.DisplayName,
 			"description": file.Description,
 			"createTime":  file.CreateTime,
 			"updateTime":  file.UpdateTime,
-		}
-
-		files = append(files, fileData)
+		})
 	}
 
 	return map[string]interface{}{
@@ -686,19 +667,12 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 		location = "us-central1" // Default fallback
 	}
 
-	// Set up service account credentials path
-	credentialsPath, err := getServiceAccountJSONPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
-	}
-
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
-	// Create AI Platform service client with regional endpoint
+	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithCredentialsFile(credentialsPath),
-		option.WithEndpoint(endpoint))
+		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -715,13 +689,12 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 	// Format the corpora data in camelCase
 	var corpora []map[string]interface{}
 	for _, corpus := range existingCorpora.RagCorpora {
-		corpusData := map[string]interface{}{
+		corpora = append(corpora, map[string]interface{}{
 			"name":        corpus.Name,
 			"displayName": corpus.DisplayName,
 			"createTime":  corpus.CreateTime,
 			"updateTime":  corpus.UpdateTime,
-		}
-		corpora = append(corpora, corpusData)
+		})
 	}
 
 	return map[string]interface{}{
@@ -743,19 +716,12 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 		location = "us-central1" // Default fallback
 	}
 
-	// Set up service account credentials path
-	credentialsPath, err := getServiceAccountJSONPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
-	}
-
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
-	// Create AI Platform service client with regional endpoint
+	// Create AI Platform service client with default ADC credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithCredentialsFile(credentialsPath),
-		option.WithEndpoint(endpoint))
+		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -773,8 +739,6 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}
 
 	var corpusResourceName string
-
-	// Find the corpus with the matching display name
 	for _, corpus := range existingCorpora.RagCorpora {
 		if corpus.DisplayName == displayName {
 			corpusResourceName = corpus.Name
@@ -787,9 +751,8 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}
 
 	// List files in the corpus to find the one to delete
-	listFilesCall := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName)
-
-	filesResponse, err := listFilesCall.Do()
+	filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.
+		List(corpusResourceName).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
 	}
@@ -807,8 +770,8 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}
 
 	// Delete the file
-	deleteCall := service.Projects.Locations.RagCorpora.RagFiles.Delete(fileToDelete)
-	operation, err := deleteCall.Do()
+	operation, err := service.Projects.Locations.RagCorpora.RagFiles.
+		Delete(fileToDelete).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete file: %v", err)
 	}
@@ -834,19 +797,11 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 		location = "us-central1" // Default fallback
 	}
 
-	// Set up service account credentials path
-	credentialsPath, err := getServiceAccountJSONPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
-	}
-
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
-	// Create AI Platform service client with regional endpoint
-	service, err := aiplatform.NewService(ctx,
-		option.WithCredentialsFile(credentialsPath),
-		option.WithEndpoint(endpoint))
+	// Create AI Platform service client with regional endpoint (using ADC)
+	service, err := aiplatform.NewService(ctx, option.WithEndpoint(endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -856,66 +811,55 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 
 	// Find the corpus first
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
-	listCall := service.Projects.Locations.RagCorpora.List(parent)
-
-	existingCorpora, err := listCall.Do()
+	existingCorpora, err := service.Projects.Locations.RagCorpora.List(parent).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list corpora: %v", err)
 	}
 
 	var corpusResourceName string
-
-	// Find the corpus with the matching display name
 	for _, corpus := range existingCorpora.RagCorpora {
 		if corpus.DisplayName == displayName {
 			corpusResourceName = corpus.Name
 			break
 		}
 	}
-
 	if corpusResourceName == "" {
 		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
 	}
 
 	// Extract file ID from Google Drive URL
-	// Expected format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
 	re := regexp.MustCompile(`/file/d/([a-zA-Z0-9_-]+)`)
 	matches := re.FindStringSubmatch(fileLink)
-
 	if len(matches) <= 1 {
 		return nil, fmt.Errorf("invalid Google Drive URL format: could not extract file ID")
 	}
-
 	fileID := matches[1]
 
-	// Get the actual filename from Google Drive API
-	fileDisplayName, err := getGoogleDriveFileName(fileID, credentialsPath)
+	// Fetch file display name using Drive API (using ADC, no credentialsPath)
+	fileDisplayName, err := getGoogleDriveFileName(fileID) // Adjusted to match function signature
 	if err != nil {
 		log.Printf("[AI] Warning: Could not fetch file name from Google Drive: %v. Using fallback name.", err)
-		// Fallback: use a generic name with file ID
 		fileDisplayName = fmt.Sprintf("gdrive_file_%s", fileID)
 	}
 
-	// Log the file information
 	log.Printf("[AI] Adding file '%s' (ID: %s) to corpus '%s'", fileDisplayName, fileID, corpusName)
 
-	// Create the import request with the configuration to upload from Google Drive
+	// Build the import request
 	importRequest := &aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest{
 		ImportRagFilesConfig: &aiplatform.GoogleCloudAiplatformV1ImportRagFilesConfig{
 			GoogleDriveSource: &aiplatform.GoogleCloudAiplatformV1GoogleDriveSource{
 				ResourceIds: []*aiplatform.GoogleCloudAiplatformV1GoogleDriveSourceResourceId{
 					{
-						ResourceId:   fileID,               // Use the extracted file ID
-						ResourceType: "RESOURCE_TYPE_FILE", // Use the correct enum string name
+						ResourceId:   fileID,
+						ResourceType: "RESOURCE_TYPE_FILE",
 					},
 				},
 			},
 		},
 	}
 
-	importCall := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest)
-
-	operation, err := importCall.Do()
+	// Trigger the import
+	operation, err := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to add file to corpus: %v", err)
 	}
@@ -931,21 +875,12 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	}, nil
 }
 
-// getGoogleDriveFileName fetches the actual filename from Google Drive API
-func getGoogleDriveFileName(fileID, credentialsPath string) (string, error) {
+// getGoogleDriveFileName fetches the actual filename from Google Drive API using ADC
+func getGoogleDriveFileName(fileID string) (string, error) {
 	ctx := context.Background()
 
-	// If credentialsPath is empty, resolve it
-	if credentialsPath == "" {
-		var err error
-		credentialsPath, err = getServiceAccountJSONPath()
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Create Google Drive service client
-	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(credentialsPath))
+	// Create Google Drive service client using Application Default Credentials
+	driveService, err := drive.NewService(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Drive service: %v", err)
 	}
@@ -1235,33 +1170,4 @@ func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId strin
 	}
 
 	return subjective.ID, nil
-}
-
-// getServiceAccountJSONPath returns the path to the service account JSON file, writing it from env if needed
-func getServiceAccountJSONPath() (string, error) {
-	// 1. Check for GOOGLE_APPLICATION_CREDENTIALS env (Cloud Run best practice)
-	if path := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"); path != "" {
-		return path, nil
-	}
-	// 2. Check for local file
-	if _, err := os.Stat("service-account.json"); err == nil {
-		return "service-account.json", nil
-	}
-	// 3. Check for secret in env (GCP_SA_KEY)
-	if saKey := os.Getenv("GCP_SA_KEY"); saKey != "" {
-		// Write to /tmp/service-account.json (Cloud Run writable dir)
-		path := "/tmp/service-account.json"
-		f, err := os.Create(path)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		_, err = f.WriteString(saKey)
-		if err != nil {
-			return "", err
-		}
-		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", path)
-		return path, nil
-	}
-	return "", fmt.Errorf("No service account credentials found in GOOGLE_APPLICATION_CREDENTIALS, service-account.json, or GCP_SA_KEY env")
 }
