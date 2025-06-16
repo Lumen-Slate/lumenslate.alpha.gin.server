@@ -10,6 +10,7 @@ service AIService {
     rpc GenerateMCQVariations (MCQRequest) returns (MCQVariation);
     rpc GenerateMSQVariations (MSQRequest) returns (MSQVariation);
     rpc FilterAndRandomize (FilterAndRandomizerRequest) returns (FilterAndRandomizerResponse);
+    rpc Agent (AgentRequest) returns (AgentResponse);
 }
 
 // --- /context_generator.py ---
@@ -91,4 +92,28 @@ message RandomizedVariable {
 message VariableFilter {
     repeated int32 range = 1;
     repeated string options = 2;
+}
+
+// --- /agent_service.proto ---
+message AgentRequest {
+    string file = 1;
+    string fileType = 2;
+    string userId = 3;
+    string role = 4;
+    string message = 5;
+    string createdAt = 6;
+    string updatedAt = 7;
+}
+
+message AgentResponse {
+    string message = 1; // generic success or error message
+    string user_id = 2;
+    string agent_name = 3;
+    string agent_response = 4; // structured JSON as string
+    string session_id = 5;
+    string createdAt = 6;
+    string updatedAt = 7;
+    string response_time = 8;
+    string role = 9; // teacher, student
+    string feedback = 10; // positive, negative, default=null
 }

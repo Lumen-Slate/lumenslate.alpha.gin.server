@@ -15,5 +15,6 @@ func RegisterAIRoutes(r *gin.Engine) {
 		ai.POST("/generate-mcq", controller.GenerateMCQVariationsHandler)
 		ai.POST("/generate-msq", controller.GenerateMSQVariationsHandler)
 		ai.POST("/filter-randomize", controller.FilterAndRandomizeHandler)
+		ai.POST("/agent", controller.AgentHandler)
 	}
 }

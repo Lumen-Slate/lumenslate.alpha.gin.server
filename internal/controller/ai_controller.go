@@ -41,6 +41,16 @@ type FilterAndRandomizeRequest struct {
 	UserPrompt string `json:"userPrompt"`
 }
 
+type AgentRequest struct {
+	File      string `json:"file"`
+	FileType  string `json:"fileType"`
+	UserId    string `json:"userId"`
+	Role      string `json:"role"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
 // GenerateContextHandler godoc
 // @Summary      Generate context for a question
 // @Description  Generates context using AI for the given question, keywords, and language
@@ -219,4 +229,42 @@ func FilterAndRandomizeHandler(c *gin.Context) {
 	}
 	log.Printf("[AI] FilterAndRandomize success, count: %d", len(vars))
 	c.JSON(http.StatusOK, gin.H{"variables": vars})
+}
+
+// AgentHandler godoc
+// @Summary      Call Agent AI method
+// @Description  Calls the Agent gRPC method with the provided data
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        body  body  controller.AgentRequest  true  "Request body"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/agent [post]
+func AgentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/agent called")
+	var req AgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[AI] Invalid request: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Agent Request: %+v", req)
+	resp, err := service.Agent(
+		req.File,
+		req.FileType,
+		req.UserId,
+		req.Role,
+		req.Message,
+		req.CreatedAt,
+		req.UpdatedAt,
+	)
+	if err != nil {
+		log.Printf("[AI] Agent error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("[AI] Agent success")
+	c.JSON(http.StatusOK, resp)
 }
