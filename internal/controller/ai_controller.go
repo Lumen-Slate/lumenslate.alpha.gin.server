@@ -428,17 +428,16 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	location := "us-central1" // Force to supported RAG region
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	if location == "" {
+		location = "us-central1" // Default fallback
+	}
 
 	// Set up service account credentials path
-	credentialsPath := "service-account.json"
-	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-		// Try relative paths as fallback
-		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		}
+	credentialsPath, err := getServiceAccountJSONPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
 	}
 
 	// Use regional endpoint for RAG operations
@@ -502,17 +501,16 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	location := "us-central1" // Force to supported RAG region
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	if location == "" {
+		location = "us-central1" // Default fallback
+	}
 
 	// Set up service account credentials path
-	credentialsPath := "service-account.json"
-	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-		// Try relative paths as fallback
-		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		}
+	credentialsPath, err := getServiceAccountJSONPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
 	}
 
 	// Use regional endpoint for RAG operations
@@ -682,17 +680,16 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	location := "us-central1" // Force to supported RAG region
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	if location == "" {
+		location = "us-central1" // Default fallback
+	}
 
 	// Set up service account credentials path
-	credentialsPath := "service-account.json"
-	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-		// Try relative paths as fallback
-		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		}
+	credentialsPath, err := getServiceAccountJSONPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
 	}
 
 	// Use regional endpoint for RAG operations
@@ -740,17 +737,16 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	location := "us-central1" // Force to supported RAG region
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	if location == "" {
+		location = "us-central1" // Default fallback
+	}
 
 	// Set up service account credentials path
-	credentialsPath := "service-account.json"
-	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-		// Try relative paths as fallback
-		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		}
+	credentialsPath, err := getServiceAccountJSONPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
 	}
 
 	// Use regional endpoint for RAG operations
@@ -832,17 +828,16 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	location := "us-central1" // Force to supported RAG region
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	if location == "" {
+		location = "us-central1" // Default fallback
+	}
 
 	// Set up service account credentials path
-	credentialsPath := "service-account.json"
-	if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-		// Try relative paths as fallback
-		credentialsPath = "../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
-			credentialsPath = "../../lumenslate.alpha.gRPC.microservice.ai/app/agents/rag_agent/service-account.json"
-		}
+	credentialsPath, err := getServiceAccountJSONPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve service account credentials: %v", err)
 	}
 
 	// Use regional endpoint for RAG operations
@@ -939,6 +934,15 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 // getGoogleDriveFileName fetches the actual filename from Google Drive API
 func getGoogleDriveFileName(fileID, credentialsPath string) (string, error) {
 	ctx := context.Background()
+
+	// If credentialsPath is empty, resolve it
+	if credentialsPath == "" {
+		var err error
+		credentialsPath, err = getServiceAccountJSONPath()
+		if err != nil {
+			return "", err
+		}
+	}
 
 	// Create Google Drive service client
 	driveService, err := drive.NewService(ctx, option.WithCredentialsFile(credentialsPath))
@@ -1231,4 +1235,33 @@ func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId strin
 	}
 
 	return subjective.ID, nil
+}
+
+// getServiceAccountJSONPath returns the path to the service account JSON file, writing it from env if needed
+func getServiceAccountJSONPath() (string, error) {
+	// 1. Check for GOOGLE_APPLICATION_CREDENTIALS env (Cloud Run best practice)
+	if path := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"); path != "" {
+		return path, nil
+	}
+	// 2. Check for local file
+	if _, err := os.Stat("service-account.json"); err == nil {
+		return "service-account.json", nil
+	}
+	// 3. Check for secret in env (GCP_SA_KEY)
+	if saKey := os.Getenv("GCP_SA_KEY"); saKey != "" {
+		// Write to /tmp/service-account.json (Cloud Run writable dir)
+		path := "/tmp/service-account.json"
+		f, err := os.Create(path)
+		if err != nil {
+			return "", err
+		}
+		defer f.Close()
+		_, err = f.WriteString(saKey)
+		if err != nil {
+			return "", err
+		}
+		os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", path)
+		return path, nil
+	}
+	return "", fmt.Errorf("No service account credentials found in GOOGLE_APPLICATION_CREDENTIALS, service-account.json, or GCP_SA_KEY env")
 }
