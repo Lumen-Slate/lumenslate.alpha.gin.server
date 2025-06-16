@@ -4,7 +4,10 @@ package controller
 import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
+	"lumenslate/internal/model/questions"
 	repo "lumenslate/internal/repository"
+	quest "lumenslate/internal/repository/questions"
+	"lumenslate/internal/serializer"
 	"net/http"
 	"time"
 
@@ -20,30 +23,112 @@ import (
 // @Success 201 {object} model.Assignment
 // @Router /assignments [post]
 func CreateAssignment(c *gin.Context) {
-	// Create new Assignment with default values
-	a := *model.NewAssignment()
+	var req struct {
+		Title         string                 `json:"title" binding:"required"`
+		Body          string                 `json:"body" binding:"required"`
+		DueDate       time.Time              `json:"dueDate" binding:"required"`
+		Points        int                    `json:"points" binding:"required,min=0"`
+		MCQs          []questions.MCQ        `json:"mcqs"`
+		MSQs          []questions.MSQ        `json:"msqs"`
+		NATs          []questions.NAT        `json:"nats"`
+		Subjectives   []questions.Subjective `json:"subjectives"`
+		Comments      []model.Comment        `json:"comments"`
+		MCQIds        []string               `json:"mcqIds"`
+		MSQIds        []string               `json:"msqIds"`
+		NATIds        []string               `json:"natIds"`
+		SubjectiveIds []string               `json:"subjectiveIds"`
+	}
 
-	// Bind JSON to the struct
-	if err := c.ShouldBindJSON(&a); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Generate ID
-	a.ID = uuid.New().String()
-
-	// Validate the struct
-	if err := common.Validate.Struct(a); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+	assignment := model.Assignment{
+		ID:            uuid.New().String(),
+		Title:         req.Title,
+		Body:          req.Body,
+		DueDate:       req.DueDate,
+		Points:        req.Points,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+		IsActive:      true,
+		CommentIds:    []string{},
+		MCQIds:        []string{},
+		MSQIds:        []string{},
+		NATIds:        []string{},
+		SubjectiveIds: []string{},
 	}
 
-	if err := repo.SaveAssignment(a); err != nil {
+	// Save MCQs
+	for _, q := range req.MCQs {
+		q.ID = uuid.New().String()
+		if err := common.Validate.Struct(q); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid MCQ: " + err.Error()})
+			return
+		}
+		if err := quest.SaveMCQ(q); err == nil {
+			assignment.MCQIds = append(assignment.MCQIds, q.ID)
+		}
+	}
+
+	// Save MSQs
+	for _, q := range req.MSQs {
+		q.ID = uuid.New().String()
+		if err := common.Validate.Struct(q); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid MSQ: " + err.Error()})
+			return
+		}
+		if err := quest.SaveMSQ(q); err == nil {
+			assignment.MSQIds = append(assignment.MSQIds, q.ID)
+		}
+	}
+
+	// Save NATs
+	for _, q := range req.NATs {
+		q.ID = uuid.New().String()
+		if err := common.Validate.Struct(q); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NAT: " + err.Error()})
+			return
+		}
+		if err := quest.SaveNAT(q); err == nil {
+			assignment.NATIds = append(assignment.NATIds, q.ID)
+		}
+	}
+
+	// Save Subjectives
+	for _, q := range req.Subjectives {
+		q.ID = uuid.New().String()
+		if err := common.Validate.Struct(q); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Subjective: " + err.Error()})
+			return
+		}
+		if err := quest.SaveSubjective(q); err == nil {
+			assignment.SubjectiveIds = append(assignment.SubjectiveIds, q.ID)
+		}
+	}
+
+	// Save Comments
+	for _, cm := range req.Comments {
+		cm.ID = uuid.New().String()
+		if err := repo.SaveComment(cm); err == nil {
+			assignment.CommentIds = append(assignment.CommentIds, cm.ID)
+		}
+	}
+
+	// Append question IDs from request
+	assignment.MCQIds = append(assignment.MCQIds, req.MCQIds...)
+	assignment.MSQIds = append(assignment.MSQIds, req.MSQIds...)
+	assignment.NATIds = append(assignment.NATIds, req.NATIds...)
+	assignment.SubjectiveIds = append(assignment.SubjectiveIds, req.SubjectiveIds...)
+
+	// Save assignment
+	if err := repo.SaveAssignment(assignment); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, a)
+	c.JSON(http.StatusCreated, assignment)
 }
 
 // @Summary Get Assignment by ID
@@ -59,7 +144,16 @@ func GetAssignment(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Assignment not found"})
 		return
 	}
-	c.JSON(http.StatusOK, a)
+
+	// Check query param
+	extended := c.DefaultQuery("extended", "false") == "true"
+
+	if extended {
+		ext := serializer.NewAssignmentExtended(a)
+		c.JSON(http.StatusOK, ext)
+	} else {
+		c.JSON(http.StatusOK, a)
+	}
 }
 
 // @Summary Delete Assignment
@@ -143,6 +237,21 @@ func GetAllAssignments(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Check if extended query param is true
+	extended := c.DefaultQuery("extended", "false") == "true"
+
+	if extended {
+		extendedList := make([]*serializer.AssignmentExtended, 0, len(assignments))
+		for i := range assignments {
+			ext := serializer.NewAssignmentExtended(&assignments[i])
+			extendedList = append(extendedList, ext)
+		}
+		c.JSON(http.StatusOK, extendedList)
+		return
+	}
+
+	// Default plain assignment list
 	c.JSON(http.StatusOK, assignments)
 }
 

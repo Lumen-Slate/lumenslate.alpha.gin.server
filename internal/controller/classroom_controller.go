@@ -5,6 +5,7 @@ import (
 	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/serializer"
 	"net/http"
 	"time"
 
@@ -19,29 +20,78 @@ import (
 // @Param classroom body model.Classroom true "Classroom JSON"
 // @Success 201 {object} model.Classroom
 // @Router /classrooms [post]
-func CreateClassroom(c *gin.Context) {
-	// Create new Classroom with default values
-	classroom := *model.NewClassroom()
+type ClassroomCreateRequest struct {
+	Subject       string             `json:"subject" binding:"required"`
+	TeacherIDs    []string           `json:"teacherIds"`
+	Teachers      []model.Teacher    `json:"teachers"`
+	AssignmentIDs []string           `json:"assignmentIds"`
+	Assignments   []model.Assignment `json:"assignments"`
+	Credits       int                `json:"credits" binding:"required,min=0"`
+	Tags          []string           `json:"tags"`
+}
 
-	// Bind JSON to the struct
-	if err := c.ShouldBindJSON(&classroom); err != nil {
+func CreateClassroom(c *gin.Context) {
+	var req ClassroomCreateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Generate ID
+	classroom := *model.NewClassroom()
 	classroom.ID = uuid.New().String()
+	classroom.Subject = req.Subject
+	classroom.Credits = req.Credits
+	classroom.Tags = req.Tags
 
-	// Validate the struct
+	// Validate and process teachers
+	for _, t := range req.Teachers {
+		if t.ID == "" {
+			t.ID = uuid.New().String()
+		}
+		if err := common.Validate.Struct(t); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid teacher: " + err.Error()})
+			return
+		}
+		if err := repo.SaveTeacher(t); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save teacher: " + err.Error()})
+			return
+		}
+		classroom.TeacherIDs = append(classroom.TeacherIDs, t.ID)
+	}
+	classroom.TeacherIDs = append(classroom.TeacherIDs, req.TeacherIDs...)
+
+	// Validate and process assignments
+	for _, a := range req.Assignments {
+		if a.ID == "" {
+			a.ID = uuid.New().String()
+		}
+		if err := common.Validate.Struct(a); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment: " + err.Error()})
+			return
+		}
+		if err := repo.SaveAssignment(a); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save assignment: " + err.Error()})
+			return
+		}
+		classroom.AssignmentIDs = append(classroom.AssignmentIDs, a.ID)
+	}
+	classroom.AssignmentIDs = append(classroom.AssignmentIDs, req.AssignmentIDs...)
+
+	// Debugging log (optional)
+	// log.Printf("TeacherIDs: %+v", classroom.TeacherIDs)
+	// log.Printf("AssignmentIDs: %+v", classroom.AssignmentIDs)
+
+	// Validate classroom
 	if err := common.Validate.Struct(classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := repo.SaveClassroom(classroom); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create classroom"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create classroom: " + err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusCreated, classroom)
 }
 
@@ -56,6 +106,13 @@ func GetClassroom(c *gin.Context) {
 	classroom, err := repo.GetClassroomByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Classroom not found"})
+		return
+	}
+
+	extended := c.DefaultQuery("extended", "false") == "true"
+	if extended {
+		ext := serializer.NewClassroomExtended(classroom)
+		c.JSON(http.StatusOK, ext)
 		return
 	}
 	c.JSON(http.StatusOK, classroom)
@@ -117,7 +174,6 @@ func UpdateClassroom(c *gin.Context) {
 	classroom.ID = id
 	classroom.UpdatedAt = time.Now()
 
-	// Validate the struct
 	if err := common.Validate.Struct(classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -146,10 +202,8 @@ func PatchClassroom(c *gin.Context) {
 		return
 	}
 
-	// Add updatedAt timestamp
 	updates["updatedAt"] = time.Now()
 
-	// Get the updated classroom
 	updated, err := repo.PatchClassroom(id, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Patch failed"})
