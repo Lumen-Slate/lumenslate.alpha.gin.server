@@ -5,13 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"lumenslate/internal/model"
-	pb "lumenslate/internal/proto/ai_service"
-	"lumenslate/internal/repository"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	"lumenslate/internal/model"
+	pb "lumenslate/internal/proto/ai_service"
+	"lumenslate/internal/repository"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // QuestionRequest represents a question request from the agent
@@ -26,6 +29,7 @@ type QuestionRequest struct {
 type AgentResponse struct {
 	QuestionsRequested []QuestionRequest `json:"questions_requested"`
 	AssessmentData     interface{}       `json:"assessment_data"`
+	AssignmentResult   interface{}       `json:"assignment_result"`
 	ReportCardData     interface{}       `json:"report_card_data"`
 }
 
@@ -119,8 +123,18 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 				log.Printf("Error handling question generation: %v", err)
 				return createErrorResponse(userId, err.Error(), res), nil
 			}
+		} else if agentResponse.AssignmentResult != nil {
+			// Handle assignment result saving (from assessor agent)
+			if assignmentResult, err := handleAssignmentResultSaving(agentResponse.AssignmentResult, userId); err == nil {
+				responseData = assignmentResult
+				agentName = "assessor_agent"
+				responseMessage = "Assignment assessment completed successfully"
+			} else {
+				log.Printf("Error handling assignment result saving: %v", err)
+				return createErrorResponse(userId, err.Error(), res), nil
+			}
 		} else if agentResponse.AssessmentData != nil {
-			// Handle assessment data saving
+			// Handle legacy assessment data saving (for backward compatibility)
 			if assessmentData, err := handleAssessmentSaving(agentResponse.AssessmentData, userId); err == nil {
 				responseData = assessmentData
 				agentName = "assessor_agent"
@@ -142,28 +156,28 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 		} else {
 			// Regular agent response without database operations
 			responseData = map[string]interface{}{
-				"agent_response": rawAgentResponse,
+				"agentResponse": rawAgentResponse,
 			}
 		}
 	} else {
 		// Couldn't parse as JSON, treat as regular response
 		responseData = map[string]interface{}{
-			"agent_response": rawAgentResponse,
+			"agentResponse": rawAgentResponse,
 		}
 	}
 
 	// Return the standardized response format
 	return map[string]interface{}{
-		"message":       responseMessage,
-		"user_id":       res.GetUserId(),
-		"agent_name":    agentName,
-		"data":          responseData,
-		"session_id":    res.GetSessionId(),
-		"createdAt":     res.GetCreatedAt(),
-		"updatedAt":     res.GetUpdatedAt(),
-		"response_time": res.GetResponseTime(),
-		"role":          res.GetRole(),
-		"feedback":      res.GetFeedback(),
+		"message":      responseMessage,
+		"teacherId":    res.GetUserId(),
+		"agentName":    agentName,
+		"data":         responseData,
+		"sessionId":    res.GetSessionId(),
+		"createdAt":    res.GetCreatedAt(),
+		"updatedAt":    res.GetUpdatedAt(),
+		"responseTime": res.GetResponseTime(),
+		"role":         res.GetRole(),
+		"feedback":     res.GetFeedback(),
 	}, nil
 }
 
@@ -178,16 +192,16 @@ func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map
 	}
 
 	return map[string]interface{}{
-		"message":       errorMessage,
-		"user_id":       userId,
-		"agent_name":    "root_agent",
-		"data":          map[string]interface{}{},
-		"session_id":    sessionId,
-		"createdAt":     createdAt,
-		"updatedAt":     updatedAt,
-		"response_time": responseTime,
-		"role":          "agent",
-		"feedback":      feedback,
+		"message":      errorMessage,
+		"teacherId":    userId,
+		"agentName":    "root_agent",
+		"data":         map[string]interface{}{},
+		"sessionId":    sessionId,
+		"createdAt":    createdAt,
+		"updatedAt":    updatedAt,
+		"responseTime": responseTime,
+		"role":         "agent",
+		"feedback":     feedback,
 	}
 }
 
@@ -247,12 +261,12 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 				totalRequested += req.NumberOfQuestions
 			}
 			subjectData := map[string]interface{}{
-				"subject":                   displaySubject,
-				"questions_requested_count": totalRequested,
-				"questions_available_count": 0,
-				"questions_returned_count":  0,
-				"questions":                 []map[string]interface{}{},
-				"message":                   fmt.Sprintf("Subject '%s' is not supported. Available subjects: Math, Science, English, History, Geography", displaySubject),
+				"subject":                 displaySubject,
+				"questionsRequestedCount": totalRequested,
+				"questionsAvailableCount": 0,
+				"questionsReturnedCount":  0,
+				"questions":               []map[string]interface{}{},
+				"message":                 fmt.Sprintf("Subject '%s' is not supported. Available subjects: Math, Science, English, History, Geography", displaySubject),
 			}
 			subjects = append(subjects, subjectData)
 			continue
@@ -339,22 +353,22 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 		// Check if we got all requested questions
 		if len(allQuestionsForSubject) < totalRequested {
 			subjectData := map[string]interface{}{
-				"subject":                   displaySubject,
-				"questions_requested_count": totalRequested,
-				"questions_available_count": int(totalAvailable),
-				"questions_returned_count":  0,
-				"questions":                 []map[string]interface{}{},
-				"message":                   fmt.Sprintf("Could not fulfill all requests for %s. Some difficulty levels may not have enough questions available.", displaySubject),
+				"subject":                 displaySubject,
+				"questionsRequestedCount": totalRequested,
+				"questionsAvailableCount": int(totalAvailable),
+				"questionsReturnedCount":  0,
+				"questions":               []map[string]interface{}{},
+				"message":                 fmt.Sprintf("Could not fulfill all requests for %s. Some difficulty levels may not have enough questions available.", displaySubject),
 			}
 			subjects = append(subjects, subjectData)
 		} else if len(allQuestionsForSubject) == 0 {
 			subjectData := map[string]interface{}{
-				"subject":                   displaySubject,
-				"questions_requested_count": totalRequested,
-				"questions_available_count": int(totalAvailable),
-				"questions_returned_count":  0,
-				"questions":                 []map[string]interface{}{},
-				"message":                   fmt.Sprintf("No questions available for %s with the requested difficulty levels", displaySubject),
+				"subject":                 displaySubject,
+				"questionsRequestedCount": totalRequested,
+				"questionsAvailableCount": int(totalAvailable),
+				"questionsReturnedCount":  0,
+				"questions":               []map[string]interface{}{},
+				"message":                 fmt.Sprintf("No questions available for %s with the requested difficulty levels", displaySubject),
 			}
 			subjects = append(subjects, subjectData)
 		} else {
@@ -363,11 +377,11 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 			formattedQuestions := make([]map[string]interface{}, len(allQuestionsForSubject))
 			for i, q := range allQuestionsForSubject {
 				questionData := map[string]interface{}{
-					"question_id": q.ID,
-					"question":    q.Question,
-					"type":        "MCQ", // Default to MCQ, you can enhance this based on your question structure
-					"answer":      q.Answer,
-					"difficulty":  string(q.Difficulty),
+					"questionId": q.ID,
+					"question":   q.Question,
+					"type":       "MCQ", // Default to MCQ, you can enhance this based on your question structure
+					"answer":     q.Answer,
+					"difficulty": string(q.Difficulty),
 				}
 
 				// Add options only for MCQ and MSQ types
@@ -379,11 +393,11 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 			}
 
 			subjectData := map[string]interface{}{
-				"subject":                   displaySubject,
-				"questions_requested_count": totalRequested,
-				"questions_available_count": int(totalAvailable),
-				"questions_returned_count":  len(formattedQuestions),
-				"questions":                 formattedQuestions,
+				"subject":                 displaySubject,
+				"questionsRequestedCount": totalRequested,
+				"questionsAvailableCount": int(totalAvailable),
+				"questionsReturnedCount":  len(formattedQuestions),
+				"questions":               formattedQuestions,
 			}
 
 			totalQuestionsReturned += len(formattedQuestions)
@@ -392,9 +406,9 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 	}
 
 	return map[string]interface{}{
-		"total_subjects_requested": totalSubjectsRequested,
-		"total_questions_returned": totalQuestionsReturned,
-		"subjects":                 subjects,
+		"totalSubjectsRequested": totalSubjectsRequested,
+		"totalQuestionsReturned": totalQuestionsReturned,
+		"subjects":               subjects,
 	}, nil
 }
 
@@ -574,21 +588,21 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 
 	// Build the response data structure
 	assessmentDataResponse := map[string]interface{}{
-		"student_id":   savedReport.StudentID,
-		"student_name": savedReport.StudentName,
-		"subject":      string(savedReport.Subject),
-		"score":        savedReport.Score,
+		"studentId":   savedReport.StudentID,
+		"studentName": savedReport.StudentName,
+		"subject":     string(savedReport.Subject),
+		"score":       savedReport.Score,
 	}
 
 	// Add optional fields only if they exist
 	if savedReport.GradeLetter != nil {
-		assessmentDataResponse["grade_letter"] = *savedReport.GradeLetter
+		assessmentDataResponse["gradeLetter"] = *savedReport.GradeLetter
 	}
 	if savedReport.ClassName != nil {
-		assessmentDataResponse["class_name"] = *savedReport.ClassName
+		assessmentDataResponse["className"] = *savedReport.ClassName
 	}
 	if savedReport.InstructorName != nil {
-		assessmentDataResponse["instructor_name"] = *savedReport.InstructorName
+		assessmentDataResponse["instructorName"] = *savedReport.InstructorName
 	}
 	if savedReport.Term != nil {
 		assessmentDataResponse["term"] = *savedReport.Term
@@ -597,40 +611,40 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 		assessmentDataResponse["remarks"] = *savedReport.Remarks
 	}
 	if savedReport.MidtermScore != nil {
-		assessmentDataResponse["midterm_score"] = *savedReport.MidtermScore
+		assessmentDataResponse["midtermScore"] = *savedReport.MidtermScore
 	}
 	if savedReport.FinalExamScore != nil {
-		assessmentDataResponse["final_exam_score"] = *savedReport.FinalExamScore
+		assessmentDataResponse["finalExamScore"] = *savedReport.FinalExamScore
 	}
 	if savedReport.QuizScore != nil {
-		assessmentDataResponse["quiz_score"] = *savedReport.QuizScore
+		assessmentDataResponse["quizScore"] = *savedReport.QuizScore
 	}
 	if savedReport.AssignmentScore != nil {
-		assessmentDataResponse["assignment_score"] = *savedReport.AssignmentScore
+		assessmentDataResponse["assignmentScore"] = *savedReport.AssignmentScore
 	}
 	if savedReport.PracticalScore != nil {
-		assessmentDataResponse["practical_score"] = *savedReport.PracticalScore
+		assessmentDataResponse["practicalScore"] = *savedReport.PracticalScore
 	}
 	if savedReport.OralPresentationScore != nil {
-		assessmentDataResponse["oral_presentation_score"] = *savedReport.OralPresentationScore
+		assessmentDataResponse["oralPresentationScore"] = *savedReport.OralPresentationScore
 	}
 	if savedReport.ConceptualUnderstanding != nil {
-		assessmentDataResponse["conceptual_understanding"] = *savedReport.ConceptualUnderstanding
+		assessmentDataResponse["conceptualUnderstanding"] = *savedReport.ConceptualUnderstanding
 	}
 	if savedReport.ProblemSolving != nil {
-		assessmentDataResponse["problem_solving"] = *savedReport.ProblemSolving
+		assessmentDataResponse["problemSolving"] = *savedReport.ProblemSolving
 	}
 	if savedReport.KnowledgeApplication != nil {
-		assessmentDataResponse["knowledge_application"] = *savedReport.KnowledgeApplication
+		assessmentDataResponse["knowledgeApplication"] = *savedReport.KnowledgeApplication
 	}
 	if savedReport.AnalyticalThinking != nil {
-		assessmentDataResponse["analytical_thinking"] = *savedReport.AnalyticalThinking
+		assessmentDataResponse["analyticalThinking"] = *savedReport.AnalyticalThinking
 	}
 	if savedReport.Creativity != nil {
 		assessmentDataResponse["creativity"] = *savedReport.Creativity
 	}
 	if savedReport.PracticalSkills != nil {
-		assessmentDataResponse["practical_skills"] = *savedReport.PracticalSkills
+		assessmentDataResponse["practicalSkills"] = *savedReport.PracticalSkills
 	}
 	if savedReport.Participation != nil {
 		assessmentDataResponse["participation"] = *savedReport.Participation
@@ -645,382 +659,180 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 		assessmentDataResponse["teamwork"] = *savedReport.Teamwork
 	}
 	if savedReport.EffortLevel != nil {
-		assessmentDataResponse["effort_level"] = *savedReport.EffortLevel
+		assessmentDataResponse["effortLevel"] = *savedReport.EffortLevel
 	}
 	if savedReport.Improvement != nil {
 		assessmentDataResponse["improvement"] = *savedReport.Improvement
 	}
 	if savedReport.LearningObjectivesMastered != nil {
-		assessmentDataResponse["learning_objectives_mastered"] = *savedReport.LearningObjectivesMastered
+		assessmentDataResponse["learningObjectivesMastered"] = *savedReport.LearningObjectivesMastered
 	}
 	if savedReport.AreasForImprovement != nil {
-		assessmentDataResponse["areas_for_improvement"] = *savedReport.AreasForImprovement
+		assessmentDataResponse["areasForImprovement"] = *savedReport.AreasForImprovement
 	}
 	if savedReport.RecommendedResources != nil {
-		assessmentDataResponse["recommended_resources"] = *savedReport.RecommendedResources
+		assessmentDataResponse["recommendedResources"] = *savedReport.RecommendedResources
 	}
 	if savedReport.TargetGoals != nil {
-		assessmentDataResponse["target_goals"] = *savedReport.TargetGoals
+		assessmentDataResponse["targetGoals"] = *savedReport.TargetGoals
 	}
 
 	return map[string]interface{}{
-		"assessment_data": assessmentDataResponse,
+		"assessmentData": assessmentDataResponse,
 	}, nil
 }
 
 func handleReportCardGeneration(reportCardDataInterface interface{}, userId string) (map[string]interface{}, error) {
-	// Parse the report card data
-	reportCardBytes, err := json.Marshal(reportCardDataInterface)
+	// The report card agent returns structured data that we should save to database
+	// and pass through to the frontend
+
+	reportCardMap, ok := reportCardDataInterface.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid report card data format")
+	}
+
+	// Extract the report_card from the agent's response
+	reportCardData, exists := reportCardMap["report_card"]
+	if !exists {
+		return nil, fmt.Errorf("no report_card field found in agent response")
+	}
+
+	// Convert the report card data to our model structure
+	reportCardBytes, err := json.Marshal(reportCardData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal report card data: %v", err)
 	}
 
-	// First, try to parse as a map[string]interface{} to handle flexible structure
-	var reportCardMap map[string]interface{}
-	if err := json.Unmarshal(reportCardBytes, &reportCardMap); err != nil {
+	var agentReportCardData model.AgentReportCardData
+	if err := json.Unmarshal(reportCardBytes, &agentReportCardData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal report card data: %v", err)
 	}
 
-	// Check for mandatory fields
-	var missingFields []string
-
-	studentIDInterface, hasStudentID := reportCardMap["student_id"]
-	if !hasStudentID || studentIDInterface == nil {
-		missingFields = append(missingFields, "student_id")
-	}
-
-	studentNameInterface, hasStudentName := reportCardMap["student_name"]
-	if !hasStudentName || studentNameInterface == nil {
-		missingFields = append(missingFields, "student_name")
-	}
-
-	academicTermInterface, hasAcademicTerm := reportCardMap["academic_term"]
-	if !hasAcademicTerm || academicTermInterface == nil {
-		missingFields = append(missingFields, "academic_term")
-	}
-
-	if len(missingFields) > 0 {
-		return nil, fmt.Errorf("missing mandatory fields: %s", strings.Join(missingFields, ", "))
-	}
-
-	// Convert studentID to int
-	var studentID int
-	switch v := studentIDInterface.(type) {
-	case float64:
-		studentID = int(v)
-	case int:
-		studentID = v
-	case string:
-		if id, err := strconv.Atoi(v); err == nil {
-			studentID = id
-		} else {
-			return nil, fmt.Errorf("invalid student_id format: %v", v)
-		}
-	default:
-		return nil, fmt.Errorf("invalid student_id type: %T", v)
-	}
-
-	// Extract student name and academic term
-	studentName, ok := studentNameInterface.(string)
-	if !ok {
-		return nil, fmt.Errorf("student_name must be a string")
-	}
-
-	academicTerm, ok := academicTermInterface.(string)
-	if !ok {
-		return nil, fmt.Errorf("academic_term must be a string")
-	}
-
-	// Create ReportCard object
-	now := time.Now()
-	reportCard := model.NewReportCard()
-	reportCard.UserID = userId
-	reportCard.StudentID = studentID
-	reportCard.StudentName = studentName
-	reportCard.AcademicTerm = academicTerm
-	reportCard.GeneratedAt = now
-	reportCard.CreatedAt = now
-	reportCard.UpdatedAt = now
-
-	// Helper function to safely extract string pointers
-	getStringPtr := func(key string) *string {
-		if val, exists := reportCardMap[key]; exists && val != nil {
-			if str, ok := val.(string); ok && strings.TrimSpace(str) != "" {
-				trimmed := strings.TrimSpace(str)
-				return &trimmed
-			}
-		}
-		return nil
-	}
-
-	// Helper function to safely extract int pointers
-	getIntPtr := func(key string) *int {
-		if val, exists := reportCardMap[key]; exists && val != nil {
-			switch v := val.(type) {
-			case float64:
-				intVal := int(v)
-				return &intVal
-			case int:
-				return &v
-			case string:
-				if intVal, err := strconv.Atoi(v); err == nil {
-					return &intVal
-				}
-			}
-		}
-		return nil
-	}
-
-	// Helper function to safely extract float64 pointers
-	getFloat64Ptr := func(key string) *float64 {
-		if val, exists := reportCardMap[key]; exists && val != nil {
-			switch v := val.(type) {
-			case float64:
-				return &v
-			case int:
-				floatVal := float64(v)
-				return &floatVal
-			case string:
-				if floatVal, err := strconv.ParseFloat(v, 64); err == nil {
-					return &floatVal
-				}
-			}
-		}
-		return nil
-	}
-
-	// Helper function to safely extract time pointers
-	getTimePtr := func(key string) *time.Time {
-		if val, exists := reportCardMap[key]; exists && val != nil {
-			if str, ok := val.(string); ok {
-				if t, err := time.Parse(time.RFC3339, str); err == nil {
-					return &t
-				}
-			}
-		}
-		return nil
-	}
-
-	// Set all optional fields using helper functions
-	reportCard.OverallGPA = getFloat64Ptr("overall_gpa")
-	reportCard.OverallGrade = getStringPtr("overall_grade")
-	reportCard.OverallPercentage = getFloat64Ptr("overall_percentage")
-	reportCard.ClassRank = getIntPtr("class_rank")
-	reportCard.TotalStudentsInClass = getIntPtr("total_students_in_class")
-	reportCard.SubjectsCount = getIntPtr("subjects_count")
-	reportCard.HighestSubjectScore = getIntPtr("highest_subject_score")
-	reportCard.LowestSubjectScore = getIntPtr("lowest_subject_score")
-	reportCard.AverageSubjectScore = getFloat64Ptr("average_subject_score")
-	reportCard.BestPerformingSubject = getStringPtr("best_performing_subject")
-	reportCard.WeakestSubject = getStringPtr("weakest_subject")
-	reportCard.AcademicStrengths = getStringPtr("academic_strengths")
-	reportCard.AreasNeedingImprovement = getStringPtr("areas_needing_improvement")
-	reportCard.RecommendedActions = getStringPtr("recommended_actions")
-	reportCard.StudyRecommendations = getStringPtr("study_recommendations")
-	reportCard.OverallConceptualUnderstanding = getFloat64Ptr("overall_conceptual_understanding")
-	reportCard.OverallProblemSolving = getFloat64Ptr("overall_problem_solving")
-	reportCard.OverallKnowledgeApplication = getFloat64Ptr("overall_knowledge_application")
-	reportCard.OverallAnalyticalThinking = getFloat64Ptr("overall_analytical_thinking")
-	reportCard.OverallCreativity = getFloat64Ptr("overall_creativity")
-	reportCard.OverallPracticalSkills = getFloat64Ptr("overall_practical_skills")
-	reportCard.OverallParticipation = getFloat64Ptr("overall_participation")
-	reportCard.OverallDiscipline = getFloat64Ptr("overall_discipline")
-	reportCard.OverallPunctuality = getFloat64Ptr("overall_punctuality")
-	reportCard.OverallTeamwork = getFloat64Ptr("overall_teamwork")
-	reportCard.OverallEffortLevel = getFloat64Ptr("overall_effort_level")
-	reportCard.OverallImprovement = getFloat64Ptr("overall_improvement")
-	reportCard.AverageMidtermScore = getFloat64Ptr("average_midterm_score")
-	reportCard.AverageFinalExamScore = getFloat64Ptr("average_final_exam_score")
-	reportCard.AverageQuizScore = getFloat64Ptr("average_quiz_score")
-	reportCard.AverageAssignmentScore = getFloat64Ptr("average_assignment_score")
-	reportCard.AveragePracticalScore = getFloat64Ptr("average_practical_score")
-	reportCard.AverageOralPresentationScore = getFloat64Ptr("average_oral_presentation_score")
-	reportCard.ImprovementTrend = getStringPtr("improvement_trend")
-	reportCard.ConsistencyRating = getFloat64Ptr("consistency_rating")
-	reportCard.PerformanceStability = getStringPtr("performance_stability")
-	reportCard.AttendanceRate = getFloat64Ptr("attendance_rate")
-	reportCard.EngagementLevel = getStringPtr("engagement_level")
-	reportCard.ClassParticipation = getStringPtr("class_participation")
-	reportCard.AcademicGoals = getStringPtr("academic_goals")
-	reportCard.ShortTermObjectives = getStringPtr("short_term_objectives")
-	reportCard.LongTermObjectives = getStringPtr("long_term_objectives")
-	reportCard.ParentTeacherRecommendations = getStringPtr("parent_teacher_recommendations")
-	reportCard.TeacherComments = getStringPtr("teacher_comments")
-	reportCard.PrincipalComments = getStringPtr("principal_comments")
-	reportCard.OverallRemarks = getStringPtr("overall_remarks")
-	reportCard.RecommendedResources = getStringPtr("recommended_resources")
-	reportCard.SuggestedActivities = getStringPtr("suggested_activities")
-	reportCard.NextReviewDate = getTimePtr("next_review_date")
-
-	// Handle subject reports array
-	if subjectReportsInterface, exists := reportCardMap["subject_reports"]; exists && subjectReportsInterface != nil {
-		if subjectReportsArray, ok := subjectReportsInterface.([]interface{}); ok {
-			subjectReports := make([]model.SubjectReportSummary, 0, len(subjectReportsArray))
-			for _, subjectInterface := range subjectReportsArray {
-				if subjectMap, ok := subjectInterface.(map[string]interface{}); ok {
-					summary := model.SubjectReportSummary{}
-					if subject, ok := subjectMap["subject"].(string); ok {
-						summary.Subject = subject
-					}
-					if score, ok := subjectMap["score"].(float64); ok {
-						summary.Score = int(score)
-					} else if score, ok := subjectMap["score"].(int); ok {
-						summary.Score = score
-					}
-					if grade, ok := subjectMap["grade"].(string); ok && strings.TrimSpace(grade) != "" {
-						trimmed := strings.TrimSpace(grade)
-						summary.Grade = &trimmed
-					}
-					if conceptual, ok := subjectMap["conceptual_understanding"].(float64); ok {
-						summary.ConceptualUnderstanding = &conceptual
-					}
-					if problemSolving, ok := subjectMap["problem_solving"].(float64); ok {
-						summary.ProblemSolving = &problemSolving
-					}
-					if analytical, ok := subjectMap["analytical_thinking"].(float64); ok {
-						summary.AnalyticalThinking = &analytical
-					}
-					if improvements, ok := subjectMap["areas_for_improvement"].(string); ok && strings.TrimSpace(improvements) != "" {
-						trimmed := strings.TrimSpace(improvements)
-						summary.AreasForImprovement = &trimmed
-					}
-					if strengths, ok := subjectMap["key_strengths"].(string); ok && strings.TrimSpace(strengths) != "" {
-						trimmed := strings.TrimSpace(strengths)
-						summary.KeyStrengths = &trimmed
-					}
-					if recommendations, ok := subjectMap["subject_specific_recommendations"].(string); ok && strings.TrimSpace(recommendations) != "" {
-						trimmed := strings.TrimSpace(recommendations)
-						summary.SubjectSpecificRecommendations = &trimmed
-					}
-					subjectReports = append(subjectReports, summary)
-				}
-			}
-			reportCard.SubjectReports = subjectReports
-		}
+	// Create the AgentReportCard with metadata
+	agentReportCard := model.AgentReportCard{
+		UserID:     userId,
+		ReportCard: agentReportCardData,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	// Save to database
-	savedReportCard, err := repository.SaveReportCard(*reportCard)
+	savedReportCard, err := repository.CreateAgentReportCard(agentReportCard)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save report card: %v", err)
+		log.Printf("Warning: Failed to save agent report card to database: %v", err)
+		// Continue and return the data even if saving fails
 	}
 
-	// Build the response data structure - only include fields that have actual data
-	reportCardResponse := map[string]interface{}{
-		"student_id":    savedReportCard.StudentID,
-		"student_name":  savedReportCard.StudentName,
-		"academic_term": savedReportCard.AcademicTerm,
-		"generated_at":  savedReportCard.GeneratedAt,
+	// Prepare response data
+	responseData := map[string]interface{}{
+		"reportCard": reportCardData,
 	}
 
-	// Add optional fields only if they exist
-	if savedReportCard.OverallGPA != nil {
-		reportCardResponse["overall_gpa"] = *savedReportCard.OverallGPA
-	}
-	if savedReportCard.OverallGrade != nil {
-		reportCardResponse["overall_grade"] = *savedReportCard.OverallGrade
-	}
-	if savedReportCard.OverallPercentage != nil {
-		reportCardResponse["overall_percentage"] = *savedReportCard.OverallPercentage
-	}
-	if savedReportCard.ClassRank != nil {
-		reportCardResponse["class_rank"] = *savedReportCard.ClassRank
-	}
-	if savedReportCard.TotalStudentsInClass != nil {
-		reportCardResponse["total_students_in_class"] = *savedReportCard.TotalStudentsInClass
-	}
-	if savedReportCard.SubjectsCount != nil {
-		reportCardResponse["subjects_count"] = *savedReportCard.SubjectsCount
-	}
-	if savedReportCard.HighestSubjectScore != nil {
-		reportCardResponse["highest_subject_score"] = *savedReportCard.HighestSubjectScore
-	}
-	if savedReportCard.LowestSubjectScore != nil {
-		reportCardResponse["lowest_subject_score"] = *savedReportCard.LowestSubjectScore
-	}
-	if savedReportCard.AverageSubjectScore != nil {
-		reportCardResponse["average_subject_score"] = *savedReportCard.AverageSubjectScore
-	}
-	if savedReportCard.BestPerformingSubject != nil {
-		reportCardResponse["best_performing_subject"] = *savedReportCard.BestPerformingSubject
-	}
-	if savedReportCard.WeakestSubject != nil {
-		reportCardResponse["weakest_subject"] = *savedReportCard.WeakestSubject
-	}
-	if savedReportCard.AcademicStrengths != nil {
-		reportCardResponse["academic_strengths"] = *savedReportCard.AcademicStrengths
-	}
-	if savedReportCard.AreasNeedingImprovement != nil {
-		reportCardResponse["areas_needing_improvement"] = *savedReportCard.AreasNeedingImprovement
-	}
-	if savedReportCard.RecommendedActions != nil {
-		reportCardResponse["recommended_actions"] = *savedReportCard.RecommendedActions
-	}
-	if savedReportCard.StudyRecommendations != nil {
-		reportCardResponse["study_recommendations"] = *savedReportCard.StudyRecommendations
-	}
-	if savedReportCard.OverallConceptualUnderstanding != nil {
-		reportCardResponse["overall_conceptual_understanding"] = *savedReportCard.OverallConceptualUnderstanding
-	}
-	if savedReportCard.OverallProblemSolving != nil {
-		reportCardResponse["overall_problem_solving"] = *savedReportCard.OverallProblemSolving
-	}
-	if savedReportCard.OverallKnowledgeApplication != nil {
-		reportCardResponse["overall_knowledge_application"] = *savedReportCard.OverallKnowledgeApplication
-	}
-	if savedReportCard.OverallAnalyticalThinking != nil {
-		reportCardResponse["overall_analytical_thinking"] = *savedReportCard.OverallAnalyticalThinking
-	}
-	if savedReportCard.OverallCreativity != nil {
-		reportCardResponse["overall_creativity"] = *savedReportCard.OverallCreativity
-	}
-	if savedReportCard.OverallPracticalSkills != nil {
-		reportCardResponse["overall_practical_skills"] = *savedReportCard.OverallPracticalSkills
-	}
-	if savedReportCard.OverallParticipation != nil {
-		reportCardResponse["overall_participation"] = *savedReportCard.OverallParticipation
-	}
-	if savedReportCard.OverallDiscipline != nil {
-		reportCardResponse["overall_discipline"] = *savedReportCard.OverallDiscipline
-	}
-	if savedReportCard.OverallPunctuality != nil {
-		reportCardResponse["overall_punctuality"] = *savedReportCard.OverallPunctuality
-	}
-	if savedReportCard.OverallTeamwork != nil {
-		reportCardResponse["overall_teamwork"] = *savedReportCard.OverallTeamwork
-	}
-	if savedReportCard.OverallEffortLevel != nil {
-		reportCardResponse["overall_effort_level"] = *savedReportCard.OverallEffortLevel
-	}
-	if savedReportCard.OverallImprovement != nil {
-		reportCardResponse["overall_improvement"] = *savedReportCard.OverallImprovement
-	}
-	if savedReportCard.ImprovementTrend != nil {
-		reportCardResponse["improvement_trend"] = *savedReportCard.ImprovementTrend
-	}
-	if savedReportCard.ConsistencyRating != nil {
-		reportCardResponse["consistency_rating"] = *savedReportCard.ConsistencyRating
-	}
-	if savedReportCard.PerformanceStability != nil {
-		reportCardResponse["performance_stability"] = *savedReportCard.PerformanceStability
-	}
-	if savedReportCard.EngagementLevel != nil {
-		reportCardResponse["engagement_level"] = *savedReportCard.EngagementLevel
-	}
-	if savedReportCard.AcademicGoals != nil {
-		reportCardResponse["academic_goals"] = *savedReportCard.AcademicGoals
-	}
-	if savedReportCard.TeacherComments != nil {
-		reportCardResponse["teacher_comments"] = *savedReportCard.TeacherComments
-	}
-	if savedReportCard.OverallRemarks != nil {
-		reportCardResponse["overall_remarks"] = *savedReportCard.OverallRemarks
-	}
-	if len(savedReportCard.SubjectReports) > 0 {
-		reportCardResponse["subject_reports"] = savedReportCard.SubjectReports
+	// Add database metadata if save was successful
+	if savedReportCard != nil {
+		responseData["databaseId"] = savedReportCard.ID.Hex()
+		responseData["savedAt"] = savedReportCard.CreatedAt
 	}
 
+	return responseData, nil
+}
+
+// handleAssignmentResultSaving processes assignment result data from assessor agent
+func handleAssignmentResultSaving(assignmentResultData interface{}, userId string) (map[string]interface{}, error) {
+	// Convert interface{} to map[string]interface{}
+	resultMap, ok := assignmentResultData.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid assignment result data format")
+	}
+
+	// Convert to AssignmentResult model
+	var assignmentResult model.AssignmentResult
+
+	// Map the fields from the response
+	if assignmentId, ok := resultMap["assignment_id"].(string); ok {
+		assignmentResult.AssignmentID = assignmentId
+	} else {
+		return nil, fmt.Errorf("assignment_id is required")
+	}
+
+	if studentId, ok := resultMap["student_id"].(string); ok {
+		assignmentResult.StudentID = studentId
+	} else {
+		return nil, fmt.Errorf("student_id is required")
+	}
+
+	if totalPoints, ok := resultMap["total_points_awarded"].(float64); ok {
+		assignmentResult.TotalPointsAwarded = int(totalPoints)
+	}
+
+	if maxPoints, ok := resultMap["total_max_points"].(float64); ok {
+		assignmentResult.TotalMaxPoints = int(maxPoints)
+	}
+
+	if percentage, ok := resultMap["percentage_score"].(float64); ok {
+		assignmentResult.PercentageScore = percentage
+	}
+
+	// Convert the results arrays into the proper structs
+	if mcqResults, ok := resultMap["mcq_results"]; ok {
+		mcqResultsBytes, _ := json.Marshal(mcqResults)
+		var mcqResultsList []model.MCQResult
+		if err := json.Unmarshal(mcqResultsBytes, &mcqResultsList); err == nil {
+			assignmentResult.MCQResults = mcqResultsList
+		}
+	}
+
+	if msqResults, ok := resultMap["msq_results"]; ok {
+		msqResultsBytes, _ := json.Marshal(msqResults)
+		var msqResultsList []model.MSQResult
+		if err := json.Unmarshal(msqResultsBytes, &msqResultsList); err == nil {
+			assignmentResult.MSQResults = msqResultsList
+		}
+	}
+
+	if natResults, ok := resultMap["nat_results"]; ok {
+		natResultsBytes, _ := json.Marshal(natResults)
+		var natResultsList []model.NATResult
+		if err := json.Unmarshal(natResultsBytes, &natResultsList); err == nil {
+			assignmentResult.NATResults = natResultsList
+		}
+	}
+
+	if subjectiveResults, ok := resultMap["subjective_results"]; ok {
+		subjectiveResultsBytes, _ := json.Marshal(subjectiveResults)
+		var subjectiveResultsList []model.SubjectiveResult
+		if err := json.Unmarshal(subjectiveResultsBytes, &subjectiveResultsList); err == nil {
+			assignmentResult.SubjectiveResults = subjectiveResultsList
+		}
+	}
+
+	// Set metadata
+	assignmentResult.ID = primitive.NewObjectID()
+	assignmentResult.CreatedAt = time.Now()
+	assignmentResult.UpdatedAt = time.Now()
+
+	// Save to database using repository
+	savedResult, err := repository.CreateAssignmentResult(assignmentResult)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save assignment result: %v", err)
+	}
+	assignmentResult = *savedResult
+
+	// Return the saved assignment result data
 	return map[string]interface{}{
-		"report_card_data": reportCardResponse,
+		"assignmentResultData": map[string]interface{}{
+			"id":                 assignmentResult.ID.Hex(),
+			"assignmentId":       assignmentResult.AssignmentID,
+			"studentId":          assignmentResult.StudentID,
+			"totalPointsAwarded": assignmentResult.TotalPointsAwarded,
+			"totalMaxPoints":     assignmentResult.TotalMaxPoints,
+			"percentageScore":    assignmentResult.PercentageScore,
+			"mcqResults":         assignmentResult.MCQResults,
+			"msqResults":         assignmentResult.MSQResults,
+			"natResults":         assignmentResult.NATResults,
+			"subjectiveResults":  assignmentResult.SubjectiveResults,
+			"createdAt":          assignmentResult.CreatedAt,
+			"updatedAt":          assignmentResult.UpdatedAt,
+		},
 	}, nil
 }
