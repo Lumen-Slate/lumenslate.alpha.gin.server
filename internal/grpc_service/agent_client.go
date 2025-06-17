@@ -94,7 +94,7 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 	}
 	res, err := client.Agent(ctx, req)
 	if err != nil {
-		return nil, err
+		return createErrorResponse(userId, err.Error(), res), nil
 	}
 
 	// Get the raw agent response
@@ -102,51 +102,85 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 
 	// Try to parse the agent response as JSON to see if it contains database operations
 	var agentResponse AgentResponse
-	finalResponse := rawAgentResponse
-	agentName := res.GetAgentName()
-	responseMessage := res.GetMessage()
+	agentName := "root_agent"
+	responseMessage := "Agent response processed successfully"
+	var responseData interface{}
 
 	if err := json.Unmarshal([]byte(rawAgentResponse), &agentResponse); err == nil {
 		// Successfully parsed JSON, check for database operations
 		if len(agentResponse.QuestionsRequested) > 0 {
 			// Handle question generation
-			if questionsResult, err := handleQuestionGeneration(agentResponse.QuestionsRequested, userId); err == nil {
-				finalResponse = questionsResult
+			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, userId); err == nil {
+				responseData = questionsData
 				agentName = "assignment_generator_general"
 				responseMessage = "Assignment generated successfully"
 			} else {
 				log.Printf("Error handling question generation: %v", err)
-				// Keep the original response on error
+				return createErrorResponse(userId, err.Error(), res), nil
 			}
 		} else if agentResponse.AssessmentData != nil {
 			// Handle assessment data saving
-			if assessmentResult, err := handleAssessmentSaving(agentResponse.AssessmentData, userId); err == nil {
-				finalResponse = assessmentResult
-				agentName = "assessment_agent"
-				responseMessage = "Subject Assessment report processed"
+			if assessmentData, err := handleAssessmentSaving(agentResponse.AssessmentData, userId); err == nil {
+				responseData = assessmentData
+				agentName = "assessor_agent"
+				responseMessage = "Subject assessment report processed successfully"
 			} else {
 				log.Printf("Error handling assessment saving: %v", err)
-				// Keep the original response on error
+				return createErrorResponse(userId, err.Error(), res), nil
 			}
+		} else {
+			// Regular agent response without database operations
+			responseData = map[string]interface{}{
+				"agent_response": rawAgentResponse,
+			}
+		}
+	} else {
+		// Couldn't parse as JSON, treat as regular response
+		responseData = map[string]interface{}{
+			"agent_response": rawAgentResponse,
 		}
 	}
 
-	// Return the processed response
+	// Return the standardized response format
 	return map[string]interface{}{
-		"message":        responseMessage,
-		"user_id":        res.GetUserId(),
-		"agent_name":     agentName,
-		"agent_response": finalResponse,
-		"session_id":     res.GetSessionId(),
-		"createdAt":      res.GetCreatedAt(),
-		"updatedAt":      res.GetUpdatedAt(),
-		"response_time":  res.GetResponseTime(),
-		"role":           res.GetRole(),
-		"feedback":       res.GetFeedback(),
+		"message":       responseMessage,
+		"user_id":       res.GetUserId(),
+		"agent_name":    agentName,
+		"data":          responseData,
+		"session_id":    res.GetSessionId(),
+		"createdAt":     res.GetCreatedAt(),
+		"updatedAt":     res.GetUpdatedAt(),
+		"response_time": res.GetResponseTime(),
+		"role":          res.GetRole(),
+		"feedback":      res.GetFeedback(),
 	}, nil
 }
 
-func handleQuestionGeneration(questionsRequested []QuestionRequest, userId string) (string, error) {
+func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map[string]interface{} {
+	var sessionId, createdAt, updatedAt, responseTime, feedback string
+	if res != nil {
+		sessionId = res.GetSessionId()
+		createdAt = res.GetCreatedAt()
+		updatedAt = res.GetUpdatedAt()
+		responseTime = res.GetResponseTime()
+		feedback = res.GetFeedback()
+	}
+
+	return map[string]interface{}{
+		"message":       errorMessage,
+		"user_id":       userId,
+		"agent_name":    "root_agent",
+		"data":          map[string]interface{}{},
+		"session_id":    sessionId,
+		"createdAt":     createdAt,
+		"updatedAt":     updatedAt,
+		"response_time": responseTime,
+		"role":          "agent",
+		"feedback":      feedback,
+	}
+}
+
+func handleQuestionGeneration(questionsRequested []QuestionRequest, userId string) (map[string]interface{}, error) {
 	// Group requests by subject to handle multiple difficulty levels for the same subject
 	subjectRequests := make(map[string][]QuestionRequest)
 
@@ -157,20 +191,14 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 		}
 	}
 
-	responseData := map[string]interface{}{
-		"status":                   "success",
-		"message":                  "Questions retrieved successfully",
-		"total_subjects":           len(subjectRequests),
-		"subjects":                 []map[string]interface{}{},
-		"total_questions_returned": 0,
-	}
-
+	totalSubjectsRequested := len(subjectRequests)
 	totalQuestionsReturned := 0
+	subjects := []map[string]interface{}{}
 
 	for subjectKey, requests := range subjectRequests {
 		// Convert subject string to Subject enum
 		subject, validSubject := model.GetSubjectFromString(subjectKey)
-		displaySubject := subjectKey
+		displaySubject := strings.Title(subjectKey)
 
 		if !validSubject {
 			// Invalid subject
@@ -179,14 +207,14 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 				totalRequested += req.NumberOfQuestions
 			}
 			subjectData := map[string]interface{}{
-				"subject":         displaySubject,
-				"requested_count": totalRequested,
-				"available_count": 0,
-				"returned_count":  0,
-				"questions":       []map[string]interface{}{},
-				"message":         fmt.Sprintf("Subject '%s' is not supported. Available subjects: Math, Science, English, History, Geography", displaySubject),
+				"subject":                   displaySubject,
+				"questions_requested_count": totalRequested,
+				"questions_available_count": 0,
+				"questions_returned_count":  0,
+				"questions":                 []map[string]interface{}{},
+				"message":                   fmt.Sprintf("Subject '%s' is not supported. Available subjects: Math, Science, English, History, Geography", displaySubject),
 			}
-			responseData["subjects"] = append(responseData["subjects"].([]map[string]interface{}), subjectData)
+			subjects = append(subjects, subjectData)
 			continue
 		}
 
@@ -249,115 +277,84 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 			}
 		}
 
+		// Get total available questions for this subject
+		totalAvailable, err := repository.CountQuestionsBySubject(subject)
+		if err != nil {
+			totalAvailable = 0
+		}
+
 		// Check if we got all requested questions
 		if len(allQuestionsForSubject) < totalRequested {
-			// Get total available questions for this subject (any difficulty)
-			totalAvailable, err := repository.CountQuestionsBySubject(subject)
-			if err != nil {
-				totalAvailable = 0
-			}
-
 			subjectData := map[string]interface{}{
-				"subject":         displaySubject,
-				"requested_count": totalRequested,
-				"available_count": int(totalAvailable),
-				"returned_count":  0,
-				"questions":       []map[string]interface{}{},
-				"message":         fmt.Sprintf("Could not fulfill all requests for %s. Some difficulty levels may not have enough questions available.", displaySubject),
+				"subject":                   displaySubject,
+				"questions_requested_count": totalRequested,
+				"questions_available_count": int(totalAvailable),
+				"questions_returned_count":  0,
+				"questions":                 []map[string]interface{}{},
+				"message":                   fmt.Sprintf("Could not fulfill all requests for %s. Some difficulty levels may not have enough questions available.", displaySubject),
 			}
-			responseData["subjects"] = append(responseData["subjects"].([]map[string]interface{}), subjectData)
+			subjects = append(subjects, subjectData)
 		} else if len(allQuestionsForSubject) == 0 {
-			// No questions available for this subject
-			totalAvailable, err := repository.CountQuestionsBySubject(subject)
-			if err != nil {
-				totalAvailable = 0
-			}
-
 			subjectData := map[string]interface{}{
-				"subject":         displaySubject,
-				"requested_count": totalRequested,
-				"available_count": int(totalAvailable),
-				"returned_count":  0,
-				"questions":       []map[string]interface{}{},
-				"message":         fmt.Sprintf("No questions available for %s with the requested difficulty levels", displaySubject),
+				"subject":                   displaySubject,
+				"questions_requested_count": totalRequested,
+				"questions_available_count": int(totalAvailable),
+				"questions_returned_count":  0,
+				"questions":                 []map[string]interface{}{},
+				"message":                   fmt.Sprintf("No questions available for %s with the requested difficulty levels", displaySubject),
 			}
-			responseData["subjects"] = append(responseData["subjects"].([]map[string]interface{}), subjectData)
+			subjects = append(subjects, subjectData)
 		} else {
 			// Successfully got all requested questions
 			// Format questions for response
 			formattedQuestions := make([]map[string]interface{}, len(allQuestionsForSubject))
 			for i, q := range allQuestionsForSubject {
-				formattedQuestions[i] = map[string]interface{}{
+				questionData := map[string]interface{}{
 					"question_id": q.ID,
 					"question":    q.Question,
-					"options":     q.Options,
+					"type":        "MCQ", // Default to MCQ, you can enhance this based on your question structure
 					"answer":      q.Answer,
 					"difficulty":  string(q.Difficulty),
 				}
-			}
 
-			// Get total available questions for this subject
-			totalAvailable, err := repository.CountQuestionsBySubject(subject)
-			if err != nil {
-				totalAvailable = 0
+				// Add options only for MCQ and MSQ types
+				if len(q.Options) > 0 {
+					questionData["options"] = q.Options
+				}
+
+				formattedQuestions[i] = questionData
 			}
 
 			subjectData := map[string]interface{}{
-				"subject":         displaySubject,
-				"requested_count": totalRequested,
-				"available_count": int(totalAvailable),
-				"returned_count":  len(formattedQuestions),
-				"questions":       formattedQuestions,
+				"subject":                   displaySubject,
+				"questions_requested_count": totalRequested,
+				"questions_available_count": int(totalAvailable),
+				"questions_returned_count":  len(formattedQuestions),
+				"questions":                 formattedQuestions,
 			}
 
 			totalQuestionsReturned += len(formattedQuestions)
-			responseData["subjects"] = append(responseData["subjects"].([]map[string]interface{}), subjectData)
+			subjects = append(subjects, subjectData)
 		}
 	}
 
-	responseData["total_questions_returned"] = totalQuestionsReturned
-
-	// Format as a readable response
-	responseMessage := "**Assignment Questions Generated**\n\n"
-
-	for _, subjectInterface := range responseData["subjects"].([]map[string]interface{}) {
-		subject := subjectInterface
-		if msg, hasMessage := subject["message"]; hasMessage {
-			// Handle case where no questions were returned due to error/insufficient questions
-			responseMessage += fmt.Sprintf("**%s**: %s\n", subject["subject"], msg)
-		} else {
-			responseMessage += fmt.Sprintf("**%s** (%v questions):\n", subject["subject"], subject["returned_count"])
-
-			if questions, ok := subject["questions"].([]map[string]interface{}); ok {
-				for i, question := range questions {
-					responseMessage += fmt.Sprintf("\n%d. %s *(%s)*\n", i+1, question["question"], question["difficulty"])
-					if options, ok := question["options"].([]string); ok {
-						for j, option := range options {
-							responseMessage += fmt.Sprintf("   %c) %s\n", 'a'+j, option)
-						}
-					}
-					responseMessage += fmt.Sprintf("   **Answer:** %s\n", question["answer"])
-				}
-			}
-		}
-		responseMessage += "\n" + strings.Repeat("=", 50) + "\n"
-	}
-
-	responseMessage += fmt.Sprintf("\n**Total Questions Provided:** %d", totalQuestionsReturned)
-
-	return responseMessage, nil
+	return map[string]interface{}{
+		"total_subjects_requested": totalSubjectsRequested,
+		"total_questions_returned": totalQuestionsReturned,
+		"subjects":                 subjects,
+	}, nil
 }
 
-func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) (string, error) {
+func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) (map[string]interface{}, error) {
 	// Parse the assessment data
 	assessmentBytes, err := json.Marshal(assessmentDataInterface)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal assessment data: %v", err)
+		return nil, fmt.Errorf("failed to marshal assessment data: %v", err)
 	}
 
 	var assessmentData AssessmentData
 	if err := json.Unmarshal(assessmentBytes, &assessmentData); err != nil {
-		return "", fmt.Errorf("failed to unmarshal assessment data: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal assessment data: %v", err)
 	}
 
 	// Check for mandatory fields
@@ -377,13 +374,13 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 	}
 
 	if len(missingFields) > 0 {
-		return "", fmt.Errorf("missing mandatory fields: %s", strings.Join(missingFields, ", "))
+		return nil, fmt.Errorf("missing mandatory fields: %s", strings.Join(missingFields, ", "))
 	}
 
 	// Validate and convert subject to enum
 	subject, validSubject := model.GetSubjectFromString(strings.ToLower(strings.TrimSpace(assessmentData.Subject)))
 	if !validSubject {
-		return "", fmt.Errorf("invalid subject: %s. Available subjects are: math, science, english, history, geography", assessmentData.Subject)
+		return nil, fmt.Errorf("invalid subject: %s. Available subjects are: math, science, english, history, geography", assessmentData.Subject)
 	}
 
 	// Convert studentID to int
@@ -397,10 +394,10 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 		if id, err := strconv.Atoi(v); err == nil {
 			studentID = id
 		} else {
-			return "", fmt.Errorf("invalid student_id format: %v", v)
+			return nil, fmt.Errorf("invalid student_id format: %v", v)
 		}
 	default:
-		return "", fmt.Errorf("invalid student_id type: %T", v)
+		return nil, fmt.Errorf("invalid student_id type: %T", v)
 	}
 
 	// Convert score to int
@@ -414,10 +411,10 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 		if s, err := strconv.Atoi(v); err == nil {
 			score = s
 		} else {
-			return "", fmt.Errorf("invalid score format: %v", v)
+			return nil, fmt.Errorf("invalid score format: %v", v)
 		}
 	default:
-		return "", fmt.Errorf("invalid score type: %T", v)
+		return nil, fmt.Errorf("invalid score type: %T", v)
 	}
 
 	// Create SubjectReport object
@@ -519,76 +516,101 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 	// Save to database
 	savedReport, err := repository.SaveSubjectReport(subjectReport)
 	if err != nil {
-		return "", fmt.Errorf("failed to save subject report: %v", err)
+		return nil, fmt.Errorf("failed to save subject report: %v", err)
 	}
 
-	// Format success message
-	responseMessage := "**Subject Report Created Successfully**\n\n"
-	responseMessage += fmt.Sprintf("**Student:** %s (ID: %d)\n", savedReport.StudentName, savedReport.StudentID)
-	responseMessage += fmt.Sprintf("**Subject:** %s\n", strings.Title(string(savedReport.Subject)))
-	responseMessage += fmt.Sprintf("**Overall Score:** %d/100\n", savedReport.Score)
+	// Build the response data structure
+	assessmentDataResponse := map[string]interface{}{
+		"student_id":   savedReport.StudentID,
+		"student_name": savedReport.StudentName,
+		"subject":      string(savedReport.Subject),
+		"score":        savedReport.Score,
+	}
 
+	// Add optional fields only if they exist
 	if savedReport.GradeLetter != nil {
-		responseMessage += fmt.Sprintf("**Grade:** %s\n", *savedReport.GradeLetter)
+		assessmentDataResponse["grade_letter"] = *savedReport.GradeLetter
 	}
-
 	if savedReport.ClassName != nil {
-		responseMessage += fmt.Sprintf("**Class:** %s\n", *savedReport.ClassName)
+		assessmentDataResponse["class_name"] = *savedReport.ClassName
 	}
-
 	if savedReport.InstructorName != nil {
-		responseMessage += fmt.Sprintf("**Instructor:** %s\n", *savedReport.InstructorName)
+		assessmentDataResponse["instructor_name"] = *savedReport.InstructorName
 	}
-
 	if savedReport.Term != nil {
-		responseMessage += fmt.Sprintf("**Term:** %s\n", *savedReport.Term)
+		assessmentDataResponse["term"] = *savedReport.Term
 	}
-
-	// Add assessment breakdown if available
-	var assessmentScores []string
+	if savedReport.Remarks != nil {
+		assessmentDataResponse["remarks"] = *savedReport.Remarks
+	}
 	if savedReport.MidtermScore != nil {
-		assessmentScores = append(assessmentScores, fmt.Sprintf("Midterm: %d", *savedReport.MidtermScore))
+		assessmentDataResponse["midterm_score"] = *savedReport.MidtermScore
 	}
 	if savedReport.FinalExamScore != nil {
-		assessmentScores = append(assessmentScores, fmt.Sprintf("Final: %d", *savedReport.FinalExamScore))
+		assessmentDataResponse["final_exam_score"] = *savedReport.FinalExamScore
 	}
 	if savedReport.QuizScore != nil {
-		assessmentScores = append(assessmentScores, fmt.Sprintf("Quiz: %d", *savedReport.QuizScore))
+		assessmentDataResponse["quiz_score"] = *savedReport.QuizScore
 	}
 	if savedReport.AssignmentScore != nil {
-		assessmentScores = append(assessmentScores, fmt.Sprintf("Assignments: %d", *savedReport.AssignmentScore))
+		assessmentDataResponse["assignment_score"] = *savedReport.AssignmentScore
 	}
-
-	if len(assessmentScores) > 0 {
-		responseMessage += fmt.Sprintf("\n**Assessment Breakdown:** %s\n", strings.Join(assessmentScores, ", "))
+	if savedReport.PracticalScore != nil {
+		assessmentDataResponse["practical_score"] = *savedReport.PracticalScore
 	}
-
-	// Add skill evaluations if available
-	var skills []string
+	if savedReport.OralPresentationScore != nil {
+		assessmentDataResponse["oral_presentation_score"] = *savedReport.OralPresentationScore
+	}
 	if savedReport.ConceptualUnderstanding != nil {
-		skills = append(skills, fmt.Sprintf("Conceptual Understanding: %.1f", *savedReport.ConceptualUnderstanding))
+		assessmentDataResponse["conceptual_understanding"] = *savedReport.ConceptualUnderstanding
 	}
 	if savedReport.ProblemSolving != nil {
-		skills = append(skills, fmt.Sprintf("Problem Solving: %.1f", *savedReport.ProblemSolving))
+		assessmentDataResponse["problem_solving"] = *savedReport.ProblemSolving
+	}
+	if savedReport.KnowledgeApplication != nil {
+		assessmentDataResponse["knowledge_application"] = *savedReport.KnowledgeApplication
 	}
 	if savedReport.AnalyticalThinking != nil {
-		skills = append(skills, fmt.Sprintf("Analytical Thinking: %.1f", *savedReport.AnalyticalThinking))
+		assessmentDataResponse["analytical_thinking"] = *savedReport.AnalyticalThinking
 	}
-
-	if len(skills) > 0 {
-		responseMessage += fmt.Sprintf("\n**Key Skills:** %s\n", strings.Join(skills, ", "))
+	if savedReport.Creativity != nil {
+		assessmentDataResponse["creativity"] = *savedReport.Creativity
 	}
-
-	if savedReport.Remarks != nil {
-		responseMessage += fmt.Sprintf("\n**Remarks:** %s\n", *savedReport.Remarks)
+	if savedReport.PracticalSkills != nil {
+		assessmentDataResponse["practical_skills"] = *savedReport.PracticalSkills
 	}
-
+	if savedReport.Participation != nil {
+		assessmentDataResponse["participation"] = *savedReport.Participation
+	}
+	if savedReport.Discipline != nil {
+		assessmentDataResponse["discipline"] = *savedReport.Discipline
+	}
+	if savedReport.Punctuality != nil {
+		assessmentDataResponse["punctuality"] = *savedReport.Punctuality
+	}
+	if savedReport.Teamwork != nil {
+		assessmentDataResponse["teamwork"] = *savedReport.Teamwork
+	}
+	if savedReport.EffortLevel != nil {
+		assessmentDataResponse["effort_level"] = *savedReport.EffortLevel
+	}
+	if savedReport.Improvement != nil {
+		assessmentDataResponse["improvement"] = *savedReport.Improvement
+	}
+	if savedReport.LearningObjectivesMastered != nil {
+		assessmentDataResponse["learning_objectives_mastered"] = *savedReport.LearningObjectivesMastered
+	}
 	if savedReport.AreasForImprovement != nil {
-		responseMessage += fmt.Sprintf("\n**Areas for Improvement:** %s\n", *savedReport.AreasForImprovement)
+		assessmentDataResponse["areas_for_improvement"] = *savedReport.AreasForImprovement
+	}
+	if savedReport.RecommendedResources != nil {
+		assessmentDataResponse["recommended_resources"] = *savedReport.RecommendedResources
+	}
+	if savedReport.TargetGoals != nil {
+		assessmentDataResponse["target_goals"] = *savedReport.TargetGoals
 	}
 
-	responseMessage += fmt.Sprintf("\n**Report ID:** %s", savedReport.ID)
-	responseMessage += fmt.Sprintf("\n**Created:** %s", savedReport.Timestamp.Format("2006-01-02 15:04:05 UTC"))
-
-	return responseMessage, nil
+	return map[string]interface{}{
+		"assessment_data": assessmentDataResponse,
+	}, nil
 }
