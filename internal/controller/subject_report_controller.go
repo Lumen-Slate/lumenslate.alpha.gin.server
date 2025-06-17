@@ -35,8 +35,6 @@ type SubjectReportRequest struct {
 // @Failure      500       {object}  map[string]interface{}
 // @Router       /api/subject-reports [get]
 func GetAllSubjectReportsHandler(c *gin.Context) {
-	log.Println("[SubjectReport] /api/subject-reports GET called")
-
 	// Build filters from query parameters
 	filters := make(map[string]string)
 	if userId := c.Query("userId"); userId != "" {
@@ -55,8 +53,6 @@ func GetAllSubjectReportsHandler(c *gin.Context) {
 		filters["offset"] = offset
 	}
 
-	log.Printf("[SubjectReport] Filters: %+v", filters)
-
 	reports, err := repository.GetAllSubjectReports(filters)
 	if err != nil {
 		log.Printf("[SubjectReport] Error getting subject reports: %v", err)
@@ -64,7 +60,6 @@ func GetAllSubjectReportsHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[SubjectReport] Successfully retrieved %d subject reports", len(reports))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    reports,
@@ -114,7 +109,6 @@ func GetSubjectReportByIDHandler(c *gin.Context) {
 // @Router       /api/subject-reports/{id} [delete]
 func DeleteSubjectReportHandler(c *gin.Context) {
 	id := c.Param("id")
-	log.Printf("[SubjectReport] /api/subject-reports/%s DELETE called", id)
 
 	err := repository.DeleteSubjectReport(id)
 	if err != nil {
@@ -123,7 +117,6 @@ func DeleteSubjectReportHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[SubjectReport] Successfully deleted subject report")
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Subject report deleted successfully",

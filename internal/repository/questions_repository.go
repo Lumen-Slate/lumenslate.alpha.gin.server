@@ -31,26 +31,21 @@ func SaveQuestion(question model.Questions) (*model.Questions, error) {
 }
 
 func GetQuestionByID(id string) (*model.Questions, error) {
-	log.Printf("DEBUG: GetQuestionByID called with id: '%s'", id)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	filter := bson.M{"_id": id}
-	log.Printf("DEBUG: GetQuestionByID filter: %+v", filter)
 
 	var question model.Questions
 	err := db.GetCollection(db.QuestionsCollection).FindOne(ctx, filter).Decode(&question)
 	if err != nil {
-		log.Printf("DEBUG: GetQuestionByID error: %v", err)
 		return nil, err
 	}
 
-	log.Printf("DEBUG: GetQuestionByID success - found question with subject: '%s', difficulty: '%s'", question.Subject, question.Difficulty)
 	return &question, nil
 }
 
 func GetAllQuestions(filters map[string]string) ([]model.Questions, error) {
-	log.Printf("DEBUG: GetAllQuestions called with filters: %+v", filters)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -61,54 +56,36 @@ func GetAllQuestions(filters map[string]string) ([]model.Questions, error) {
 	offset := int64(0)
 	if l, err := strconv.Atoi(filters["limit"]); err == nil {
 		limit = int64(l)
-		log.Printf("DEBUG: GetAllQuestions - parsed limit: %d", limit)
 	}
 	if o, err := strconv.Atoi(filters["offset"]); err == nil {
 		offset = int64(o)
-		log.Printf("DEBUG: GetAllQuestions - parsed offset: %d", offset)
 	}
 	findOptions.SetLimit(limit)
 	findOptions.SetSkip(offset)
-	log.Printf("DEBUG: GetAllQuestions - using limit: %d, offset: %d", limit, offset)
 
 	// Build filter
 	filter := bson.M{} // Get all questions
 	if subject, ok := filters["subject"]; ok && subject != "" {
 		filter["subject"] = subject
-		log.Printf("DEBUG: GetAllQuestions - added subject filter: '%s'", subject)
 	}
 	if difficulty, ok := filters["difficulty"]; ok && difficulty != "" {
 		filter["difficulty"] = difficulty
-		log.Printf("DEBUG: GetAllQuestions - added difficulty filter: '%s'", difficulty)
 	}
-
-	log.Printf("DEBUG: GetAllQuestions - final filter: %+v", filter)
-	log.Printf("DEBUG: GetAllQuestions - find options: limit=%d, skip=%d", limit, offset)
 
 	cursor, err := db.GetCollection(db.QuestionsCollection).Find(ctx, filter, findOptions)
 	if err != nil {
-		log.Printf("DEBUG: GetAllQuestions - database query error: %v", err)
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	var results []model.Questions
 	if err = cursor.All(ctx, &results); err != nil {
-		log.Printf("DEBUG: GetAllQuestions - cursor decode error: %v", err)
 		return nil, err
-	}
-
-	log.Printf("DEBUG: GetAllQuestions - successfully retrieved %d questions", len(results))
-	for i, q := range results {
-		if i < 3 { // Only log first 3 for brevity
-			log.Printf("DEBUG: GetAllQuestions - question %d: subject='%s', difficulty='%s', id='%s'", i+1, q.Subject, q.Difficulty, q.ID)
-		}
 	}
 
 	// Ensure we return an empty slice instead of nil
 	if results == nil {
 		results = make([]model.Questions, 0)
-		log.Printf("DEBUG: GetAllQuestions - results was nil, returning empty slice")
 	}
 	return results, nil
 }
