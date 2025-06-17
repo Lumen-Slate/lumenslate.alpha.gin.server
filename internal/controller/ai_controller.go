@@ -425,30 +425,37 @@ func ListCorpusContentHandler(c *gin.Context) {
 
 // createVertexAICorpus creates a RAG corpus directly in Vertex AI
 func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
+	log.Printf("[AI] createVertexAICorpus called with corpusName: %s", corpusName)
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
 		location = "us-central1" // Default fallback
+		log.Printf("[AI] GOOGLE_CLOUD_LOCATION not set, defaulting to us-central1")
 	}
 
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+	log.Printf("[AI] Using endpoint: %s", endpoint)
 
 	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
 		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
 	if err != nil {
+		log.Printf("[AI] Failed to create AI Platform service: %v", err)
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
 
 	// Clean corpus name for use as display name
 	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+	log.Printf("[AI] Cleaned displayName: %s", displayName)
 
 	// Check if corpus already exists
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	log.Printf("[AI] Checking for existing corpora under parent: %s", parent)
 	listCall := service.Projects.Locations.RagCorpora.List(parent)
 
 	existingCorpora, err := listCall.Do()
@@ -456,7 +463,9 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 		log.Printf("[AI] Warning: Could not check existing corpora: %v", err)
 	} else {
 		for _, corpus := range existingCorpora.RagCorpora {
+			log.Printf("[AI] Found existing corpus: %s (displayName: %s)", corpus.Name, corpus.DisplayName)
 			if corpus.DisplayName == displayName {
+				log.Printf("[AI] Corpus '%s' already exists", corpusName)
 				return map[string]interface{}{
 					"status":        "info",
 					"message":       fmt.Sprintf("Corpus '%s' already exists", corpusName),
@@ -472,12 +481,15 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ragCorpus := &aiplatform.GoogleCloudAiplatformV1RagCorpus{
 		DisplayName: displayName,
 	}
+	log.Printf("[AI] Creating new corpus with displayName: %s", displayName)
 	createCall := service.Projects.Locations.RagCorpora.Create(parent, ragCorpus)
 	operation, err := createCall.Do()
 	if err != nil {
+		log.Printf("[AI] Failed to create corpus: %v", err)
 		return nil, fmt.Errorf("failed to create corpus: %v", err)
 	}
 
+	log.Printf("[AI] Successfully created corpus '%s' (operation: %s)", corpusName, operation.Name)
 	return map[string]interface{}{
 		"status":        "success",
 		"message":       fmt.Sprintf("Successfully created corpus '%s'", corpusName),
@@ -489,34 +501,42 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 
 // listVertexAICorpusContent lists all documents/files inside a RAG corpus
 func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error) {
+	log.Printf("[AI] listVertexAICorpusContent called with corpusName: %s", corpusName)
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
 		location = "us-central1" // Default fallback
+		log.Printf("[AI] GOOGLE_CLOUD_LOCATION not set, defaulting to us-central1")
 	}
 
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+	log.Printf("[AI] Using endpoint: %s", endpoint)
 
 	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
 		option.WithEndpoint(endpoint)) // ⬅️ removed WithCredentialsFile
 	if err != nil {
+		log.Printf("[AI] Failed to create AI Platform service: %v", err)
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
 
 	// Clean corpus name for use as display name
 	displayName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(corpusName, "_")
+	log.Printf("[AI] Cleaned displayName: %s", displayName)
 
 	// Find the corpus first
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	log.Printf("[AI] Looking for corpus under parent: %s", parent)
 	listCall := service.Projects.Locations.RagCorpora.List(parent)
 
 	existingCorpora, err := listCall.Do()
 	if err != nil {
+		log.Printf("[AI] Failed to list corpora: %v", err)
 		return nil, fmt.Errorf("failed to list corpora: %v", err)
 	}
 
@@ -525,6 +545,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 
 	// Match by displayName
 	for _, corpus := range existingCorpora.RagCorpora {
+		log.Printf("[AI] Found corpus: %s (displayName: %s)", corpus.Name, corpus.DisplayName)
 		if corpus.DisplayName == displayName {
 			corpusResourceName = corpus.Name
 			foundCorpus = corpus
@@ -533,6 +554,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	}
 
 	if corpusResourceName == "" {
+		log.Printf("[AI] Corpus '%s' not found", corpusName)
 		return map[string]interface{}{
 			"status":  "error",
 			"message": fmt.Sprintf("Corpus '%s' not found", corpusName),
@@ -541,15 +563,18 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	}
 
 	// List files inside the corpus
+	log.Printf("[AI] Listing files in corpus: %s", corpusResourceName)
 	listFilesCall := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName)
 	filesResponse, err := listFilesCall.Do()
 	if err != nil {
+		log.Printf("[AI] Failed to list files in corpus: %v", err)
 		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
 	}
 
 	// Format files response
 	var files []map[string]interface{}
 	for _, file := range filesResponse.RagFiles {
+		log.Printf("[AI] Found file: %s (displayName: %s)", file.Name, file.DisplayName)
 		files = append(files, map[string]interface{}{
 			"name":        file.Name,
 			"displayName": file.DisplayName,
@@ -559,6 +584,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 		})
 	}
 
+	log.Printf("[AI] Successfully listed %d files for corpus '%s'", len(files), corpusName)
 	return map[string]interface{}{
 		"status":      "success",
 		"message":     fmt.Sprintf("Successfully listed content for corpus '%s'", corpusName),
@@ -658,37 +684,45 @@ func ListAllCorporaHandler(c *gin.Context) {
 
 // listAllVertexAICorpora lists all RAG corpora names
 func listAllVertexAICorpora() (map[string]interface{}, error) {
+	log.Printf("[AI] listAllVertexAICorpora called")
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
+	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
 		location = "us-central1" // Default fallback
+		log.Printf("[AI] GOOGLE_CLOUD_LOCATION not set, defaulting to us-central1")
 	}
 
 	// Use regional endpoint for RAG operations
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
+	log.Printf("[AI] Using endpoint: %s", endpoint)
 
 	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
 		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
 	if err != nil {
+		log.Printf("[AI] Failed to create AI Platform service: %v", err)
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
 
 	// List all corpora
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
+	log.Printf("[AI] Listing all corpora under parent: %s", parent)
 	listCall := service.Projects.Locations.RagCorpora.List(parent)
 
 	existingCorpora, err := listCall.Do()
 	if err != nil {
+		log.Printf("[AI] Failed to list corpora: %v", err)
 		return nil, fmt.Errorf("failed to list corpora: %v", err)
 	}
 
 	// Format the corpora data in camelCase
 	var corpora []map[string]interface{}
 	for _, corpus := range existingCorpora.RagCorpora {
+		log.Printf("[AI] Found corpus: %s (displayName: %s)", corpus.Name, corpus.DisplayName)
 		corpora = append(corpora, map[string]interface{}{
 			"name":        corpus.Name,
 			"displayName": corpus.DisplayName,
@@ -697,6 +731,7 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 		})
 	}
 
+	log.Printf("[AI] Successfully listed %d corpora", len(corpora))
 	return map[string]interface{}{
 		"status":       "success",
 		"message":      "Successfully listed all corpora",
