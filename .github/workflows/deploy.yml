@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: 📅 Checkout repository
@@ -48,6 +49,7 @@ jobs:
             --platform managed \
             --memory 1.5Gi \
             --port 8080 \
+            --timeout 900 \
             --allow-unauthenticated \
             --service-account ${{ secrets.CLOUD_RUN_SA_EMAIL }} \
             --set-env-vars MONGO_URI="${{ secrets.MONGO_URI }}" \
