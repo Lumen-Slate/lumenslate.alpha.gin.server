@@ -36,6 +36,71 @@ func DeleteClassroom(id string) error {
 
 func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 	ctx := context.Background()
+
+	// Set up pagination
+	limit := 10
+	offset := 0
+	if l, err := strconv.Atoi(filters["limit"]); err == nil {
+		limit = l
+	}
+	if o, err := strconv.Atoi(filters["offset"]); err == nil {
+		offset = o
+	}
+
+	// Check if search query is provided
+	if q, ok := filters["q"]; ok && q != "" {
+		// Use aggregation pipeline for search functionality
+		pipeline := []bson.M{
+			{
+				"$match": bson.M{
+					"subject": bson.M{"$regex": q, "$options": "i"},
+				},
+			},
+			{
+				"$sort": bson.M{
+					"subject":   1,  // Sort by subject alphabetically
+					"createdAt": -1, // Then by creation date
+				},
+			},
+			{"$skip": int64(offset)},
+			{"$limit": int64(limit)},
+		}
+
+		// Apply other filters to the match stage
+		matchStage := pipeline[0]["$match"].(bson.M)
+
+		if tags, exists := filters["tags"]; exists && tags != "" {
+			tagList := strings.Split(tags, ",")
+			matchStage["tags"] = bson.M{"$all": tagList}
+		}
+
+		if teacherID, exists := filters["teacherId"]; exists && teacherID != "" {
+			matchStage["teacherIds"] = teacherID
+		}
+
+		if subject, exists := filters["subject"]; exists && subject != "" {
+			// If both q and subject filter exist, apply exact subject match in addition to search
+			delete(matchStage, "subject") // Remove the regex match
+			matchStage["$and"] = []bson.M{
+				{"subject": bson.M{"$regex": q, "$options": "i"}},
+				{"subject": subject},
+			}
+		}
+
+		cursor, err := db.GetCollection(db.ClassroomCollection).Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var results []model.Classroom
+		if err = cursor.All(ctx, &results); err != nil {
+			return make([]model.Classroom, 0), nil
+		}
+		return results, nil
+	}
+
+	// Regular filtering when no search query
 	filter := bson.M{}
 
 	// Apply tags filter if provided
@@ -54,19 +119,10 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 		filter["subject"] = subject
 	}
 
-	// Set up pagination
-	limit := 10
-	offset := 0
-	if l, err := strconv.Atoi(filters["limit"]); err == nil {
-		limit = l
-	}
-	if o, err := strconv.Atoi(filters["offset"]); err == nil {
-		offset = o
-	}
-
 	opts := options.Find().
 		SetSkip(int64(offset)).
-		SetLimit(int64(limit))
+		SetLimit(int64(limit)).
+		SetSort(bson.M{"createdAt": -1})
 
 	cursor, err := db.GetCollection(db.ClassroomCollection).Find(ctx, filter, opts)
 	if err != nil {

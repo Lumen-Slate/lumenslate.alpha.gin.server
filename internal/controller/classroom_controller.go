@@ -137,6 +137,10 @@ func DeleteClassroom(c *gin.Context) {
 // @Produce json
 // @Param limit query string false "Limit"
 // @Param offset query string false "Offset"
+// @Param subject query string false "Filter by subject"
+// @Param teacherId query string false "Filter by teacher ID"
+// @Param tags query string false "Filter by tags"
+// @Param q query string false "Search in subject (partial match)"
 // @Success 200 {array} model.Classroom
 // @Router /classrooms [get]
 func GetAllClassrooms(c *gin.Context) {
@@ -146,6 +150,9 @@ func GetAllClassrooms(c *gin.Context) {
 		"subject":   c.Query("subject"),
 		"teacherId": c.Query("teacherId"),
 		"tags":      c.Query("tags"),
+	}
+	if q := c.Query("q"); q != "" {
+		filters["q"] = q
 	}
 	classrooms, err := repo.GetAllClassrooms(filters)
 	if err != nil {
