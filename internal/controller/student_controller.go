@@ -82,6 +82,7 @@ func DeleteStudent(c *gin.Context) {
 // @Param offset query string false "Offset"
 // @Param email query string false "Filter by email"
 // @Param rollNo query string false "Filter by roll number"
+// @Param q query string false "Search in name or email (partial match, name gets priority)"
 // @Success 200 {array} model.Student
 // @Router /students [get]
 func GetAllStudents(c *gin.Context) {
@@ -90,6 +91,9 @@ func GetAllStudents(c *gin.Context) {
 		"offset": c.DefaultQuery("offset", "0"),
 		"email":  c.Query("email"),
 		"rollNo": c.Query("rollNo"),
+	}
+	if q := c.Query("q"); q != "" {
+		filters["q"] = q
 	}
 	students, err := repo.GetAllStudents(filters)
 	if err != nil {

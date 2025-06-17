@@ -35,6 +35,73 @@ func DeleteStudent(id string) error {
 
 func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 	ctx := context.Background()
+
+	// Set up pagination
+	limit := 10
+	offset := 0
+	if l, err := strconv.Atoi(filters["limit"]); err == nil {
+		limit = l
+	}
+	if o, err := strconv.Atoi(filters["offset"]); err == nil {
+		offset = o
+	}
+
+	// Check if search query is provided
+	if q, ok := filters["q"]; ok && q != "" {
+		// Use aggregation pipeline to prioritize name matches over email matches
+		pipeline := []bson.M{
+			{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{"name": bson.M{"$regex": q, "$options": "i"}},
+						{"email": bson.M{"$regex": q, "$options": "i"}},
+					},
+				},
+			},
+			{
+				"$addFields": bson.M{
+					"nameMatch": bson.M{
+						"$cond": bson.M{
+							"if":   bson.M{"$regexMatch": bson.M{"input": "$name", "regex": q, "options": "i"}},
+							"then": 1,
+							"else": 0,
+						},
+					},
+				},
+			},
+			{
+				"$sort": bson.M{
+					"nameMatch": -1, // Name matches first
+					"createdAt": -1, // Then by creation date
+				},
+			},
+			{"$skip": int64(offset)},
+			{"$limit": int64(limit)},
+		}
+
+		// Apply other filters to the match stage
+		matchStage := pipeline[0]["$match"].(bson.M)
+		if email, exists := filters["email"]; exists && email != "" {
+			matchStage["email"] = email
+		}
+		if rollNo, exists := filters["rollNo"]; exists && rollNo != "" {
+			matchStage["rollNo"] = rollNo
+		}
+
+		cursor, err := db.GetCollection(db.StudentCollection).Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var results []model.Student
+		if err = cursor.All(ctx, &results); err != nil {
+			return make([]model.Student, 0), nil
+		}
+		return results, nil
+	}
+
+	// Regular filtering when no search query
 	filter := bson.M{}
 
 	// Apply email filter if provided
@@ -47,19 +114,10 @@ func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 		filter["rollNo"] = rollNo
 	}
 
-	// Set up pagination
-	limit := 10
-	offset := 0
-	if l, err := strconv.Atoi(filters["limit"]); err == nil {
-		limit = l
-	}
-	if o, err := strconv.Atoi(filters["offset"]); err == nil {
-		offset = o
-	}
-
 	opts := options.Find().
 		SetSkip(int64(offset)).
-		SetLimit(int64(limit))
+		SetLimit(int64(limit)).
+		SetSort(bson.M{"createdAt": -1})
 
 	cursor, err := db.GetCollection(db.StudentCollection).Find(ctx, filter, opts)
 	if err != nil {
