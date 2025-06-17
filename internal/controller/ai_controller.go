@@ -693,18 +693,48 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 func AddCorpusDocumentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/add-corpus-document called")
 
+	// Log current environment configuration for debugging
+	log.Printf("[AI] Environment check - GCS_BUCKET_NAME: %s, GOOGLE_CLOUD_PROJECT: %s, GOOGLE_CLOUD_LOCATION: %s",
+		func() string {
+			if v := os.Getenv("GCS_BUCKET_NAME"); v != "" {
+				return v
+			} else {
+				return "NOT_SET"
+			}
+		}(),
+		func() string {
+			if v := os.Getenv("GOOGLE_CLOUD_PROJECT"); v != "" {
+				return v
+			} else {
+				return "NOT_SET"
+			}
+		}(),
+		func() string {
+			if v := os.Getenv("GOOGLE_CLOUD_LOCATION"); v != "" {
+				return v
+			} else {
+				return "NOT_SET"
+			}
+		}())
+
 	// Validate required environment variables
 	bucketName := os.Getenv("GCS_BUCKET_NAME")
 	if bucketName == "" {
 		log.Printf("[AI] GCS_BUCKET_NAME environment variable not set")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Storage configuration missing"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Storage configuration missing: GCS_BUCKET_NAME environment variable is required",
+			"details": "Please set the GCS_BUCKET_NAME environment variable to your Google Cloud Storage bucket name",
+		})
 		return
 	}
 
 	projectID := utils.GetProjectID()
 	if projectID == "" {
 		log.Printf("[AI] Project ID not configured")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Project configuration missing"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Project configuration missing: Google Cloud Project ID is required",
+			"details": "Please ensure GOOGLE_CLOUD_PROJECT or project ID is properly configured",
+		})
 		return
 	}
 
@@ -1551,14 +1581,6 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	log.Printf("=== PROCESS RAG AGENT RESPONSE END (QUESTIONS) ===")
 
 	return result, "Agent response processed successfully", nil
-}
-
-// Helper function for minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // Helper function to safely extract string values from map[string]interface{}
