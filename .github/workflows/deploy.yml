@@ -42,4 +42,4 @@ jobs:
             --port 8080 \
             --allow-unauthenticated \
             --service-account ${{ secrets.CLOUD_RUN_SA_EMAIL }} \
-            --set-env-vars MONGO_URI=${{ secrets.MONGO_URI }},GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=${{ secrets.GOOGLE_CLOUD_LOCATION }},GOOGLE_GENAI_USE_VERTEXAI=${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }},GRPC_SERVICE_URL=${{ secrets.GRPC_SERVICE_URL }}
+            --set-env-vars MONGO_URI=${{ secrets.MONGO_URI }},GOOGLE_PROJECT_ID=${{ secrets.GOOGLE_PROJECT_ID }},GOOGLE_CLOUD_LOCATION=${{ secrets.GOOGLE_CLOUD_LOCATION }},GOOGLE_GENAI_USE_VERTEXAI=${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }},GRPC_SERVICE_URL=${{ secrets.GRPC_SERVICE_URL }} ,GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME}} 
