@@ -1128,8 +1128,32 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 // deleteVertexAICorpusDocument deletes a specific document from a RAG corpus
 func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[string]interface{}, error) {
 	ctx := context.Background()
+	log.Printf("[AI] Starting comprehensive document deletion for '%s' in corpus '%s'", fileDisplayName, corpusName)
 
-	// Project configuration - force RAG-compatible location
+	// Initialize services
+	gcs, err := gcsService.NewGCSService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize GCS service: %v", err)
+	}
+	defer gcs.Close()
+
+	docRepo := repository.NewDocumentRepository()
+
+	// First, get document from database to get GCS object path
+	documents, err := docRepo.GetDocumentsByCorpus(ctx, corpusName)
+	if err != nil {
+		log.Printf("[AI] Warning: Failed to get documents from database: %v", err)
+	}
+
+	var documentToDelete *model.Document
+	for _, doc := range documents {
+		if doc.DisplayName == fileDisplayName {
+			documentToDelete = &doc
+			break
+		}
+	}
+
+	// Project configuration for RAG operations
 	projectID := utils.GetProjectID()
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
@@ -1140,8 +1164,7 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
 	// Create AI Platform service client with default ADC credentials
-	service, err := aiplatform.NewService(ctx,
-		option.WithEndpoint(endpoint))
+	service, err := aiplatform.NewService(ctx, option.WithEndpoint(endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -1171,8 +1194,7 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}
 
 	// List files in the corpus to find the one to delete
-	filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.
-		List(corpusResourceName).Do()
+	filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
 	}
@@ -1185,24 +1207,92 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 		}
 	}
 
-	if fileToDelete == "" {
-		return nil, fmt.Errorf("file with display name '%s' not found in corpus '%s'", fileDisplayName, corpusName)
+	// Track deletion results
+	deletionResults := map[string]interface{}{
+		"ragEngineDeleted": false,
+		"gcsDeleted":       false,
+		"databaseDeleted":  false,
+		"errors":           []string{},
 	}
 
-	// Delete the file
-	operation, err := service.Projects.Locations.RagCorpora.RagFiles.
-		Delete(fileToDelete).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to delete file: %v", err)
+	// 1. Delete from RAG engine
+	if fileToDelete != "" {
+		log.Printf("[AI] Deleting file from RAG engine: %s", fileToDelete)
+		_, err := service.Projects.Locations.RagCorpora.RagFiles.Delete(fileToDelete).Do()
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to delete from RAG engine: %v", err)
+			deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+			log.Printf("[AI] %s", errorMsg)
+		} else {
+			deletionResults["ragEngineDeleted"] = true
+			log.Printf("[AI] Successfully deleted from RAG engine")
+		}
+	} else {
+		errorMsg := fmt.Sprintf("file '%s' not found in RAG engine", fileDisplayName)
+		deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+		log.Printf("[AI] %s", errorMsg)
 	}
+
+	// 2. Delete from GCS
+	if documentToDelete != nil && documentToDelete.GCSObject != "" {
+		log.Printf("[AI] Deleting file from GCS: %s", documentToDelete.GCSObject)
+		err := gcs.DeleteObject(ctx, documentToDelete.GCSObject)
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to delete from GCS: %v", err)
+			deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+			log.Printf("[AI] %s", errorMsg)
+		} else {
+			deletionResults["gcsDeleted"] = true
+			log.Printf("[AI] Successfully deleted from GCS")
+		}
+	} else {
+		errorMsg := "GCS object path not found in database"
+		deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+		log.Printf("[AI] %s", errorMsg)
+	}
+
+	// 3. Delete from database
+	if documentToDelete != nil {
+		log.Printf("[AI] Deleting document from database: %s", documentToDelete.FileID)
+		err := docRepo.DeleteDocument(ctx, documentToDelete.FileID)
+		if err != nil {
+			errorMsg := fmt.Sprintf("failed to delete from database: %v", err)
+			deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+			log.Printf("[AI] %s", errorMsg)
+		} else {
+			deletionResults["databaseDeleted"] = true
+			log.Printf("[AI] Successfully deleted from database")
+		}
+	} else {
+		errorMsg := "document not found in database"
+		deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
+		log.Printf("[AI] %s", errorMsg)
+	}
+
+	// Determine overall status
+	allDeleted := deletionResults["ragEngineDeleted"].(bool) &&
+		deletionResults["gcsDeleted"].(bool) &&
+		deletionResults["databaseDeleted"].(bool)
+
+	status := "partial_success"
+	message := fmt.Sprintf("Document '%s' deletion completed with some issues", fileDisplayName)
+
+	if allDeleted {
+		status = "success"
+		message = fmt.Sprintf("Successfully deleted document '%s' from all locations", fileDisplayName)
+	} else if len(deletionResults["errors"].([]string)) == 3 {
+		status = "error"
+		message = fmt.Sprintf("Failed to delete document '%s' from all locations", fileDisplayName)
+	}
+
+	log.Printf("[AI] Document deletion completed. Status: %s", status)
 
 	return map[string]interface{}{
-		"status":          "success",
-		"message":         fmt.Sprintf("Successfully deleted file '%s' from corpus '%s'", fileDisplayName, corpusName),
-		"operationName":   operation.Name,
+		"status":          status,
+		"message":         message,
 		"deletedFileName": fileDisplayName,
 		"corpusName":      corpusName,
-		"documentDeleted": true,
+		"deletionResults": deletionResults,
 	}, nil
 }
 
