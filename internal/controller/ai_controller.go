@@ -11,11 +11,9 @@ import (
 	"time"
 
 	service "lumenslate/internal/grpc_service"
-	questionModels "lumenslate/internal/model/questions"
-	questionRepo "lumenslate/internal/repository/questions"
+	"lumenslate/internal/utils"
 
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/api/aiplatform/v1"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -440,7 +438,7 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ctx := context.Background()
 	// comment
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	projectID := utils.GetProjectID()
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
@@ -516,7 +514,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	projectID := utils.GetProjectID()
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
@@ -709,9 +707,9 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	projectID := utils.GetProjectID()
 
-	log.Printf("🧪 GOOGLE_PROJECT_ID: %s", os.Getenv("GOOGLE_PROJECT_ID"))
+	log.Printf("🧪 GOOGLE_PROJECT_ID: %s", projectID)
 
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
@@ -769,7 +767,7 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	projectID := utils.GetProjectID()
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback
@@ -850,7 +848,8 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	projectID := utils.GetProjectID()
+
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback
@@ -1103,171 +1102,171 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	return result, "", nil
 }
 
-// saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
-func saveMCQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-	mcq := questionModels.NewMCQ()
-	mcq.ID = primitive.NewObjectID().Hex()
-	mcq.BankID = teacherId // Use teacherId as bankId for now
+// // saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
+// func saveMCQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+// 	mcq := questionModels.NewMCQ()
+// 	mcq.ID = primitive.NewObjectID().Hex()
+// 	mcq.BankID = teacherId // Use teacherId as bankId for now
 
-	// Extract question data
-	if question, ok := questionData["question"].(string); ok {
-		mcq.Question = question
-	}
+// 	// Extract question data
+// 	if question, ok := questionData["question"].(string); ok {
+// 		mcq.Question = question
+// 	}
 
-	if points, ok := questionData["points"].(float64); ok {
-		mcq.Points = int(points)
-	}
+// 	if points, ok := questionData["points"].(float64); ok {
+// 		mcq.Points = int(points)
+// 	}
 
-	if difficulty, ok := questionData["difficulty"].(string); ok {
-		mcq.Difficulty = difficulty
-	}
+// 	if difficulty, ok := questionData["difficulty"].(string); ok {
+// 		mcq.Difficulty = difficulty
+// 	}
 
-	if subject, ok := questionData["subject"].(string); ok {
-		mcq.Subject = subject
-	}
+// 	if subject, ok := questionData["subject"].(string); ok {
+// 		mcq.Subject = subject
+// 	}
 
-	if answerIndex, ok := questionData["answerIndex"].(float64); ok {
-		mcq.AnswerIndex = int(answerIndex)
-	}
+// 	if answerIndex, ok := questionData["answerIndex"].(float64); ok {
+// 		mcq.AnswerIndex = int(answerIndex)
+// 	}
 
-	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
-		options := make([]string, len(optionsInterface))
-		for i, opt := range optionsInterface {
-			if optStr, ok := opt.(string); ok {
-				options[i] = optStr
-			}
-		}
-		mcq.Options = options
-	}
+// 	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
+// 		options := make([]string, len(optionsInterface))
+// 		for i, opt := range optionsInterface {
+// 			if optStr, ok := opt.(string); ok {
+// 				options[i] = optStr
+// 			}
+// 		}
+// 		mcq.Options = options
+// 	}
 
-	if err := questionRepo.SaveMCQ(*mcq); err != nil {
-		return "", fmt.Errorf("failed to save MCQ: %v", err)
-	}
+// 	if err := questionRepo.SaveMCQ(*mcq); err != nil {
+// 		return "", fmt.Errorf("failed to save MCQ: %v", err)
+// 	}
 
-	return mcq.ID, nil
-}
+// 	return mcq.ID, nil
+// }
 
-// saveMSQQuestion saves an MSQ question to MongoDB and returns its ID
-func saveMSQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-	msq := questionModels.NewMSQ()
-	msq.ID = primitive.NewObjectID().Hex()
-	msq.BankID = teacherId
+// // saveMSQQuestion saves an MSQ question to MongoDB and returns its ID
+// func saveMSQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+// 	msq := questionModels.NewMSQ()
+// 	msq.ID = primitive.NewObjectID().Hex()
+// 	msq.BankID = teacherId
 
-	if question, ok := questionData["question"].(string); ok {
-		msq.Question = question
-	}
+// 	if question, ok := questionData["question"].(string); ok {
+// 		msq.Question = question
+// 	}
 
-	if points, ok := questionData["points"].(float64); ok {
-		msq.Points = int(points)
-	}
+// 	if points, ok := questionData["points"].(float64); ok {
+// 		msq.Points = int(points)
+// 	}
 
-	if difficulty, ok := questionData["difficulty"].(string); ok {
-		msq.Difficulty = difficulty
-	}
+// 	if difficulty, ok := questionData["difficulty"].(string); ok {
+// 		msq.Difficulty = difficulty
+// 	}
 
-	if subject, ok := questionData["subject"].(string); ok {
-		msq.Subject = subject
-	}
+// 	if subject, ok := questionData["subject"].(string); ok {
+// 		msq.Subject = subject
+// 	}
 
-	if answerIndicesInterface, ok := questionData["answerIndices"].([]interface{}); ok {
-		answerIndices := make([]int, len(answerIndicesInterface))
-		for i, idx := range answerIndicesInterface {
-			if idxFloat, ok := idx.(float64); ok {
-				answerIndices[i] = int(idxFloat)
-			}
-		}
-		msq.AnswerIndices = answerIndices
-	}
+// 	if answerIndicesInterface, ok := questionData["answerIndices"].([]interface{}); ok {
+// 		answerIndices := make([]int, len(answerIndicesInterface))
+// 		for i, idx := range answerIndicesInterface {
+// 			if idxFloat, ok := idx.(float64); ok {
+// 				answerIndices[i] = int(idxFloat)
+// 			}
+// 		}
+// 		msq.AnswerIndices = answerIndices
+// 	}
 
-	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
-		options := make([]string, len(optionsInterface))
-		for i, opt := range optionsInterface {
-			if optStr, ok := opt.(string); ok {
-				options[i] = optStr
-			}
-		}
-		msq.Options = options
-	}
+// 	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
+// 		options := make([]string, len(optionsInterface))
+// 		for i, opt := range optionsInterface {
+// 			if optStr, ok := opt.(string); ok {
+// 				options[i] = optStr
+// 			}
+// 		}
+// 		msq.Options = options
+// 	}
 
-	if err := questionRepo.SaveMSQ(*msq); err != nil {
-		return "", fmt.Errorf("failed to save MSQ: %v", err)
-	}
+// 	if err := questionRepo.SaveMSQ(*msq); err != nil {
+// 		return "", fmt.Errorf("failed to save MSQ: %v", err)
+// 	}
 
-	return msq.ID, nil
-}
+// 	return msq.ID, nil
+// }
 
-// saveNATQuestion saves a NAT question to MongoDB and returns its ID
-func saveNATQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-	nat := questionModels.NewNAT()
-	nat.ID = primitive.NewObjectID().Hex()
-	nat.BankID = teacherId
+// // saveNATQuestion saves a NAT question to MongoDB and returns its ID
+// func saveNATQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+// 	nat := questionModels.NewNAT()
+// 	nat.ID = primitive.NewObjectID().Hex()
+// 	nat.BankID = teacherId
 
-	if question, ok := questionData["question"].(string); ok {
-		nat.Question = question
-	}
+// 	if question, ok := questionData["question"].(string); ok {
+// 		nat.Question = question
+// 	}
 
-	if points, ok := questionData["points"].(float64); ok {
-		nat.Points = int(points)
-	}
+// 	if points, ok := questionData["points"].(float64); ok {
+// 		nat.Points = int(points)
+// 	}
 
-	if difficulty, ok := questionData["difficulty"].(string); ok {
-		nat.Difficulty = difficulty
-	}
+// 	if difficulty, ok := questionData["difficulty"].(string); ok {
+// 		nat.Difficulty = difficulty
+// 	}
 
-	if subject, ok := questionData["subject"].(string); ok {
-		nat.Subject = subject
-	}
+// 	if subject, ok := questionData["subject"].(string); ok {
+// 		nat.Subject = subject
+// 	}
 
-	if answer, ok := questionData["answer"].(float64); ok {
-		nat.Answer = answer
-	}
+// 	if answer, ok := questionData["answer"].(float64); ok {
+// 		nat.Answer = answer
+// 	}
 
-	if err := questionRepo.SaveNAT(*nat); err != nil {
-		return "", fmt.Errorf("failed to save NAT: %v", err)
-	}
+// 	if err := questionRepo.SaveNAT(*nat); err != nil {
+// 		return "", fmt.Errorf("failed to save NAT: %v", err)
+// 	}
 
-	return nat.ID, nil
-}
+// 	return nat.ID, nil
+// }
 
-// saveSubjectiveQuestion saves a Subjective question to MongoDB and returns its ID
-func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-	subjective := questionModels.NewSubjective()
-	subjective.ID = primitive.NewObjectID().Hex()
-	subjective.BankID = teacherId
+// // saveSubjectiveQuestion saves a Subjective question to MongoDB and returns its ID
+// func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
+// 	subjective := questionModels.NewSubjective()
+// 	subjective.ID = primitive.NewObjectID().Hex()
+// 	subjective.BankID = teacherId
 
-	if question, ok := questionData["question"].(string); ok {
-		subjective.Question = question
-	}
+// 	if question, ok := questionData["question"].(string); ok {
+// 		subjective.Question = question
+// 	}
 
-	if points, ok := questionData["points"].(float64); ok {
-		subjective.Points = int(points)
-	}
+// 	if points, ok := questionData["points"].(float64); ok {
+// 		subjective.Points = int(points)
+// 	}
 
-	if difficulty, ok := questionData["difficulty"].(string); ok {
-		subjective.Difficulty = difficulty
-	}
+// 	if difficulty, ok := questionData["difficulty"].(string); ok {
+// 		subjective.Difficulty = difficulty
+// 	}
 
-	if subject, ok := questionData["subject"].(string); ok {
-		subjective.Subject = subject
-	}
+// 	if subject, ok := questionData["subject"].(string); ok {
+// 		subjective.Subject = subject
+// 	}
 
-	if idealAnswer, ok := questionData["idealAnswer"].(string); ok {
-		subjective.IdealAnswer = &idealAnswer
-	}
+// 	if idealAnswer, ok := questionData["idealAnswer"].(string); ok {
+// 		subjective.IdealAnswer = &idealAnswer
+// 	}
 
-	if gradingCriteriaInterface, ok := questionData["gradingCriteria"].([]interface{}); ok {
-		criteria := make([]string, len(gradingCriteriaInterface))
-		for i, criterion := range gradingCriteriaInterface {
-			if criterionStr, ok := criterion.(string); ok {
-				criteria[i] = criterionStr
-			}
-		}
-		subjective.GradingCriteria = criteria
-	}
+// 	if gradingCriteriaInterface, ok := questionData["gradingCriteria"].([]interface{}); ok {
+// 		criteria := make([]string, len(gradingCriteriaInterface))
+// 		for i, criterion := range gradingCriteriaInterface {
+// 			if criterionStr, ok := criterion.(string); ok {
+// 				criteria[i] = criterionStr
+// 			}
+// 		}
+// 		subjective.GradingCriteria = criteria
+// 	}
 
-	if err := questionRepo.SaveSubjective(*subjective); err != nil {
-		return "", fmt.Errorf("failed to save Subjective: %v", err)
-	}
+// 	if err := questionRepo.SaveSubjective(*subjective); err != nil {
+// 		return "", fmt.Errorf("failed to save Subjective: %v", err)
+// 	}
 
-	return subjective.ID, nil
-}
+// 	return subjective.ID, nil
+// }
