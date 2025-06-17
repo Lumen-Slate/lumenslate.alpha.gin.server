@@ -4,13 +4,10 @@ services:
   app:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: lumenslate-server
     ports:
       - "8080:8080"
     env_file:
       - .env
     restart: unless-stopped
-    # Uncomment if you want to mount local media for development
-    # volumes:
-    #   - ./media:/root/media
