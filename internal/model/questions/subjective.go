@@ -11,6 +11,8 @@ type Subjective struct {
 	VariableIDs     []string  `json:"variableIds" bson:"variableIds" validate:"omitempty"`
 	Points          int       `json:"points" bson:"points" validate:"required,min=0"`
 	IdealAnswer     *string   `json:"idealAnswer,omitempty" bson:"idealAnswer,omitempty"`
+	Difficulty      string    `json:"difficulty" bson:"difficulty" validate:"required"`
+	Subject         string    `json:"subject" bson:"subject" validate:"required"`
 	GradingCriteria []string  `json:"gradingCriteria,omitempty" bson:"gradingCriteria,omitempty"`
 	CreatedAt       time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt       time.Time `json:"updatedAt" bson:"updatedAt"`

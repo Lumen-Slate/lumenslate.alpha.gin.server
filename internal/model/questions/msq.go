@@ -12,6 +12,8 @@ type MSQ struct {
 	Points        int       `json:"points" bson:"points" validate:"required,min=1"`
 	Options       []string  `json:"options" bson:"options" validate:"required,min=2"`
 	AnswerIndices []int     `json:"answerIndices" bson:"answerIndices" validate:"required,min=1"`
+	Difficulty    string    `json:"difficulty" bson:"difficulty" validate:"required"`
+	Subject       string    `json:"subject" bson:"subject" validate:"required"`
 	CreatedAt     time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt" bson:"updatedAt"`
 	IsActive      bool      `json:"isActive" bson:"isActive"`

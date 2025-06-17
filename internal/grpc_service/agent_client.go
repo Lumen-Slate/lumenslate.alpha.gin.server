@@ -192,12 +192,39 @@ func createErrorResponse(userId, errorMessage string, res *pb.AgentResponse) map
 }
 
 func handleQuestionGeneration(questionsRequested []QuestionRequest, userId string) (map[string]interface{}, error) {
+	// Debug: Check what's actually in the database
+	log.Printf("=== DEBUG: Starting question generation for user: %s ===", userId)
+	log.Printf("DEBUG: Total requests received: %d", len(questionsRequested))
+
+	// Show the raw requests first
+	for i, req := range questionsRequested {
+		log.Printf("DEBUG: Request %d - Type: '%s', Subject: '%s', NumberOfQuestions: %d, Difficulty: '%s'",
+			i+1, req.Type, req.Subject, req.NumberOfQuestions, req.Difficulty)
+	}
+
+	log.Printf("DEBUG: Checking database connectivity...")
+	if err := repository.DebugTestDatabaseConnection(); err != nil {
+		log.Printf("ERROR: Database connectivity test failed: %v", err)
+		return nil, fmt.Errorf("database connectivity failed: %v", err)
+	}
+
+	log.Printf("DEBUG: Checking database contents...")
+	repository.DebugGetAllSubjects()
+	repository.DebugGetSampleQuestions(5)
+
+	log.Printf("DEBUG: Running advanced math question search...")
+	repository.DebugFindMathQuestions()
+
+	log.Printf("DEBUG: Listing all collections in database...")
+	repository.DebugListAllCollections()
+
 	// Group requests by subject to handle multiple difficulty levels for the same subject
 	subjectRequests := make(map[string][]QuestionRequest)
 
 	for _, request := range questionsRequested {
 		if request.Type == "assignment_generator_general" {
 			subject := strings.ToLower(strings.TrimSpace(request.Subject))
+			log.Printf("DEBUG: Processing request for subject: '%s' -> normalized: '%s'", request.Subject, subject)
 			subjectRequests[subject] = append(subjectRequests[subject], request)
 		}
 	}
@@ -210,6 +237,8 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 		// Convert subject string to Subject enum
 		subject, validSubject := model.GetSubjectFromString(subjectKey)
 		displaySubject := strings.Title(subjectKey)
+
+		log.Printf("DEBUG: Subject conversion - key: '%s' -> enum: '%s', valid: %v", subjectKey, subject, validSubject)
 
 		if !validSubject {
 			// Invalid subject
@@ -238,6 +267,8 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 			difficulty := strings.ToLower(strings.TrimSpace(req.Difficulty))
 			totalRequested += numQuestions
 
+			log.Printf("DEBUG: Processing request - subject: '%s', difficulty: '%s', count: %d", subject, difficulty, numQuestions)
+
 			var availableQuestions []model.Questions
 			var err error
 
@@ -254,14 +285,17 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 					difficultyEnum = model.DifficultyHard
 				default:
 					// Invalid difficulty, get all questions for this subject
+					log.Printf("DEBUG: Invalid difficulty '%s', getting all questions for subject '%s'", difficulty, subject)
 					availableQuestions, err = repository.GetQuestionsBySubject(subject)
 				}
 
 				if difficultyEnum != "" {
+					log.Printf("DEBUG: Getting questions by subject '%s' and difficulty '%s'", subject, difficultyEnum)
 					availableQuestions, err = repository.GetQuestionsBySubjectAndDifficulty(subject, difficultyEnum)
 				}
 			} else {
 				// No difficulty specified, get all questions for this subject
+				log.Printf("DEBUG: No difficulty specified, getting all questions for subject '%s'", subject)
 				availableQuestions, err = repository.GetQuestionsBySubject(subject)
 			}
 
@@ -270,11 +304,15 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 				continue
 			}
 
+			log.Printf("DEBUG: Database query result - subject: '%s', available: %d, requested: %d", subject, len(availableQuestions), numQuestions)
+
 			if len(availableQuestions) == 0 {
 				// No questions available for this difficulty
+				log.Printf("DEBUG: No questions found for subject '%s' with difficulty '%s'", subject, difficulty)
 				continue
 			} else if numQuestions > len(availableQuestions) {
 				// Not enough questions for this difficulty, skip this request
+				log.Printf("DEBUG: Not enough questions - requested: %d, available: %d", numQuestions, len(availableQuestions))
 				continue
 			} else {
 				// Randomly sample the requested number of questions
@@ -285,14 +323,18 @@ func handleQuestionGeneration(questionsRequested []QuestionRequest, userId strin
 					selectedQuestions[i] = availableQuestions[perm[i]]
 				}
 				allQuestionsForSubject = append(allQuestionsForSubject, selectedQuestions...)
+				log.Printf("DEBUG: Successfully selected %d questions for subject '%s'", numQuestions, subject)
 			}
 		}
 
 		// Get total available questions for this subject
 		totalAvailable, err := repository.CountQuestionsBySubject(subject)
 		if err != nil {
+			log.Printf("DEBUG: Error counting questions for subject '%s': %v", subject, err)
 			totalAvailable = 0
 		}
+
+		log.Printf("DEBUG: Final counts - subject: '%s', total available: %d, total requested: %d, total selected: %d", subject, totalAvailable, totalRequested, len(allQuestionsForSubject))
 
 		// Check if we got all requested questions
 		if len(allQuestionsForSubject) < totalRequested {

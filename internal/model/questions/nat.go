@@ -11,6 +11,8 @@ type NAT struct {
 	VariableIDs []string  `json:"variableIds" bson:"variableIds" validate:"omitempty"`
 	Points      int       `json:"points" bson:"points" validate:"required,min=1"`
 	Answer      float64   `json:"answer" bson:"answer"`
+	Difficulty  string    `json:"difficulty" bson:"difficulty" validate:"required"`
+	Subject     string    `json:"subject" bson:"subject" validate:"required"`
 	CreatedAt   time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt" bson:"updatedAt"`
 	IsActive    bool      `json:"isActive" bson:"isActive"`

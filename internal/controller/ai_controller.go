@@ -42,13 +42,13 @@ type FilterAndRandomizeRequest struct {
 }
 
 type AgentRequest struct {
-	File      string `json:"file"`
-	FileType  string `json:"fileType"`
-	UserId    string `json:"userId"`
-	Role      string `json:"role"`
-	Message   string `json:"message"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	UserId    string `form:"userId" binding:"required"`
+	Role      string `form:"role" binding:"required"`
+	Message   string `form:"message" binding:"required"`
+	File      string `form:"file"`
+	FileType  string `form:"fileType"`
+	CreatedAt string `form:"createdAt"`
+	UpdatedAt string `form:"updatedAt"`
 }
 
 // GenerateContextHandler godoc
@@ -245,7 +245,7 @@ func FilterAndRandomizeHandler(c *gin.Context) {
 func AgentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/agent called")
 	var req AgentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
