@@ -10,19 +10,21 @@ const (
 
 // Collection names
 const (
-	MCQCollection          = "mcqs"
-	MSQCollection          = "msqs"
-	QuestionBankCollection = "questionBanks"
-	TeacherCollection      = "teachers"
-	NATCollection          = "nats"
-	SubjectiveCollection   = "subjectives"
-	AssignmentCollection   = "assignments"
-	ClassroomCollection    = "classrooms"
-	CommentCollection      = "comments"
-	PostCollection         = "posts"
-	StudentCollection      = "students"
-	SubmissionCollection   = "submissions"
-	VariableCollection     = "variables"
+	MCQCollection           = "mcqs"
+	MSQCollection           = "msqs"
+	QuestionBankCollection  = "questionBanks"
+	TeacherCollection       = "teachers"
+	NATCollection           = "nats"
+	SubjectiveCollection    = "subjectives"
+	AssignmentCollection    = "assignments"
+	ClassroomCollection     = "classrooms"
+	CommentCollection       = "comments"
+	PostCollection          = "posts"
+	StudentCollection       = "students"
+	SubmissionCollection    = "submissions"
+	VariableCollection      = "variables"
+	QuestionsCollection     = "questions"
+	SubjectReportCollection = "subject_reports"
 )
 
 // GetCollection returns a reference to the specified collection
