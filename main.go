@@ -29,75 +29,66 @@ import (
 // @BasePath        /
 
 func init() {
+	log.Println("[BOOT] init() called")
 	logADCIdentity()
 
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
 		_, _ = io.ReadAll(file)
-
-		if err := godotenv.Load("/secrets/ENV_FILE"); err != nil {
-		} else {
-		}
+		log.Println("[BOOT] Loaded /secrets/ENV_FILE")
+		_ = godotenv.Load("/secrets/ENV_FILE")
 	} else {
-		// Fallback to local development .env file
-
-		if err := godotenv.Load(); err != nil {
-		} else {
-		}
+		log.Println("[BOOT] /secrets/ENV_FILE not found, loading local .env")
+		_ = godotenv.Load()
 	}
 
 	uri := os.Getenv("MONGO_URI")
+	log.Printf("[BOOT] MONGO_URI: %s", uri)
 	if err := db.InitMongoDB(uri); err != nil {
 		log.Fatal("Could not connect to MongoDB:", err)
 	}
 }
 
 func main() {
-	// Set Gin log mode based on environment
 	if os.Getenv("GO_ENV") == "production" {
 		gin.SetMode(gin.ReleaseMode)
+		log.Println("[BOOT] Running in PRODUCTION mode")
 	} else {
 		gin.SetMode(gin.DebugMode)
+		log.Println("[BOOT] Running in DEBUG mode")
 	}
 
-	// Setup Gin
+	log.Println("[BOOT] Initializing Gin router and registering routes")
 	router := gin.Default()
 	router.Use(cors.Default())
-
-	// Configure Gin to handle trailing slashes
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
-
 	router.Static("/media", "./media")
-
-	// Register all routes
 	registerRoutes(router)
 
-	// Swagger & health check
 	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Get port from environment
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	address := "0.0.0.0:" + port // ✅ REQUIRED for Cloud Run
+	log.Printf("[BOOT] Starting server on %s", address)
 
-	// Run the server in a goroutine for graceful shutdown
 	go func() {
 		if err := router.Run(address); err != nil {
 			log.Fatalf("❌ Server failed: %v", err)
 		}
 	}()
 
-	// Graceful shutdown
 	gracefulShutdown()
 }
 
 func registerRoutes(router *gin.Engine) {
+	log.Println("[BOOT] Registering all API routes")
 	routes.RegisterAssignmentRoutes(router)
 	routes.RegisterClassroomRoutes(router)
 	routes.RegisterCommentRoutes(router)
@@ -134,7 +125,7 @@ func logADCIdentity() {
 		return
 	}
 	defer resp.Body.Close()
-
+	log.Println("[BOOT] Successfully called metadata server for ADC identity")
 }
 
 func gracefulShutdown() {

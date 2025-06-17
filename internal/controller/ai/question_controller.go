@@ -21,22 +21,17 @@ import (
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/generate-context [post]
 func GenerateContextHandler(c *gin.Context) {
-	log.Println("[AI] /ai/generate-context called")
 	var req GenerateContextRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] GenerateContext request: Question='%s', Keywords=%v, Language='%s'", req.Question, req.Keywords, req.Language)
 
 	content, err := service.GenerateContext(req.Question, req.Keywords, req.Language)
 	if err != nil {
-		log.Printf("[AI] GenerateContext error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] GenerateContext success, content length: %d", len(content))
 	c.JSON(http.StatusOK, gin.H{"content": content})
 }
 
