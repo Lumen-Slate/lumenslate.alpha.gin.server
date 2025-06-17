@@ -1,5 +1,7 @@
-# Stage 1: Build
-FROM golang:1.24.4-alpine AS builder
+FROM golang:1.24.4-alpine
+
+# Install necessary dependencies
+RUN apk add --no-cache git curl
 
 # Set working directory
 WORKDIR /app
@@ -8,30 +10,15 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the entire app
+# Copy entire source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o server main.go
-
-# Stage 2: Minimal runtime
-FROM alpine:latest
-
-# Install CA certs and curl (for healthcheck)
-RUN apk add --no-cache ca-certificates curl
-
-# Set working directory
-WORKDIR /root/
-
-# Copy the binary from builder stage
-COPY --from=builder /app/server .
-
-# Port Cloud Run expects
+# Expose the port your app uses
 EXPOSE 8080
 
-# Optional: Health check
+# Health check (optional)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl --fail http://localhost:8080/health || exit 1
 
-# Start the app
-CMD ["./server"]
+# Run the app using go run
+CMD ["go", "run", "main.go"]
