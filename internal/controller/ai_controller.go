@@ -66,8 +66,8 @@ type CreateCorpusRequest struct {
 }
 
 type DeleteCorpusDocumentRequest struct {
-	CorpusName      string `json:"corpusName" binding:"required"`
-	FileDisplayName string `json:"fileDisplayName" binding:"required"`
+	CorpusName string `json:"corpusName" binding:"required"`
+	FileID     string `json:"fileId" binding:"required"` // Can be fileId, RAG file ID, or display name
 }
 
 type AddCorpusDocumentFormRequest struct {
@@ -668,7 +668,7 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	deleteResponse, err := deleteVertexAICorpusDocument(req.CorpusName, req.FileDisplayName)
+	deleteResponse, err := deleteVertexAICorpusDocument(req.CorpusName, req.FileID)
 	if err != nil {
 		log.Printf("[AI] Delete corpus document error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to delete document: %v", err)})
@@ -1126,9 +1126,10 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 }
 
 // deleteVertexAICorpusDocument deletes a specific document from a RAG corpus
-func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[string]interface{}, error) {
+// The fileIdentifier can be either a fileId (database ID), RAG file ID, or display name
+func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string]interface{}, error) {
 	ctx := context.Background()
-	log.Printf("[AI] Starting comprehensive document deletion for '%s' in corpus '%s'", fileDisplayName, corpusName)
+	log.Printf("[AI] Starting comprehensive document deletion for '%s' in corpus '%s'", fileIdentifier, corpusName)
 
 	// Initialize services
 	gcs, err := gcsService.NewGCSService()
@@ -1139,18 +1140,34 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 
 	docRepo := repository.NewDocumentRepository()
 
-	// First, get document from database to get GCS object path
-	documents, err := docRepo.GetDocumentsByCorpus(ctx, corpusName)
-	if err != nil {
-		log.Printf("[AI] Warning: Failed to get documents from database: %v", err)
+	// Try to find the document in database using multiple strategies
+	var documentToDelete *model.Document
+
+	// Strategy 1: Try as fileId (direct database lookup)
+	if doc, err := docRepo.GetDocumentByFileID(ctx, fileIdentifier); err == nil {
+		documentToDelete = doc
+		log.Printf("[AI] Found document by fileId: %s (DisplayName: %s, RAGFileID: %s)",
+			doc.FileID, doc.DisplayName, doc.RAGFileID)
+	} else {
+		// Strategy 2: Search by corpus and match by display name or RAG file ID
+		documents, err := docRepo.GetDocumentsByCorpus(ctx, corpusName)
+		if err != nil {
+			log.Printf("[AI] Warning: Failed to get documents from database: %v", err)
+		} else {
+			for _, doc := range documents {
+				if doc.DisplayName == fileIdentifier || doc.RAGFileID == fileIdentifier {
+					documentToDelete = &doc
+					log.Printf("[AI] Found document by %s match: %s",
+						map[bool]string{true: "display name", false: "RAG file ID"}[doc.DisplayName == fileIdentifier],
+						doc.FileID)
+					break
+				}
+			}
+		}
 	}
 
-	var documentToDelete *model.Document
-	for _, doc := range documents {
-		if doc.DisplayName == fileDisplayName {
-			documentToDelete = &doc
-			break
-		}
+	if documentToDelete == nil {
+		return nil, fmt.Errorf("document '%s' not found in database for corpus '%s'", fileIdentifier, corpusName)
 	}
 
 	// Project configuration for RAG operations
@@ -1193,17 +1210,56 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
 	}
 
-	// List files in the corpus to find the one to delete
-	filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list files in corpus: %v", err)
-	}
-
+	// List files in the corpus to find the one to delete using the RAG file ID from database
 	var fileToDelete string
-	for _, file := range filesResponse.RagFiles {
-		if file.DisplayName == fileDisplayName {
-			fileToDelete = file.Name
-			break
+	var ragSearchTerm string
+
+	if documentToDelete.RAGFileID != "" {
+		// We have a RAG file ID from database, use it to find the file
+		ragSearchTerm = documentToDelete.RAGFileID
+		log.Printf("[AI] Searching for RAG file using RAG file ID from database: '%s'", ragSearchTerm)
+
+		filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list files in corpus: %v", err)
+		}
+
+		log.Printf("[AI] Found %d files in corpus '%s'", len(filesResponse.RagFiles), corpusName)
+
+		for _, file := range filesResponse.RagFiles {
+			log.Printf("[AI] Checking file: Name='%s', DisplayName='%s'", file.Name, file.DisplayName)
+
+			// Try multiple matching strategies
+			if file.DisplayName == ragSearchTerm ||
+				strings.Contains(file.Name, ragSearchTerm) ||
+				strings.Contains(file.DisplayName, ragSearchTerm) ||
+				strings.Contains(file.DisplayName, documentToDelete.DisplayName) ||
+				// Handle case where RAG file ID doesn't have extension but display name does
+				strings.HasPrefix(file.DisplayName, ragSearchTerm+".") {
+				fileToDelete = file.Name
+				log.Printf("[AI] Found matching RAG file: %s (matched display name: %s)", fileToDelete, file.DisplayName)
+				break
+			}
+		}
+	} else {
+		log.Printf("[AI] No RAG file ID in database, trying to find by display name: '%s'", documentToDelete.DisplayName)
+		ragSearchTerm = documentToDelete.DisplayName
+
+		filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list files in corpus: %v", err)
+		}
+
+		for _, file := range filesResponse.RagFiles {
+			log.Printf("[AI] Checking file: Name='%s', DisplayName='%s'", file.Name, file.DisplayName)
+
+			if file.DisplayName == documentToDelete.DisplayName ||
+				strings.Contains(file.DisplayName, documentToDelete.DisplayName) ||
+				strings.Contains(documentToDelete.DisplayName, file.DisplayName) {
+				fileToDelete = file.Name
+				log.Printf("[AI] Found matching RAG file by display name: %s", fileToDelete)
+				break
+			}
 		}
 	}
 
@@ -1228,13 +1284,13 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 			log.Printf("[AI] Successfully deleted from RAG engine")
 		}
 	} else {
-		errorMsg := fmt.Sprintf("file '%s' not found in RAG engine", fileDisplayName)
+		errorMsg := fmt.Sprintf("file '%s' not found in RAG engine", ragSearchTerm)
 		deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
 		log.Printf("[AI] %s", errorMsg)
 	}
 
 	// 2. Delete from GCS
-	if documentToDelete != nil && documentToDelete.GCSObject != "" {
+	if documentToDelete.GCSObject != "" {
 		log.Printf("[AI] Deleting file from GCS: %s", documentToDelete.GCSObject)
 		err := gcs.DeleteObject(ctx, documentToDelete.GCSObject)
 		if err != nil {
@@ -1252,21 +1308,15 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}
 
 	// 3. Delete from database
-	if documentToDelete != nil {
-		log.Printf("[AI] Deleting document from database: %s", documentToDelete.FileID)
-		err := docRepo.DeleteDocument(ctx, documentToDelete.FileID)
-		if err != nil {
-			errorMsg := fmt.Sprintf("failed to delete from database: %v", err)
-			deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
-			log.Printf("[AI] %s", errorMsg)
-		} else {
-			deletionResults["databaseDeleted"] = true
-			log.Printf("[AI] Successfully deleted from database")
-		}
-	} else {
-		errorMsg := "document not found in database"
+	log.Printf("[AI] Deleting document from database: %s", documentToDelete.FileID)
+	err = docRepo.DeleteDocument(ctx, documentToDelete.FileID)
+	if err != nil {
+		errorMsg := fmt.Sprintf("failed to delete from database: %v", err)
 		deletionResults["errors"] = append(deletionResults["errors"].([]string), errorMsg)
 		log.Printf("[AI] %s", errorMsg)
+	} else {
+		deletionResults["databaseDeleted"] = true
+		log.Printf("[AI] Successfully deleted from database")
 	}
 
 	// Determine overall status
@@ -1275,14 +1325,14 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 		deletionResults["databaseDeleted"].(bool)
 
 	status := "partial_success"
-	message := fmt.Sprintf("Document '%s' deletion completed with some issues", fileDisplayName)
+	message := fmt.Sprintf("Document '%s' deletion completed with some issues", documentToDelete.DisplayName)
 
 	if allDeleted {
 		status = "success"
-		message = fmt.Sprintf("Successfully deleted document '%s' from all locations", fileDisplayName)
+		message = fmt.Sprintf("Successfully deleted document '%s' from all locations", documentToDelete.DisplayName)
 	} else if len(deletionResults["errors"].([]string)) == 3 {
 		status = "error"
-		message = fmt.Sprintf("Failed to delete document '%s' from all locations", fileDisplayName)
+		message = fmt.Sprintf("Failed to delete document '%s' from all locations", documentToDelete.DisplayName)
 	}
 
 	log.Printf("[AI] Document deletion completed. Status: %s", status)
@@ -1290,7 +1340,8 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	return map[string]interface{}{
 		"status":          status,
 		"message":         message,
-		"deletedFileName": fileDisplayName,
+		"deletedFileName": documentToDelete.DisplayName,
+		"fileId":          documentToDelete.FileID,
 		"corpusName":      corpusName,
 		"deletionResults": deletionResults,
 	}, nil
