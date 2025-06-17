@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -11,7 +12,8 @@ import (
 // If unavailable, it falls back to the GOOGLE_PROJECT_ID environment variable.
 func GetProjectID() string {
 	if metadata.OnGCE() {
-		projectID, err := metadata.ProjectID()
+		ctx := context.Background()
+		projectID, err := metadata.ProjectIDWithContext(ctx)
 		if err == nil {
 			log.Println("🌐 Project ID fetched from GCE metadata server.")
 			return projectID

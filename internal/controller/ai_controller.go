@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	service "lumenslate/internal/grpc_service"
@@ -769,7 +770,19 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	var files []map[string]interface{}
 	for _, file := range filesResponse.RagFiles {
 		log.Printf("[AI] Found file: %s (displayName: %s)", file.Name, file.DisplayName)
+
+		// Extract file ID from the resource name (format: projects/.../ragFiles/{fileId})
+		fileID := ""
+		if file.Name != "" {
+			// Split by "/" and get the last part which is the file ID
+			parts := strings.Split(file.Name, "/")
+			if len(parts) > 0 {
+				fileID = parts[len(parts)-1]
+			}
+		}
+
 		files = append(files, map[string]interface{}{
+			"id":          fileID,
 			"name":        file.Name,
 			"displayName": file.DisplayName,
 			"description": file.Description,
