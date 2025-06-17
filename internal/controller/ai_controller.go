@@ -10,14 +10,20 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	service "lumenslate/internal/grpc_service"
+	"lumenslate/internal/model"
+	"lumenslate/internal/repository"
+	gcsService "lumenslate/internal/service"
 	"lumenslate/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/api/aiplatform/v1"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -64,9 +70,13 @@ type DeleteCorpusDocumentRequest struct {
 	FileDisplayName string `json:"fileDisplayName" binding:"required"`
 }
 
-type AddCorpusDocumentRequest struct {
-	CorpusName string `json:"corpusName" binding:"required"`
-	FileLink   string `json:"fileLink" binding:"required"`
+type AddCorpusDocumentFormRequest struct {
+	CorpusName string                `form:"corpusName" binding:"required"`
+	File       *multipart.FileHeader `form:"file" binding:"required"`
+}
+
+type ViewDocumentRequest struct {
+	DocumentID string `uri:"id" binding:"required"`
 }
 
 type AgentRequest struct {
@@ -836,24 +846,69 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 
 // AddCorpusDocumentHandler godoc
 // @Summary      Add Document to RAG Corpus
-// @Description  Add a document from Google Drive to a RAG corpus
+// @Description  Upload a document to GCS, add it to RAG corpus, and store metadata
 // @Tags         ai
-// @Accept       json
+// @Accept       multipart/form-data
 // @Produce      json
-// @Param        body  body  controller.AddCorpusDocumentRequest  true  "Request body"
+// @Param        corpusName formData string true "Corpus name"
+// @Param        file formData file true "Document file"
 // @Success      200   {object}  map[string]interface{}
 // @Failure      400   {object}  map[string]interface{}
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/rag-agent/add-corpus-document [post]
 func AddCorpusDocumentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/add-corpus-document called")
-	var req AddCorpusDocumentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
+
+	// Parse form data
+	var req AddCorpusDocumentFormRequest
+	if err := c.ShouldBind(&req); err != nil {
+		log.Printf("[AI] Invalid form request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] Request: %+v", req)
+
+	log.Printf("[AI] Request: corpusName=%s, file=%s", req.CorpusName, req.File.Filename)
+
+	// Initialize services
+	gcs, err := gcsService.NewGCSService()
+	if err != nil {
+		log.Printf("[AI] Failed to initialize GCS service: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
+		return
+	}
+	defer gcs.Close()
+
+	docRepo := repository.NewDocumentRepository()
+	ctx := context.Background()
+
+	// Open uploaded file
+	file, err := req.File.Open()
+	if err != nil {
+		log.Printf("[AI] Failed to open uploaded file: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read uploaded file"})
+		return
+	}
+	defer file.Close()
+
+	// Generate temporary object name for initial upload
+	tempFileID := uuid.New().String()
+	fileExtension := filepath.Ext(req.File.Filename)
+	tempObjectName := fmt.Sprintf("temp/%s%s", tempFileID, fileExtension)
+
+	// Upload file to GCS with temporary name
+	log.Printf("[AI] Uploading file to GCS with temporary name: %s", tempObjectName)
+	fileSize, err := gcs.UploadFileWithCustomName(ctx, file, tempObjectName, req.File.Header.Get("Content-Type"), req.File.Filename)
+	if err != nil {
+		log.Printf("[AI] Failed to upload file to GCS: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file to storage"})
+		return
+	}
+
+	log.Printf("[AI] File uploaded to GCS temporarily: %s (size: %d bytes)", tempObjectName, fileSize)
+
+	// Generate GCS URL for Vertex AI to access
+	gcsURL := fmt.Sprintf("gs://%s/%s", os.Getenv("GCS_BUCKET_NAME"), tempObjectName)
+	log.Printf("[AI] GCS URL for Vertex AI: %s", gcsURL)
 
 	// Check if corpus exists, create if it doesn't
 	log.Printf("[AI] Checking if corpus '%s' exists before adding document", req.CorpusName)
@@ -865,15 +920,100 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
 	}
 
-	addResponse, err := addVertexAICorpusDocument(req.CorpusName, req.FileLink)
+	// Store the count of existing files before adding
+	existingFiles, err := listVertexAICorpusContent(req.CorpusName)
+	var existingFileCount int
+	if err == nil {
+		if files, ok := existingFiles["files"].([]interface{}); ok {
+			existingFileCount = len(files)
+		}
+	}
+	log.Printf("[AI] Existing files in corpus before addition: %d", existingFileCount)
+
+	// Add document to Vertex AI RAG corpus using GCS URL
+	_, err = addVertexAICorpusDocument(req.CorpusName, gcsURL)
 	if err != nil {
 		log.Printf("[AI] Add corpus document error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to add document: %v", err)})
+
+		// Clean up: delete the uploaded file from GCS
+		if deleteErr := gcs.DeleteObject(ctx, tempObjectName); deleteErr != nil {
+			log.Printf("[AI] Failed to clean up GCS object after Vertex AI error: %v", deleteErr)
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to add document to corpus: %v", err)})
 		return
 	}
 
+	// Wait a bit for the operation to complete
+	time.Sleep(5 * time.Second)
+
+	// List files again to find the newly added RAG file
+	updatedFiles, err := listVertexAICorpusContent(req.CorpusName)
+	var ragFileID string
+	if err == nil {
+		if files, ok := updatedFiles["files"].([]interface{}); ok {
+			// Find the newest file (should be the one we just added)
+			if len(files) > existingFileCount {
+				// Get the last file in the list (most recently added)
+				if lastFile, ok := files[len(files)-1].(map[string]interface{}); ok {
+					if fileID, ok := lastFile["id"].(string); ok {
+						ragFileID = fileID
+						log.Printf("[AI] Found newly added RAG file ID: %s", ragFileID)
+					}
+				}
+			}
+		}
+	}
+
+	// If we couldn't get the RAG file ID, use a fallback
+	if ragFileID == "" {
+		log.Printf("[AI] Warning: Could not determine RAG file ID, using temp file ID as fallback")
+		ragFileID = tempFileID
+	}
+
+	// Rename the GCS object to use the RAG file ID
+	finalObjectName := fmt.Sprintf("documents/%s%s", ragFileID, fileExtension)
+	log.Printf("[AI] Renaming GCS object from %s to %s", tempObjectName, finalObjectName)
+
+	if err := gcs.RenameObject(ctx, tempObjectName, finalObjectName); err != nil {
+		log.Printf("[AI] Warning: Failed to rename GCS object: %v", err)
+		// Continue with temp name if rename fails
+		finalObjectName = tempObjectName
+	}
+
+	// Generate unique file ID for API access
+	fileID := uuid.New().String()
+
+	// Store document metadata in database
+	document := &model.Document{
+		FileID:      fileID,
+		DisplayName: req.File.Filename,
+		GCSBucket:   os.Getenv("GCS_BUCKET_NAME"),
+		GCSObject:   finalObjectName,
+		ContentType: req.File.Header.Get("Content-Type"),
+		Size:        fileSize,
+		CorpusName:  req.CorpusName,
+		RAGFileID:   ragFileID,
+		UploadedBy:  "system", // TODO: Get from authentication context
+	}
+
+	if err := docRepo.CreateDocument(ctx, document); err != nil {
+		log.Printf("[AI] Failed to store document metadata: %v", err)
+		// Don't fail the request, just log the error
+	} else {
+		log.Printf("[AI] Document metadata stored successfully with fileID: %s", fileID)
+	}
+
 	log.Printf("[AI] Add corpus document success")
-	c.JSON(http.StatusOK, addResponse)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Document uploaded and added to corpus successfully",
+		"fileId":      fileID,
+		"displayName": req.File.Filename,
+		"size":        fileSize,
+		"corpusName":  req.CorpusName,
+		"ragFileId":   ragFileID,
+		"gcsObject":   finalObjectName,
+	})
 }
 
 // ListAllCorporaHandler godoc
@@ -899,6 +1039,93 @@ func ListAllCorporaHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, corporaResponse)
 }
 
+// ViewDocumentHandler godoc
+// @Summary      Generate pre-signed URL for document viewing
+// @Description  Generate a time-limited pre-signed URL to view a document from GCS
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Document ID"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      404   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/documents/view/{id} [get]
+func ViewDocumentHandler(c *gin.Context) {
+	log.Println("[AI] /ai/documents/view/:id called")
+
+	// Get document ID from URL parameter
+	documentID := c.Param("id")
+	if documentID == "" {
+		log.Printf("[AI] Invalid request: missing document ID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Document ID is required"})
+		return
+	}
+
+	log.Printf("[AI] Request to view document ID: %s", documentID)
+
+	// Initialize services
+	gcs, err := gcsService.NewGCSService()
+	if err != nil {
+		log.Printf("[AI] Failed to initialize GCS service: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
+		return
+	}
+	defer gcs.Close()
+
+	docRepo := repository.NewDocumentRepository()
+	ctx := context.Background()
+
+	// Get document metadata from database
+	document, err := docRepo.GetDocumentByFileID(ctx, documentID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("[AI] Document not found: %s", documentID)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+		} else {
+			log.Printf("[AI] Database error retrieving document: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve document information"})
+		}
+		return
+	}
+
+	log.Printf("[AI] Found document: %s (GCS object: %s)", document.DisplayName, document.GCSObject)
+
+	// Verify the object exists in GCS
+	exists, err := gcs.ObjectExists(ctx, document.GCSObject)
+	if err != nil {
+		log.Printf("[AI] Error checking GCS object existence: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify document availability"})
+		return
+	}
+
+	if !exists {
+		log.Printf("[AI] GCS object not found: %s", document.GCSObject)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Document file not found in storage"})
+		return
+	}
+
+	// Generate pre-signed URL (valid for 30 minutes)
+	expiration := 30 * time.Minute
+	presignedURL, err := gcs.GenerateSignedURL(ctx, document.GCSObject, expiration)
+	if err != nil {
+		log.Printf("[AI] Failed to generate signed URL: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate document access URL"})
+		return
+	}
+
+	log.Printf("[AI] Generated presigned URL successfully for document: %s", documentID)
+	c.JSON(http.StatusOK, gin.H{
+		"url":         presignedURL,
+		"expiresIn":   "30 minutes",
+		"documentId":  documentID,
+		"displayName": document.DisplayName,
+		"contentType": document.ContentType,
+		"size":        document.Size,
+		"corpusName":  document.CorpusName,
+	})
+}
+
 // listAllVertexAICorpora lists all RAG corpora names
 func listAllVertexAICorpora() (map[string]interface{}, error) {
 	log.Printf("[AI] listAllVertexAICorpora called")
@@ -906,9 +1133,6 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 
 	// Project configuration - force RAG-compatible location
 	projectID := utils.GetProjectID()
-
-	log.Printf("🧪 GOOGLE_PROJECT_ID: %s", projectID)
-
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
@@ -922,7 +1146,7 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 
 	// Create AI Platform service client with default credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
+		option.WithEndpoint(endpoint))
 	if err != nil {
 		log.Printf("[AI] Failed to create AI Platform service: %v", err)
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
@@ -976,7 +1200,7 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 
 	// Create AI Platform service client with default ADC credentials
 	service, err := aiplatform.NewService(ctx,
-		option.WithEndpoint(endpoint)) // ⬅️ Removed WithCredentialsFile
+		option.WithEndpoint(endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -1041,13 +1265,12 @@ func deleteVertexAICorpusDocument(corpusName, fileDisplayName string) (map[strin
 	}, nil
 }
 
-// addVertexAICorpusDocument adds a document from Google Drive to a RAG corpus
+// addVertexAICorpusDocument adds a document from GCS or Google Drive to a RAG corpus
 func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
 	projectID := utils.GetProjectID()
-
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback
@@ -1102,36 +1325,66 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 		return nil, fmt.Errorf("corpus '%s' not found after %d attempts", corpusName, maxRetries)
 	}
 
-	// Extract file ID from Google Drive URL
-	re := regexp.MustCompile(`/file/d/([a-zA-Z0-9_-]+)`)
-	matches := re.FindStringSubmatch(fileLink)
-	if len(matches) <= 1 {
-		return nil, fmt.Errorf("invalid Google Drive URL format: could not extract file ID")
-	}
-	fileID := matches[1]
+	var importRequest *aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest
+	var fileDisplayName string
 
-	// Fetch file display name using Drive API (using ADC, no credentialsPath)
-	fileDisplayName, err := getGoogleDriveFileName(fileID) // Adjusted to match function signature
-	if err != nil {
-		log.Printf("[AI] Warning: Could not fetch file name from Google Drive: %v. Using fallback name.", err)
-		fileDisplayName = fmt.Sprintf("gdrive_file_%s", fileID)
-	}
+	// Check if it's a GCS URL or Google Drive URL
+	if strings.HasPrefix(fileLink, "gs://") {
+		// GCS URL format: gs://bucket/path/to/file
+		log.Printf("[AI] Adding GCS file to corpus: %s", fileLink)
 
-	log.Printf("[AI] Adding file '%s' (ID: %s) to corpus '%s'", fileDisplayName, fileID, corpusName)
+		// Extract filename from GCS path
+		parts := strings.Split(fileLink, "/")
+		if len(parts) > 0 {
+			fileDisplayName = parts[len(parts)-1]
+		} else {
+			fileDisplayName = "gcs_file"
+		}
 
-	// Build the import request
-	importRequest := &aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest{
-		ImportRagFilesConfig: &aiplatform.GoogleCloudAiplatformV1ImportRagFilesConfig{
-			GoogleDriveSource: &aiplatform.GoogleCloudAiplatformV1GoogleDriveSource{
-				ResourceIds: []*aiplatform.GoogleCloudAiplatformV1GoogleDriveSourceResourceId{
-					{
-						ResourceId:   fileID,
-						ResourceType: "RESOURCE_TYPE_FILE",
+		// Build the import request for GCS
+		importRequest = &aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest{
+			ImportRagFilesConfig: &aiplatform.GoogleCloudAiplatformV1ImportRagFilesConfig{
+				GcsSource: &aiplatform.GoogleCloudAiplatformV1GcsSource{
+					Uris: []string{fileLink},
+				},
+			},
+		}
+	} else {
+		// Assume Google Drive URL
+		log.Printf("[AI] Adding Google Drive file to corpus: %s", fileLink)
+
+		// Extract file ID from Google Drive URL
+		re := regexp.MustCompile(`/file/d/([a-zA-Z0-9_-]+)`)
+		matches := re.FindStringSubmatch(fileLink)
+		if len(matches) <= 1 {
+			return nil, fmt.Errorf("invalid Google Drive URL format: could not extract file ID")
+		}
+		fileID := matches[1]
+
+		// Fetch file display name using Drive API (using ADC, no credentialsPath)
+		var driveErr error
+		fileDisplayName, driveErr = getGoogleDriveFileName(fileID)
+		if driveErr != nil {
+			log.Printf("[AI] Warning: Could not fetch file name from Google Drive: %v. Using fallback name.", driveErr)
+			fileDisplayName = fmt.Sprintf("gdrive_file_%s", fileID)
+		}
+
+		// Build the import request for Google Drive
+		importRequest = &aiplatform.GoogleCloudAiplatformV1ImportRagFilesRequest{
+			ImportRagFilesConfig: &aiplatform.GoogleCloudAiplatformV1ImportRagFilesConfig{
+				GoogleDriveSource: &aiplatform.GoogleCloudAiplatformV1GoogleDriveSource{
+					ResourceIds: []*aiplatform.GoogleCloudAiplatformV1GoogleDriveSourceResourceId{
+						{
+							ResourceId:   fileID,
+							ResourceType: "RESOURCE_TYPE_FILE",
+						},
 					},
 				},
 			},
-		},
+		}
 	}
+
+	log.Printf("[AI] Adding file '%s' to corpus '%s'", fileDisplayName, corpusName)
 
 	// Trigger the import
 	operation, err := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest).Do()
@@ -1141,12 +1394,13 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 
 	return map[string]interface{}{
 		"status":          "success",
-		"message":         fmt.Sprintf("Successfully added file from Google Drive to corpus '%s'", corpusName),
+		"message":         fmt.Sprintf("Successfully added file to corpus '%s'", corpusName),
 		"operationName":   operation.Name,
 		"fileDisplayName": fileDisplayName,
 		"sourceUrl":       fileLink,
 		"corpusName":      corpusName,
 		"documentAdded":   true,
+		"ragFile":         map[string]interface{}{"name": operation.Name}, // Include operation name for RAG file ID extraction
 	}, nil
 }
 
@@ -1351,179 +1605,153 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	return result, "Agent response processed successfully", nil
 }
 
-// // saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
-// func saveMCQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-// 	mcq := questionModels.NewMCQ()
-// 	mcq.ID = primitive.NewObjectID().Hex()
-// 	mcq.BankID = teacherId // Use teacherId as bankId for now
-
-// 	// Extract question data
-// 	if question, ok := questionData["question"].(string); ok {
-// 		mcq.Question = question
-// 	}
-
-// 	if points, ok := questionData["points"].(float64); ok {
-// 		mcq.Points = int(points)
-// 	}
-
-// 	if difficulty, ok := questionData["difficulty"].(string); ok {
-// 		mcq.Difficulty = difficulty
-// 	}
-
-// 	if subject, ok := questionData["subject"].(string); ok {
-// 		mcq.Subject = subject
-// 	}
-
-// 	if answerIndex, ok := questionData["answerIndex"].(float64); ok {
-// 		mcq.AnswerIndex = int(answerIndex)
-// 	}
-
-// 	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
-// 		options := make([]string, len(optionsInterface))
-// 		for i, opt := range optionsInterface {
-// 			if optStr, ok := opt.(string); ok {
-// 				options[i] = optStr
-// 			}
-// 		}
-// 		mcq.Options = options
-// 	}
-
-// 	if err := questionRepo.SaveMCQ(*mcq); err != nil {
-// 		return "", fmt.Errorf("failed to save MCQ: %v", err)
-// 	}
-
-// 	return mcq.ID, nil
-// }
-
-// // saveMSQQuestion saves an MSQ question to MongoDB and returns its ID
-// func saveMSQQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-// 	msq := questionModels.NewMSQ()
-// 	msq.ID = primitive.NewObjectID().Hex()
-// 	msq.BankID = teacherId
-
-// 	if question, ok := questionData["question"].(string); ok {
-// 		msq.Question = question
-// 	}
-
-// 	if points, ok := questionData["points"].(float64); ok {
-// 		msq.Points = int(points)
-// 	}
-
-// 	if difficulty, ok := questionData["difficulty"].(string); ok {
-// 		msq.Difficulty = difficulty
-// 	}
-
-// 	if subject, ok := questionData["subject"].(string); ok {
-// 		msq.Subject = subject
-// 	}
-
-// 	if answerIndicesInterface, ok := questionData["answerIndices"].([]interface{}); ok {
-// 		answerIndices := make([]int, len(answerIndicesInterface))
-// 		for i, idx := range answerIndicesInterface {
-// 			if idxFloat, ok := idx.(float64); ok {
-// 				answerIndices[i] = int(idxFloat)
-// 			}
-// 		}
-// 		msq.AnswerIndices = answerIndices
-// 	}
-
-// 	if optionsInterface, ok := questionData["options"].([]interface{}); ok {
-// 		options := make([]string, len(optionsInterface))
-// 		for i, opt := range optionsInterface {
-// 			if optStr, ok := opt.(string); ok {
-// 				options[i] = optStr
-// 			}
-// 		}
-// 		msq.Options = options
-// 	}
-
-// 	if err := questionRepo.SaveMSQ(*msq); err != nil {
-// 		return "", fmt.Errorf("failed to save MSQ: %v", err)
-// 	}
-
-// 	return msq.ID, nil
-// }
-
-// // saveNATQuestion saves a NAT question to MongoDB and returns its ID
-// func saveNATQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-// 	nat := questionModels.NewNAT()
-// 	nat.ID = primitive.NewObjectID().Hex()
-// 	nat.BankID = teacherId
-
-// 	if question, ok := questionData["question"].(string); ok {
-// 		nat.Question = question
-// 	}
-
-// 	if points, ok := questionData["points"].(float64); ok {
-// 		nat.Points = int(points)
-// 	}
-
-// 	if difficulty, ok := questionData["difficulty"].(string); ok {
-// 		nat.Difficulty = difficulty
-// 	}
-
-// 	if subject, ok := questionData["subject"].(string); ok {
-// 		nat.Subject = subject
-// 	}
-
-// 	if answer, ok := questionData["answer"].(float64); ok {
-// 		nat.Answer = answer
-// 	}
-
-// 	if err := questionRepo.SaveNAT(*nat); err != nil {
-// 		return "", fmt.Errorf("failed to save NAT: %v", err)
-// 	}
-
-// 	return nat.ID, nil
-// }
-
-// // saveSubjectiveQuestion saves a Subjective question to MongoDB and returns its ID
-// func saveSubjectiveQuestion(questionData map[string]interface{}, teacherId string) (string, error) {
-// 	subjective := questionModels.NewSubjective()
-// 	subjective.ID = primitive.NewObjectID().Hex()
-// 	subjective.BankID = teacherId
-
-// 	if question, ok := questionData["question"].(string); ok {
-// 		subjective.Question = question
-// 	}
-
-// 	if points, ok := questionData["points"].(float64); ok {
-// 		subjective.Points = int(points)
-// 	}
-
-// 	if difficulty, ok := questionData["difficulty"].(string); ok {
-// 		subjective.Difficulty = difficulty
-// 	}
-
-// 	if subject, ok := questionData["subject"].(string); ok {
-// 		subjective.Subject = subject
-// 	}
-
-// 	if idealAnswer, ok := questionData["idealAnswer"].(string); ok {
-// 		subjective.IdealAnswer = &idealAnswer
-// 	}
-
-// 	if gradingCriteriaInterface, ok := questionData["gradingCriteria"].([]interface{}); ok {
-// 		criteria := make([]string, len(gradingCriteriaInterface))
-// 		for i, criterion := range gradingCriteriaInterface {
-// 			if criterionStr, ok := criterion.(string); ok {
-// 				criteria[i] = criterionStr
-// 			}
-// 		}
-// 		subjective.GradingCriteria = criteria
-// 	}
-
-// 	if err := questionRepo.SaveSubjective(*subjective); err != nil {
-// 		return "", fmt.Errorf("failed to save Subjective: %v", err)
-// 	}
-
-// 	return subjective.ID, nil
-// }
-
 // Helper function for minimum of two integers
 func min(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
+}
+
+// ListCorpusDocumentsHandler godoc
+// @Summary      List Documents in RAG Corpus
+// @Description  List all documents in a specific RAG corpus
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        corpusName path string true "Corpus name"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/rag-agent/corpus/{corpusName}/documents [get]
+func ListCorpusDocumentsHandler(c *gin.Context) {
+	log.Println("[AI] /ai/rag-agent/corpus/:corpusName/documents called")
+
+	corpusName := c.Param("corpusName")
+	if corpusName == "" {
+		log.Printf("[AI] Invalid request: missing corpus name")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Corpus name is required"})
+		return
+	}
+
+	log.Printf("[AI] Request to list documents in corpus: %s", corpusName)
+
+	docRepo := repository.NewDocumentRepository()
+	ctx := context.Background()
+
+	// Get documents from database
+	documents, err := docRepo.GetDocumentsByCorpus(ctx, corpusName)
+	if err != nil {
+		log.Printf("[AI] Failed to retrieve documents for corpus %s: %v", corpusName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve documents"})
+		return
+	}
+
+	// Convert to metadata format
+	var documentList []model.DocumentMetadata
+	for _, doc := range documents {
+		documentList = append(documentList, model.DocumentMetadata{
+			FileID:      doc.FileID,
+			DisplayName: doc.DisplayName,
+			ContentType: doc.ContentType,
+			Size:        doc.Size,
+			CorpusName:  doc.CorpusName,
+			CreatedAt:   doc.CreatedAt,
+		})
+	}
+
+	log.Printf("[AI] Found %d documents in corpus %s", len(documentList), corpusName)
+	c.JSON(http.StatusOK, gin.H{
+		"corpusName": corpusName,
+		"documents":  documentList,
+		"count":      len(documentList),
+	})
+}
+
+// DeleteCorpusDocumentByIDHandler godoc
+// @Summary      Delete Document from RAG Corpus by ID
+// @Description  Delete a document from RAG corpus and GCS storage by document ID
+// @Tags         ai
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Document ID"
+// @Success      200   {object}  map[string]interface{}
+// @Failure      400   {object}  map[string]interface{}
+// @Failure      404   {object}  map[string]interface{}
+// @Failure      500   {object}  map[string]interface{}
+// @Router       /ai/documents/{id} [delete]
+func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
+	log.Println("[AI] /ai/documents/:id DELETE called")
+
+	documentID := c.Param("id")
+	if documentID == "" {
+		log.Printf("[AI] Invalid request: missing document ID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Document ID is required"})
+		return
+	}
+
+	log.Printf("[AI] Request to delete document ID: %s", documentID)
+
+	// Initialize services
+	gcs, err := gcsService.NewGCSService()
+	if err != nil {
+		log.Printf("[AI] Failed to initialize GCS service: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
+		return
+	}
+	defer gcs.Close()
+
+	docRepo := repository.NewDocumentRepository()
+	ctx := context.Background()
+
+	// Get document metadata from database
+	document, err := docRepo.GetDocumentByFileID(ctx, documentID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			log.Printf("[AI] Document not found: %s", documentID)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+		} else {
+			log.Printf("[AI] Database error retrieving document: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve document information"})
+		}
+		return
+	}
+
+	log.Printf("[AI] Found document: %s (GCS object: %s)", document.DisplayName, document.GCSObject)
+
+	// Delete from Vertex AI RAG corpus if RAG file ID exists
+	if document.RAGFileID != "" {
+		log.Printf("[AI] Deleting document from Vertex AI RAG corpus...")
+		_, err := deleteVertexAICorpusDocument(document.CorpusName, document.RAGFileID)
+		if err != nil {
+			log.Printf("[AI] Warning: Failed to delete document from Vertex AI RAG corpus: %v", err)
+			// Continue with deletion even if Vertex AI deletion fails
+		} else {
+			log.Printf("[AI] Successfully deleted document from Vertex AI RAG corpus")
+		}
+	}
+
+	// Delete from GCS
+	log.Printf("[AI] Deleting document from GCS...")
+	if err := gcs.DeleteObject(ctx, document.GCSObject); err != nil {
+		log.Printf("[AI] Warning: Failed to delete document from GCS: %v", err)
+		// Continue with database deletion even if GCS deletion fails
+	} else {
+		log.Printf("[AI] Successfully deleted document from GCS")
+	}
+
+	// Delete from database
+	log.Printf("[AI] Deleting document metadata from database...")
+	if err := docRepo.DeleteDocument(ctx, documentID); err != nil {
+		log.Printf("[AI] Failed to delete document metadata: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete document metadata"})
+		return
+	}
+
+	log.Printf("[AI] Document deleted successfully: %s", documentID)
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Document deleted successfully",
+		"documentId":  documentID,
+		"displayName": document.DisplayName,
+	})
 }
