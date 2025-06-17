@@ -26,6 +26,7 @@ type QuestionRequest struct {
 type AgentResponse struct {
 	QuestionsRequested []QuestionRequest `json:"questions_requested"`
 	AssessmentData     interface{}       `json:"assessment_data"`
+	ReportCardData     interface{}       `json:"report_card_data"`
 }
 
 // AssessmentData represents the assessment data structure
@@ -126,6 +127,16 @@ func Agent(file, fileType, userId, role, message, createdAt, updatedAt string) (
 				responseMessage = "Subject assessment report processed successfully"
 			} else {
 				log.Printf("Error handling assessment saving: %v", err)
+				return createErrorResponse(userId, err.Error(), res), nil
+			}
+		} else if agentResponse.ReportCardData != nil {
+			// Handle report card generation and saving
+			if reportCardData, err := handleReportCardGeneration(agentResponse.ReportCardData, userId); err == nil {
+				responseData = reportCardData
+				agentName = "report_card_generator"
+				responseMessage = "Report card generated and saved successfully"
+			} else {
+				log.Printf("Error handling report card generation: %v", err)
 				return createErrorResponse(userId, err.Error(), res), nil
 			}
 		} else {
@@ -612,5 +623,362 @@ func handleAssessmentSaving(assessmentDataInterface interface{}, userId string) 
 
 	return map[string]interface{}{
 		"assessment_data": assessmentDataResponse,
+	}, nil
+}
+
+func handleReportCardGeneration(reportCardDataInterface interface{}, userId string) (map[string]interface{}, error) {
+	// Parse the report card data
+	reportCardBytes, err := json.Marshal(reportCardDataInterface)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal report card data: %v", err)
+	}
+
+	// First, try to parse as a map[string]interface{} to handle flexible structure
+	var reportCardMap map[string]interface{}
+	if err := json.Unmarshal(reportCardBytes, &reportCardMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal report card data: %v", err)
+	}
+
+	// Check for mandatory fields
+	var missingFields []string
+
+	studentIDInterface, hasStudentID := reportCardMap["student_id"]
+	if !hasStudentID || studentIDInterface == nil {
+		missingFields = append(missingFields, "student_id")
+	}
+
+	studentNameInterface, hasStudentName := reportCardMap["student_name"]
+	if !hasStudentName || studentNameInterface == nil {
+		missingFields = append(missingFields, "student_name")
+	}
+
+	academicTermInterface, hasAcademicTerm := reportCardMap["academic_term"]
+	if !hasAcademicTerm || academicTermInterface == nil {
+		missingFields = append(missingFields, "academic_term")
+	}
+
+	if len(missingFields) > 0 {
+		return nil, fmt.Errorf("missing mandatory fields: %s", strings.Join(missingFields, ", "))
+	}
+
+	// Convert studentID to int
+	var studentID int
+	switch v := studentIDInterface.(type) {
+	case float64:
+		studentID = int(v)
+	case int:
+		studentID = v
+	case string:
+		if id, err := strconv.Atoi(v); err == nil {
+			studentID = id
+		} else {
+			return nil, fmt.Errorf("invalid student_id format: %v", v)
+		}
+	default:
+		return nil, fmt.Errorf("invalid student_id type: %T", v)
+	}
+
+	// Extract student name and academic term
+	studentName, ok := studentNameInterface.(string)
+	if !ok {
+		return nil, fmt.Errorf("student_name must be a string")
+	}
+
+	academicTerm, ok := academicTermInterface.(string)
+	if !ok {
+		return nil, fmt.Errorf("academic_term must be a string")
+	}
+
+	// Create ReportCard object
+	now := time.Now()
+	reportCard := model.NewReportCard()
+	reportCard.UserID = userId
+	reportCard.StudentID = studentID
+	reportCard.StudentName = studentName
+	reportCard.AcademicTerm = academicTerm
+	reportCard.GeneratedAt = now
+	reportCard.CreatedAt = now
+	reportCard.UpdatedAt = now
+
+	// Helper function to safely extract string pointers
+	getStringPtr := func(key string) *string {
+		if val, exists := reportCardMap[key]; exists && val != nil {
+			if str, ok := val.(string); ok && strings.TrimSpace(str) != "" {
+				trimmed := strings.TrimSpace(str)
+				return &trimmed
+			}
+		}
+		return nil
+	}
+
+	// Helper function to safely extract int pointers
+	getIntPtr := func(key string) *int {
+		if val, exists := reportCardMap[key]; exists && val != nil {
+			switch v := val.(type) {
+			case float64:
+				intVal := int(v)
+				return &intVal
+			case int:
+				return &v
+			case string:
+				if intVal, err := strconv.Atoi(v); err == nil {
+					return &intVal
+				}
+			}
+		}
+		return nil
+	}
+
+	// Helper function to safely extract float64 pointers
+	getFloat64Ptr := func(key string) *float64 {
+		if val, exists := reportCardMap[key]; exists && val != nil {
+			switch v := val.(type) {
+			case float64:
+				return &v
+			case int:
+				floatVal := float64(v)
+				return &floatVal
+			case string:
+				if floatVal, err := strconv.ParseFloat(v, 64); err == nil {
+					return &floatVal
+				}
+			}
+		}
+		return nil
+	}
+
+	// Helper function to safely extract time pointers
+	getTimePtr := func(key string) *time.Time {
+		if val, exists := reportCardMap[key]; exists && val != nil {
+			if str, ok := val.(string); ok {
+				if t, err := time.Parse(time.RFC3339, str); err == nil {
+					return &t
+				}
+			}
+		}
+		return nil
+	}
+
+	// Set all optional fields using helper functions
+	reportCard.OverallGPA = getFloat64Ptr("overall_gpa")
+	reportCard.OverallGrade = getStringPtr("overall_grade")
+	reportCard.OverallPercentage = getFloat64Ptr("overall_percentage")
+	reportCard.ClassRank = getIntPtr("class_rank")
+	reportCard.TotalStudentsInClass = getIntPtr("total_students_in_class")
+	reportCard.SubjectsCount = getIntPtr("subjects_count")
+	reportCard.HighestSubjectScore = getIntPtr("highest_subject_score")
+	reportCard.LowestSubjectScore = getIntPtr("lowest_subject_score")
+	reportCard.AverageSubjectScore = getFloat64Ptr("average_subject_score")
+	reportCard.BestPerformingSubject = getStringPtr("best_performing_subject")
+	reportCard.WeakestSubject = getStringPtr("weakest_subject")
+	reportCard.AcademicStrengths = getStringPtr("academic_strengths")
+	reportCard.AreasNeedingImprovement = getStringPtr("areas_needing_improvement")
+	reportCard.RecommendedActions = getStringPtr("recommended_actions")
+	reportCard.StudyRecommendations = getStringPtr("study_recommendations")
+	reportCard.OverallConceptualUnderstanding = getFloat64Ptr("overall_conceptual_understanding")
+	reportCard.OverallProblemSolving = getFloat64Ptr("overall_problem_solving")
+	reportCard.OverallKnowledgeApplication = getFloat64Ptr("overall_knowledge_application")
+	reportCard.OverallAnalyticalThinking = getFloat64Ptr("overall_analytical_thinking")
+	reportCard.OverallCreativity = getFloat64Ptr("overall_creativity")
+	reportCard.OverallPracticalSkills = getFloat64Ptr("overall_practical_skills")
+	reportCard.OverallParticipation = getFloat64Ptr("overall_participation")
+	reportCard.OverallDiscipline = getFloat64Ptr("overall_discipline")
+	reportCard.OverallPunctuality = getFloat64Ptr("overall_punctuality")
+	reportCard.OverallTeamwork = getFloat64Ptr("overall_teamwork")
+	reportCard.OverallEffortLevel = getFloat64Ptr("overall_effort_level")
+	reportCard.OverallImprovement = getFloat64Ptr("overall_improvement")
+	reportCard.AverageMidtermScore = getFloat64Ptr("average_midterm_score")
+	reportCard.AverageFinalExamScore = getFloat64Ptr("average_final_exam_score")
+	reportCard.AverageQuizScore = getFloat64Ptr("average_quiz_score")
+	reportCard.AverageAssignmentScore = getFloat64Ptr("average_assignment_score")
+	reportCard.AveragePracticalScore = getFloat64Ptr("average_practical_score")
+	reportCard.AverageOralPresentationScore = getFloat64Ptr("average_oral_presentation_score")
+	reportCard.ImprovementTrend = getStringPtr("improvement_trend")
+	reportCard.ConsistencyRating = getFloat64Ptr("consistency_rating")
+	reportCard.PerformanceStability = getStringPtr("performance_stability")
+	reportCard.AttendanceRate = getFloat64Ptr("attendance_rate")
+	reportCard.EngagementLevel = getStringPtr("engagement_level")
+	reportCard.ClassParticipation = getStringPtr("class_participation")
+	reportCard.AcademicGoals = getStringPtr("academic_goals")
+	reportCard.ShortTermObjectives = getStringPtr("short_term_objectives")
+	reportCard.LongTermObjectives = getStringPtr("long_term_objectives")
+	reportCard.ParentTeacherRecommendations = getStringPtr("parent_teacher_recommendations")
+	reportCard.TeacherComments = getStringPtr("teacher_comments")
+	reportCard.PrincipalComments = getStringPtr("principal_comments")
+	reportCard.OverallRemarks = getStringPtr("overall_remarks")
+	reportCard.RecommendedResources = getStringPtr("recommended_resources")
+	reportCard.SuggestedActivities = getStringPtr("suggested_activities")
+	reportCard.NextReviewDate = getTimePtr("next_review_date")
+
+	// Handle subject reports array
+	if subjectReportsInterface, exists := reportCardMap["subject_reports"]; exists && subjectReportsInterface != nil {
+		if subjectReportsArray, ok := subjectReportsInterface.([]interface{}); ok {
+			subjectReports := make([]model.SubjectReportSummary, 0, len(subjectReportsArray))
+			for _, subjectInterface := range subjectReportsArray {
+				if subjectMap, ok := subjectInterface.(map[string]interface{}); ok {
+					summary := model.SubjectReportSummary{}
+					if subject, ok := subjectMap["subject"].(string); ok {
+						summary.Subject = subject
+					}
+					if score, ok := subjectMap["score"].(float64); ok {
+						summary.Score = int(score)
+					} else if score, ok := subjectMap["score"].(int); ok {
+						summary.Score = score
+					}
+					if grade, ok := subjectMap["grade"].(string); ok && strings.TrimSpace(grade) != "" {
+						trimmed := strings.TrimSpace(grade)
+						summary.Grade = &trimmed
+					}
+					if conceptual, ok := subjectMap["conceptual_understanding"].(float64); ok {
+						summary.ConceptualUnderstanding = &conceptual
+					}
+					if problemSolving, ok := subjectMap["problem_solving"].(float64); ok {
+						summary.ProblemSolving = &problemSolving
+					}
+					if analytical, ok := subjectMap["analytical_thinking"].(float64); ok {
+						summary.AnalyticalThinking = &analytical
+					}
+					if improvements, ok := subjectMap["areas_for_improvement"].(string); ok && strings.TrimSpace(improvements) != "" {
+						trimmed := strings.TrimSpace(improvements)
+						summary.AreasForImprovement = &trimmed
+					}
+					if strengths, ok := subjectMap["key_strengths"].(string); ok && strings.TrimSpace(strengths) != "" {
+						trimmed := strings.TrimSpace(strengths)
+						summary.KeyStrengths = &trimmed
+					}
+					if recommendations, ok := subjectMap["subject_specific_recommendations"].(string); ok && strings.TrimSpace(recommendations) != "" {
+						trimmed := strings.TrimSpace(recommendations)
+						summary.SubjectSpecificRecommendations = &trimmed
+					}
+					subjectReports = append(subjectReports, summary)
+				}
+			}
+			reportCard.SubjectReports = subjectReports
+		}
+	}
+
+	// Save to database
+	savedReportCard, err := repository.SaveReportCard(*reportCard)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save report card: %v", err)
+	}
+
+	// Build the response data structure - only include fields that have actual data
+	reportCardResponse := map[string]interface{}{
+		"student_id":    savedReportCard.StudentID,
+		"student_name":  savedReportCard.StudentName,
+		"academic_term": savedReportCard.AcademicTerm,
+		"generated_at":  savedReportCard.GeneratedAt,
+	}
+
+	// Add optional fields only if they exist
+	if savedReportCard.OverallGPA != nil {
+		reportCardResponse["overall_gpa"] = *savedReportCard.OverallGPA
+	}
+	if savedReportCard.OverallGrade != nil {
+		reportCardResponse["overall_grade"] = *savedReportCard.OverallGrade
+	}
+	if savedReportCard.OverallPercentage != nil {
+		reportCardResponse["overall_percentage"] = *savedReportCard.OverallPercentage
+	}
+	if savedReportCard.ClassRank != nil {
+		reportCardResponse["class_rank"] = *savedReportCard.ClassRank
+	}
+	if savedReportCard.TotalStudentsInClass != nil {
+		reportCardResponse["total_students_in_class"] = *savedReportCard.TotalStudentsInClass
+	}
+	if savedReportCard.SubjectsCount != nil {
+		reportCardResponse["subjects_count"] = *savedReportCard.SubjectsCount
+	}
+	if savedReportCard.HighestSubjectScore != nil {
+		reportCardResponse["highest_subject_score"] = *savedReportCard.HighestSubjectScore
+	}
+	if savedReportCard.LowestSubjectScore != nil {
+		reportCardResponse["lowest_subject_score"] = *savedReportCard.LowestSubjectScore
+	}
+	if savedReportCard.AverageSubjectScore != nil {
+		reportCardResponse["average_subject_score"] = *savedReportCard.AverageSubjectScore
+	}
+	if savedReportCard.BestPerformingSubject != nil {
+		reportCardResponse["best_performing_subject"] = *savedReportCard.BestPerformingSubject
+	}
+	if savedReportCard.WeakestSubject != nil {
+		reportCardResponse["weakest_subject"] = *savedReportCard.WeakestSubject
+	}
+	if savedReportCard.AcademicStrengths != nil {
+		reportCardResponse["academic_strengths"] = *savedReportCard.AcademicStrengths
+	}
+	if savedReportCard.AreasNeedingImprovement != nil {
+		reportCardResponse["areas_needing_improvement"] = *savedReportCard.AreasNeedingImprovement
+	}
+	if savedReportCard.RecommendedActions != nil {
+		reportCardResponse["recommended_actions"] = *savedReportCard.RecommendedActions
+	}
+	if savedReportCard.StudyRecommendations != nil {
+		reportCardResponse["study_recommendations"] = *savedReportCard.StudyRecommendations
+	}
+	if savedReportCard.OverallConceptualUnderstanding != nil {
+		reportCardResponse["overall_conceptual_understanding"] = *savedReportCard.OverallConceptualUnderstanding
+	}
+	if savedReportCard.OverallProblemSolving != nil {
+		reportCardResponse["overall_problem_solving"] = *savedReportCard.OverallProblemSolving
+	}
+	if savedReportCard.OverallKnowledgeApplication != nil {
+		reportCardResponse["overall_knowledge_application"] = *savedReportCard.OverallKnowledgeApplication
+	}
+	if savedReportCard.OverallAnalyticalThinking != nil {
+		reportCardResponse["overall_analytical_thinking"] = *savedReportCard.OverallAnalyticalThinking
+	}
+	if savedReportCard.OverallCreativity != nil {
+		reportCardResponse["overall_creativity"] = *savedReportCard.OverallCreativity
+	}
+	if savedReportCard.OverallPracticalSkills != nil {
+		reportCardResponse["overall_practical_skills"] = *savedReportCard.OverallPracticalSkills
+	}
+	if savedReportCard.OverallParticipation != nil {
+		reportCardResponse["overall_participation"] = *savedReportCard.OverallParticipation
+	}
+	if savedReportCard.OverallDiscipline != nil {
+		reportCardResponse["overall_discipline"] = *savedReportCard.OverallDiscipline
+	}
+	if savedReportCard.OverallPunctuality != nil {
+		reportCardResponse["overall_punctuality"] = *savedReportCard.OverallPunctuality
+	}
+	if savedReportCard.OverallTeamwork != nil {
+		reportCardResponse["overall_teamwork"] = *savedReportCard.OverallTeamwork
+	}
+	if savedReportCard.OverallEffortLevel != nil {
+		reportCardResponse["overall_effort_level"] = *savedReportCard.OverallEffortLevel
+	}
+	if savedReportCard.OverallImprovement != nil {
+		reportCardResponse["overall_improvement"] = *savedReportCard.OverallImprovement
+	}
+	if savedReportCard.ImprovementTrend != nil {
+		reportCardResponse["improvement_trend"] = *savedReportCard.ImprovementTrend
+	}
+	if savedReportCard.ConsistencyRating != nil {
+		reportCardResponse["consistency_rating"] = *savedReportCard.ConsistencyRating
+	}
+	if savedReportCard.PerformanceStability != nil {
+		reportCardResponse["performance_stability"] = *savedReportCard.PerformanceStability
+	}
+	if savedReportCard.EngagementLevel != nil {
+		reportCardResponse["engagement_level"] = *savedReportCard.EngagementLevel
+	}
+	if savedReportCard.AcademicGoals != nil {
+		reportCardResponse["academic_goals"] = *savedReportCard.AcademicGoals
+	}
+	if savedReportCard.TeacherComments != nil {
+		reportCardResponse["teacher_comments"] = *savedReportCard.TeacherComments
+	}
+	if savedReportCard.OverallRemarks != nil {
+		reportCardResponse["overall_remarks"] = *savedReportCard.OverallRemarks
+	}
+	if len(savedReportCard.SubjectReports) > 0 {
+		reportCardResponse["subject_reports"] = savedReportCard.SubjectReports
+	}
+
+	return map[string]interface{}{
+		"report_card_data": reportCardResponse,
 	}, nil
 }

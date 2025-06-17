@@ -25,6 +25,7 @@ const (
 	VariableCollection      = "variables"
 	QuestionsCollection     = "questions"
 	SubjectReportCollection = "subject_reports"
+	ReportCardCollection    = "report_cards"
 )
 
 // GetCollection returns a reference to the specified collection

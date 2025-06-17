@@ -124,6 +124,8 @@ func registerRoutes(router *gin.Engine) {
 	routes.RegisterTeacherRoutes(router)
 	routes.RegisterVariableRoutes(router)
 	routes.RegisterAIRoutes(router)
+	routes.SetupSubjectReportRoutes(router)
+	routes.SetupReportCardRoutes(router)
 
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
