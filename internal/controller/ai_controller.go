@@ -349,43 +349,166 @@ func AgentHandler(c *gin.Context) {
 // @Failure      500 {object} gin.H "Internal server error"
 // @Router       /ai/rag-agent [post]
 func RAGAgentHandler(c *gin.Context) {
-	log.Println("[AI] /ai/rag-agent called")
+	log.Printf("=== RAG AGENT HANDLER START ===")
+	log.Printf("[AI] /ai/rag-agent endpoint called")
+	log.Printf("[AI] Request method: %s", c.Request.Method)
+	log.Printf("[AI] Request URL: %s", c.Request.URL.String())
+	log.Printf("[AI] Content-Type: %s", c.GetHeader("Content-Type"))
+	log.Printf("[AI] User-Agent: %s", c.GetHeader("User-Agent"))
+
+	// Parse and validate request
 	var req RAGAgentRequest
+	log.Printf("[AI] Attempting to bind JSON request...")
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
+		log.Printf("ERROR: Failed to bind JSON request: %v", err)
+		log.Printf("ERROR: Request body binding failed, returning 400 Bad Request")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("✓ Successfully bound JSON request")
 
-	log.Printf("[AI] RAG Agent Request: %+v", req)
+	log.Printf("=== RAG AGENT REQUEST DETAILS ===")
+	log.Printf("[AI] Teacher ID: %s", req.TeacherId)
+	log.Printf("[AI] Role: %s", req.Role)
+	log.Printf("[AI] Message length: %d characters", len(req.Message))
+	log.Printf("[AI] Message preview (first 200 chars): %.200s%s", req.Message, func() string {
+		if len(req.Message) > 200 {
+			return "..."
+		}
+		return ""
+	}())
+	log.Printf("[AI] File parameter: %s", req.File)
+	log.Printf("[AI] CreatedAt: %s", req.CreatedAt)
+	log.Printf("[AI] UpdatedAt: %s", req.UpdatedAt)
 
 	// Create/verify corpus for the teacher before processing the request
+	log.Printf("=== CORPUS MANAGEMENT ===")
 	log.Printf("[AI] Creating/verifying corpus for teacher: %s", req.TeacherId)
+	corpusStartTime := time.Now()
 	corpusResponse, err := createVertexAICorpus(req.TeacherId)
+	corpusEndTime := time.Now()
+	corpusDuration := corpusEndTime.Sub(corpusStartTime)
+
 	if err != nil {
-		log.Printf("[AI] Warning: Could not create/verify corpus for teacher %s: %v", req.TeacherId, err)
+		log.Printf("WARNING: Could not create/verify corpus for teacher %s: %v", req.TeacherId, err)
+		log.Printf("WARNING: Corpus operation failed after %v, continuing with RAG agent processing...", corpusDuration)
 		// Continue processing even if corpus creation fails
 	} else {
+		log.Printf("✓ Corpus operation completed successfully in %v", corpusDuration)
 		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
+		if corpusCreated, ok := corpusResponse["corpusCreated"].(bool); ok {
+			log.Printf("[AI] Corpus created: %v", corpusCreated)
+		}
+		if displayName, ok := corpusResponse["displayName"].(string); ok {
+			log.Printf("[AI] Corpus display name: %s", displayName)
+		}
 	}
 
 	// Call the gRPC microservice
+	log.Printf("=== GRPC SERVICE CALL ===")
+	log.Printf("[AI] Calling RAGAgentClient service...")
+	log.Printf("[AI] Parameters - TeacherId: %s, Message length: %d, File: %s", req.TeacherId, len(req.Message), req.File)
+	grpcStartTime := time.Now()
+
 	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, "")
+	grpcEndTime := time.Now()
+	grpcDuration := grpcEndTime.Sub(grpcStartTime)
+
 	if err != nil {
-		log.Printf("[AI] Failed to process RAG agent request: %v", err)
+		log.Printf("ERROR: Failed to process RAG agent request: %v", err)
+		log.Printf("ERROR: gRPC call failed after %v", grpcDuration)
+		log.Printf("ERROR: Returning 500 Internal Server Error")
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
 		return
 	}
+	log.Printf("✓ gRPC call completed successfully in %v", grpcDuration)
+
+	log.Printf("=== GRPC RESPONSE ANALYSIS ===")
+	if resp != nil {
+		log.Printf("[AI] gRPC response received successfully")
+		log.Printf("[AI] Agent response length: %d characters", len(resp.GetAgentResponse()))
+		log.Printf("[AI] Agent name: %s", resp.GetAgentName())
+		log.Printf("[AI] Teacher ID from response: %s", resp.GetTeacherId())
+		log.Printf("[AI] Session ID: %s", resp.GetSessionId())
+		log.Printf("[AI] Response time: %s", resp.GetResponseTime())
+		log.Printf("[AI] Role: %s", resp.GetRole())
+		log.Printf("[AI] Feedback: %s", resp.GetFeedback())
+		log.Printf("[AI] CreatedAt: %s", resp.GetCreatedAt())
+		log.Printf("[AI] UpdatedAt: %s", resp.GetUpdatedAt())
+
+		// Preview of agent response
+		agentResponse := resp.GetAgentResponse()
+		log.Printf("[AI] Agent response preview (first 300 chars): %.300s%s", agentResponse, func() string {
+			if len(agentResponse) > 300 {
+				return "..."
+			}
+			return ""
+		}())
+	} else {
+		log.Printf("WARNING: Received nil gRPC response")
+	}
 
 	// Process the agent response to determine data content and message
+	log.Printf("=== RESPONSE PROCESSING ===")
+	log.Printf("[AI] Processing agent response to determine content type...")
+	processingStartTime := time.Now()
+
 	responseData, responseMessage, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
+	processingEndTime := time.Now()
+	processingDuration := processingEndTime.Sub(processingStartTime)
+
 	if err != nil {
-		log.Printf("[AI] Failed to process RAG agent response: %v", err)
+		log.Printf("ERROR: Failed to process RAG agent response: %v", err)
+		log.Printf("ERROR: Response processing failed after %v", processingDuration)
+		log.Printf("ERROR: Returning 500 Internal Server Error")
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent response", "error": err.Error()})
 		return
 	}
+	log.Printf("✓ Response processing completed successfully in %v", processingDuration)
 
-	// Return standardized response format (matching /ai/agent structure)
+	log.Printf("=== PROCESSED RESPONSE DETAILS ===")
+	log.Printf("[AI] Response data type: %T", responseData)
+	log.Printf("[AI] Response message length: %d", len(responseMessage))
+
+	if responseData != nil {
+		log.Printf("[AI] Response contains structured data")
+		if dataMap, ok := responseData.(map[string]interface{}); ok {
+			log.Printf("[AI] Data map keys: %v", func() []string {
+				keys := make([]string, 0, len(dataMap))
+				for k := range dataMap {
+					keys = append(keys, k)
+				}
+				return keys
+			}())
+
+			// Check for question data
+			if mcqs, ok := dataMap["mcqs"].([]string); ok {
+				log.Printf("[AI] MCQ question IDs: %d items", len(mcqs))
+			}
+			if msqs, ok := dataMap["msqs"].([]string); ok {
+				log.Printf("[AI] MSQ question IDs: %d items", len(msqs))
+			}
+			if nats, ok := dataMap["nats"].([]string); ok {
+				log.Printf("[AI] NAT question IDs: %d items", len(nats))
+			}
+			if subjectives, ok := dataMap["subjectives"].([]string); ok {
+				log.Printf("[AI] Subjective question IDs: %d items", len(subjectives))
+			}
+		}
+	} else {
+		log.Printf("[AI] Response contains text message only")
+		if len(responseMessage) > 0 {
+			log.Printf("[AI] Message preview (first 200 chars): %.200s%s", responseMessage, func() string {
+				if len(responseMessage) > 200 {
+					return "..."
+				}
+				return ""
+			}())
+		}
+	}
+
+	// Build standardized response format (matching /ai/agent structure)
+	log.Printf("=== BUILDING FINAL RESPONSE ===")
 	standardizedResponse := map[string]interface{}{
 		"message":      responseMessage,
 		"teacherId":    resp.GetTeacherId(),
@@ -399,7 +522,32 @@ func RAGAgentHandler(c *gin.Context) {
 		"feedback":     resp.GetFeedback(),
 	}
 
-	log.Printf("[AI] RAG agent request processed successfully")
+	log.Printf("=== FINAL RESPONSE SUMMARY ===")
+	log.Printf("[AI] Response structure:")
+	log.Printf("  - Message: %s", func() string {
+		if len(responseMessage) > 0 {
+			return fmt.Sprintf("'%s' (%d chars)", responseMessage[:min(50, len(responseMessage))], len(responseMessage))
+		}
+		return "empty"
+	}())
+	log.Printf("  - Teacher ID: %s", resp.GetTeacherId())
+	log.Printf("  - Agent Name: %s", resp.GetAgentName())
+	log.Printf("  - Data Type: %T", responseData)
+	log.Printf("  - Session ID: %s", resp.GetSessionId())
+	log.Printf("  - Response Time: %s", resp.GetResponseTime())
+
+	// Calculate total processing time
+	totalEndTime := time.Now()
+	totalDuration := totalEndTime.Sub(corpusStartTime)
+	log.Printf("=== PERFORMANCE METRICS ===")
+	log.Printf("[AI] Corpus operation: %v", corpusDuration)
+	log.Printf("[AI] gRPC call: %v", grpcDuration)
+	log.Printf("[AI] Response processing: %v", processingDuration)
+	log.Printf("[AI] Total request processing: %v", totalDuration)
+
+	log.Printf("✓ RAG agent request processed successfully - returning 200 OK")
+	log.Printf("=== RAG AGENT HANDLER END ===")
+
 	c.JSON(http.StatusOK, standardizedResponse)
 }
 
@@ -1012,33 +1160,63 @@ func getGoogleDriveFileName(fileID string) (string, error) {
 // If it's structured JSON with questions, saves them to MongoDB and returns question IDs
 // If it's regular text, returns it as-is
 func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, string, error) {
+	log.Printf("=== PROCESS RAG AGENT RESPONSE START ===")
 	log.Printf("[AI] Processing RAG agent response for teacherId: %s", teacherId)
+	log.Printf("[AI] Agent response length: %d characters", len(agentResponse))
+	log.Printf("[AI] Agent response preview (first 500 chars): %.500s%s", agentResponse, func() string {
+		if len(agentResponse) > 500 {
+			return "..."
+		}
+		return ""
+	}())
 
 	// Try to parse as JSON to see if it contains structured questions
+	log.Printf("[AI] Attempting to parse agent response as JSON...")
 	var questionsData map[string]interface{}
 	if err := json.Unmarshal([]byte(agentResponse), &questionsData); err != nil {
 		// Not valid JSON, return as regular text response in message field
-		log.Printf("[AI] Agent response is not JSON, returning as text message")
+		log.Printf("✗ Agent response is not valid JSON: %v", err)
+		log.Printf("[AI] Treating response as plain text message")
+		log.Printf("[AI] Returning text response in message field")
+		log.Printf("=== PROCESS RAG AGENT RESPONSE END (TEXT) ===")
 		return nil, agentResponse, nil
 	}
+	log.Printf("✓ Successfully parsed agent response as JSON")
+
+	log.Printf("=== JSON STRUCTURE ANALYSIS ===")
+	log.Printf("[AI] JSON keys found: %v", func() []string {
+		keys := make([]string, 0, len(questionsData))
+		for k := range questionsData {
+			keys = append(keys, k)
+		}
+		return keys
+	}())
 
 	// Check if this looks like question data (has mcq/mcqs, msq/msqs, nat/nats, or subjective/subjectives fields)
+	questionFields := []string{"mcq", "mcqs", "msq", "msqs", "nat", "nats", "subjective", "subjectives"}
 	hasQuestions := false
-	for _, key := range []string{"mcq", "mcqs", "msq", "msqs", "nat", "nats", "subjective", "subjectives"} {
+	foundQuestionFields := []string{}
+
+	for _, key := range questionFields {
 		if _, exists := questionsData[key]; exists {
 			hasQuestions = true
-			break
+			foundQuestionFields = append(foundQuestionFields, key)
+			log.Printf("[AI] Found question field: %s", key)
 		}
 	}
 
 	if !hasQuestions {
 		// JSON but not question data, return the parsed JSON in data field
-		log.Printf("[AI] JSON response doesn't contain questions, returning as data")
+		log.Printf("[AI] JSON response doesn't contain question fields")
+		log.Printf("[AI] Expected fields: %v", questionFields)
+		log.Printf("[AI] Returning parsed JSON as structured data")
+		log.Printf("=== PROCESS RAG AGENT RESPONSE END (STRUCTURED DATA) ===")
 		return questionsData, "", nil
 	}
 
 	// This is structured question data, save to MongoDB and return IDs
-	log.Printf("[AI] Processing structured question data")
+	log.Printf("✓ Detected structured question data with fields: %v", foundQuestionFields)
+	log.Printf("[AI] Processing structured question data for database storage...")
 
 	result := map[string]interface{}{
 		"mcqs":        []string{},
@@ -1049,92 +1227,153 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	}
 
 	// Process MCQ questions (handle both "mcq" and "mcqs")
+	log.Printf("=== PROCESSING MCQ QUESTIONS ===")
 	var mcqData interface{}
 	var exists bool
 	if mcqData, exists = questionsData["mcq"]; !exists {
 		mcqData, exists = questionsData["mcqs"]
 	}
 	if exists {
+		log.Printf("[AI] Found MCQ data, processing...")
 		if mcqArray, ok := mcqData.([]interface{}); ok {
-			for _, mcqInterface := range mcqArray {
+			log.Printf("[AI] MCQ array contains %d items", len(mcqArray))
+			for i, mcqInterface := range mcqArray {
 				if mcqMap, ok := mcqInterface.(map[string]interface{}); ok {
+					log.Printf("[AI] Processing MCQ %d: %+v", i+1, mcqMap)
 					_ = mcqMap // Suppress unused variable warning
+					// Note: Actual database saving is commented out in original code
 					// id, err := saveMCQQuestion(mcqMap, teacherId)
 					// if err != nil {
 					// 	log.Printf("[AI] Error saving MCQ question: %v", err)
 					// 	continue
 					// }
 					// result["mcqs"] = append(result["mcqs"].([]string), id)
+					log.Printf("[AI] MCQ %d processed (saving disabled)", i+1)
+				} else {
+					log.Printf("WARNING: MCQ %d is not a valid map structure", i+1)
 				}
 			}
+		} else {
+			log.Printf("WARNING: MCQ data is not an array: %T", mcqData)
 		}
+	} else {
+		log.Printf("[AI] No MCQ data found")
 	}
 
 	// Process MSQ questions (handle both "msq" and "msqs")
+	log.Printf("=== PROCESSING MSQ QUESTIONS ===")
 	var msqData interface{}
 	if msqData, exists = questionsData["msq"]; !exists {
 		msqData, exists = questionsData["msqs"]
 	}
 	if exists {
+		log.Printf("[AI] Found MSQ data, processing...")
 		if msqArray, ok := msqData.([]interface{}); ok {
-			for _, msqInterface := range msqArray {
+			log.Printf("[AI] MSQ array contains %d items", len(msqArray))
+			for i, msqInterface := range msqArray {
 				if msqMap, ok := msqInterface.(map[string]interface{}); ok {
+					log.Printf("[AI] Processing MSQ %d: %+v", i+1, msqMap)
 					_ = msqMap // Suppress unused variable warning
+					// Note: Actual database saving is commented out in original code
 					// id, err := saveMSQQuestion(msqMap, teacherId)
 					// if err != nil {
 					// 	log.Printf("[AI] Error saving MSQ question: %v", err)
 					// 	continue
 					// }
 					// result["msqs"] = append(result["msqs"].([]string), id)
+					log.Printf("[AI] MSQ %d processed (saving disabled)", i+1)
+				} else {
+					log.Printf("WARNING: MSQ %d is not a valid map structure", i+1)
 				}
 			}
+		} else {
+			log.Printf("WARNING: MSQ data is not an array: %T", msqData)
 		}
+	} else {
+		log.Printf("[AI] No MSQ data found")
 	}
 
 	// Process NAT questions (handle both "nat" and "nats")
+	log.Printf("=== PROCESSING NAT QUESTIONS ===")
 	var natData interface{}
 	if natData, exists = questionsData["nat"]; !exists {
 		natData, exists = questionsData["nats"]
 	}
 	if exists {
+		log.Printf("[AI] Found NAT data, processing...")
 		if natArray, ok := natData.([]interface{}); ok {
-			for _, natInterface := range natArray {
+			log.Printf("[AI] NAT array contains %d items", len(natArray))
+			for i, natInterface := range natArray {
 				if natMap, ok := natInterface.(map[string]interface{}); ok {
+					log.Printf("[AI] Processing NAT %d: %+v", i+1, natMap)
 					_ = natMap // Suppress unused variable warning
+					// Note: Actual database saving is commented out in original code
 					// id, err := saveNATQuestion(natMap, teacherId)
 					// if err != nil {
 					// 	log.Printf("[AI] Error saving NAT question: %v", err)
 					// 	continue
 					// }
 					// result["nats"] = append(result["nats"].([]string), id)
+					log.Printf("[AI] NAT %d processed (saving disabled)", i+1)
+				} else {
+					log.Printf("WARNING: NAT %d is not a valid map structure", i+1)
 				}
 			}
+		} else {
+			log.Printf("WARNING: NAT data is not an array: %T", natData)
 		}
+	} else {
+		log.Printf("[AI] No NAT data found")
 	}
 
 	// Process Subjective questions (handle both "subjective" and "subjectives")
+	log.Printf("=== PROCESSING SUBJECTIVE QUESTIONS ===")
 	var subjectiveData interface{}
 	if subjectiveData, exists = questionsData["subjective"]; !exists {
 		subjectiveData, exists = questionsData["subjectives"]
 	}
 	if exists {
+		log.Printf("[AI] Found Subjective data, processing...")
 		if subjectiveArray, ok := subjectiveData.([]interface{}); ok {
-			for _, subjectiveInterface := range subjectiveArray {
+			log.Printf("[AI] Subjective array contains %d items", len(subjectiveArray))
+			for i, subjectiveInterface := range subjectiveArray {
 				if subjectiveMap, ok := subjectiveInterface.(map[string]interface{}); ok {
+					log.Printf("[AI] Processing Subjective %d: %+v", i+1, subjectiveMap)
 					_ = subjectiveMap // Suppress unused variable warning
+					// Note: Actual database saving is commented out in original code
 					// id, err := saveSubjectiveQuestion(subjectiveMap, teacherId)
 					// if err != nil {
 					// 	log.Printf("[AI] Error saving Subjective question: %v", err)
 					// 	continue
 					// }
 					// result["subjectives"] = append(result["subjectives"].([]string), id)
+					log.Printf("[AI] Subjective %d processed (saving disabled)", i+1)
+				} else {
+					log.Printf("WARNING: Subjective %d is not a valid map structure", i+1)
 				}
 			}
+		} else {
+			log.Printf("WARNING: Subjective data is not an array: %T", subjectiveData)
 		}
+	} else {
+		log.Printf("[AI] No Subjective data found")
 	}
 
-	log.Printf("[AI] Question processing complete. Saved %d MCQs, %d MSQs, %d NATs, %d Subjectives",
-		len(result["mcqs"].([]string)), len(result["msqs"].([]string)), len(result["nats"].([]string)), len(result["subjectives"].([]string)))
+	log.Printf("=== QUESTION PROCESSING SUMMARY ===")
+	mcqCount := len(result["mcqs"].([]string))
+	msqCount := len(result["msqs"].([]string))
+	natCount := len(result["nats"].([]string))
+	subjectiveCount := len(result["subjectives"].([]string))
+	totalQuestions := mcqCount + msqCount + natCount + subjectiveCount
+
+	log.Printf("[AI] Question processing complete:")
+	log.Printf("  - MCQs: %d", mcqCount)
+	log.Printf("  - MSQs: %d", msqCount)
+	log.Printf("  - NATs: %d", natCount)
+	log.Printf("  - Subjectives: %d", subjectiveCount)
+	log.Printf("  - Total: %d questions", totalQuestions)
+	log.Printf("[AI] Note: Database saving is currently disabled in the codebase")
+	log.Printf("=== PROCESS RAG AGENT RESPONSE END (QUESTIONS) ===")
 
 	return result, "", nil
 }
@@ -1307,3 +1546,11 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 
 // 	return subjective.ID, nil
 // }
+
+// Helper function for minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
