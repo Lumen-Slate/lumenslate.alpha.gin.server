@@ -30,7 +30,6 @@ import (
 // @BasePath        /
 
 func init() {
-	// Load ENV_FILE from /secrets (used in Cloud Run secrets mount)
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
 		content, _ := io.ReadAll(file)
@@ -44,6 +43,7 @@ func init() {
 	} else {
 		// Fallback to local development .env file
 		log.Println("⚠️  /secrets/ENV_FILE not found, trying local .env")
+
 		if err := godotenv.Load(); err != nil {
 			log.Println("❌ Failed to load local .env:", err)
 		} else {
@@ -51,7 +51,6 @@ func init() {
 		}
 	}
 
-	// Init DB
 	uri := os.Getenv("MONGO_URI")
 	if err := db.InitMongoDB(uri); err != nil {
 		log.Fatal("Could not connect to MongoDB:", err)
@@ -59,53 +58,62 @@ func init() {
 }
 
 func main() {
-	log.Println("🟡 Starting server...")
+	log.Println("🟡 Warming up server...")
 
-	// Set release/debug mode based on GO_ENV
+	// Set Gin log mode based on environment
 	if os.Getenv("GO_ENV") == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	// Debug Mongo URI
+	// Debug log to confirm env vars are loaded
 	if uri := os.Getenv("MONGO_URI"); strings.Contains(uri, "appName=") {
 		appName := strings.Split(strings.Split(uri, "appName=")[1], "&")[0]
 		log.Printf("✅ Mongo App Name: %s", appName)
 	} else {
 		log.Println("⚠️ Mongo URI does not contain appName parameter.")
 	}
+	log.Printf("✅ PORT: %s", os.Getenv("PORT"))
 
-	// Setup router
+	// Setup Gin
 	router := gin.Default()
 	router.Use(cors.Default())
+
+	// Configure Gin to handle trailing slashes
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
+
 	router.Static("/media", "./media")
 
-	// Register routes
+	// Register all routes
 	registerRoutes(router)
 
-	// Health check and Swagger
+	// Swagger & health check
 	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	// Always run on port 8080 (Cloud Run expects this)
-	const port = "8080"
+	// Get port from environment
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	address := ":" + port
 
+	// Log endpoints
 	fmt.Printf("✅ Server running on port %s\n", port)
 	fmt.Printf("📘 Swagger docs available at /docs/index.html\n")
 
-	// Start server
+	// Run the server in a goroutine for graceful shutdown
 	go func() {
 		if err := router.Run(address); err != nil {
 			log.Fatalf("❌ Server failed: %v", err)
 		}
 	}()
 
+	// Graceful shutdown
 	gracefulShutdown()
 }
 
