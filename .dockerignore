@@ -27,3 +27,9 @@ bin/
 
 # Test cache
 *.test
+
+# Docker-related
+Dockerfile
+.dockerignore
+
+service-account.json

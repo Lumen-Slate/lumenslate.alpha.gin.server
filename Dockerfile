@@ -13,12 +13,6 @@ RUN go mod download
 # Copy entire source code
 COPY . .
 
-# Copy service account from build context
-COPY service-account.json /secrets/service-account.json
-
-# Set ADC environment variable
-ENV GOOGLE_APPLICATION_CREDENTIALS=/secrets/service-account.json
-
 # Expose the port your app uses
 EXPOSE 8080
 
