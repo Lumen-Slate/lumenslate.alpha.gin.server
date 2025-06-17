@@ -80,6 +80,10 @@ func main() {
 	router := gin.Default()
 	router.Use(cors.Default())
 
+	// Configure Gin to handle trailing slashes
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
+
 	router.Static("/media", "./media")
 
 	// Register all routes
