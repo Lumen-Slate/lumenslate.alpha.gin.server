@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -70,8 +69,6 @@ func (s *GCSService) Close() error {
 
 // UploadFile uploads a file to GCS and returns the object name
 func (s *GCSService) UploadFile(ctx context.Context, file multipart.File, filename, contentType string) (string, int64, error) {
-	log.Printf("[GCS] Uploading file: %s, contentType: %s", filename, contentType)
-
 	// Generate unique object name with timestamp prefix
 	timestamp := time.Now().Format("20060102-150405")
 	objectName := fmt.Sprintf("documents/%s-%s", timestamp, sanitizeFilename(filename))
@@ -99,14 +96,11 @@ func (s *GCSService) UploadFile(ctx context.Context, file multipart.File, filena
 		return "", 0, fmt.Errorf("failed to close GCS writer: %v", err)
 	}
 
-	log.Printf("[GCS] Successfully uploaded file to GCS: %s (size: %d bytes)", objectName, size)
 	return objectName, size, nil
 }
 
 // GenerateSignedURL generates a signed URL for reading an object
 func (s *GCSService) GenerateSignedURL(ctx context.Context, objectName string, expiration time.Duration) (string, error) {
-	log.Printf("[GCS] Generating signed URL for object: %s, expiration: %v", objectName, expiration)
-
 	// Generate signed URL
 	opts := &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
@@ -119,20 +113,16 @@ func (s *GCSService) GenerateSignedURL(ctx context.Context, objectName string, e
 		return "", fmt.Errorf("failed to generate signed URL: %v", err)
 	}
 
-	log.Printf("[GCS] Successfully generated signed URL for: %s", objectName)
 	return url, nil
 }
 
 // DeleteObject deletes an object from GCS
 func (s *GCSService) DeleteObject(ctx context.Context, objectName string) error {
-	log.Printf("[GCS] Deleting object: %s", objectName)
-
 	obj := s.client.Bucket(s.bucketName).Object(objectName)
 	if err := obj.Delete(ctx); err != nil {
 		return fmt.Errorf("failed to delete object from GCS: %v", err)
 	}
 
-	log.Printf("[GCS] Successfully deleted object: %s", objectName)
 	return nil
 }
 
@@ -161,8 +151,6 @@ func (s *GCSService) GetObjectAttributes(ctx context.Context, objectName string)
 
 // RenameObject renames an object in GCS (implemented as copy + delete)
 func (s *GCSService) RenameObject(ctx context.Context, oldObjectName, newObjectName string) error {
-	log.Printf("[GCS] Renaming object from %s to %s", oldObjectName, newObjectName)
-
 	// Source and destination objects
 	src := s.client.Bucket(s.bucketName).Object(oldObjectName)
 	dst := s.client.Bucket(s.bucketName).Object(newObjectName)
@@ -180,14 +168,11 @@ func (s *GCSService) RenameObject(ctx context.Context, oldObjectName, newObjectN
 		return fmt.Errorf("failed to delete original object during rename: %v", err)
 	}
 
-	log.Printf("[GCS] Successfully renamed object from %s to %s", oldObjectName, newObjectName)
 	return nil
 }
 
 // UploadFileWithCustomName uploads a file to GCS with a specific object name
 func (s *GCSService) UploadFileWithCustomName(ctx context.Context, file multipart.File, objectName, contentType, originalFilename string) (int64, error) {
-	log.Printf("[GCS] Uploading file with custom name: %s, contentType: %s", objectName, contentType)
-
 	// Create GCS object writer
 	obj := s.client.Bucket(s.bucketName).Object(objectName)
 	writer := obj.NewWriter(ctx)
@@ -211,7 +196,6 @@ func (s *GCSService) UploadFileWithCustomName(ctx context.Context, file multipar
 		return 0, fmt.Errorf("failed to close GCS writer: %v", err)
 	}
 
-	log.Printf("[GCS] Successfully uploaded file to GCS: %s (size: %d bytes)", objectName, size)
 	return size, nil
 }
 

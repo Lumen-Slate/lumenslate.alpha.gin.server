@@ -110,21 +110,16 @@ type RAGAgentRequest struct {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/generate-context [post]
 func GenerateContextHandler(c *gin.Context) {
-	log.Println("[AI] /ai/generate-context called")
 	var req GenerateContextRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] Request: %+v", req)
 	content, err := service.GenerateContext(req.Question, req.Keywords, req.Language)
 	if err != nil {
-		log.Printf("[AI] GenerateContext error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] GenerateContext success")
 	c.JSON(http.StatusOK, gin.H{"content": content})
 }
 
@@ -140,22 +135,22 @@ func GenerateContextHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/detect-variables [post]
 func DetectVariablesHandler(c *gin.Context) {
-	log.Println("[AI] /ai/detect-variables called")
 	var req DetectVariablesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] Request: %+v", req)
+
 	variables, err := service.DetectVariables(req.Question)
 	if err != nil {
 		log.Printf("[AI] DetectVariables error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] DetectVariables success, count: %d", len(variables))
-	c.JSON(http.StatusOK, gin.H{"variables": variables})
+
+	c.JSON(http.StatusOK, gin.H{
+		"variables": variables,
+	})
 }
 
 // SegmentQuestionHandler godoc
@@ -170,21 +165,17 @@ func DetectVariablesHandler(c *gin.Context) {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/segment-question [post]
 func SegmentQuestionHandler(c *gin.Context) {
-	log.Println("[AI] /ai/segment-question called")
 	var req SegmentQuestionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] Request: %+v", req)
 	segmented, err := service.SegmentQuestion(req.Question)
 	if err != nil {
 		log.Printf("[AI] SegmentQuestion error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] SegmentQuestion success")
 	c.JSON(http.StatusOK, gin.H{"segmentedQuestion": segmented})
 }
 
@@ -360,166 +351,38 @@ func AgentHandler(c *gin.Context) {
 // @Failure      500 {object} gin.H "Internal server error"
 // @Router       /ai/rag-agent [post]
 func RAGAgentHandler(c *gin.Context) {
-	log.Printf("=== RAG AGENT HANDLER START ===")
-	log.Printf("[AI] /ai/rag-agent endpoint called")
-	log.Printf("[AI] Request method: %s", c.Request.Method)
-	log.Printf("[AI] Request URL: %s", c.Request.URL.String())
-	log.Printf("[AI] Content-Type: %s", c.GetHeader("Content-Type"))
-	log.Printf("[AI] User-Agent: %s", c.GetHeader("User-Agent"))
-
 	// Parse and validate request
 	var req RAGAgentRequest
-	log.Printf("[AI] Attempting to bind JSON request...")
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("ERROR: Failed to bind JSON request: %v", err)
-		log.Printf("ERROR: Request body binding failed, returning 400 Bad Request")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("✓ Successfully bound JSON request")
-
-	log.Printf("=== RAG AGENT REQUEST DETAILS ===")
-	log.Printf("[AI] Teacher ID: %s", req.TeacherId)
-	log.Printf("[AI] Role: %s", req.Role)
-	log.Printf("[AI] Message length: %d characters", len(req.Message))
-	log.Printf("[AI] Message preview (first 200 chars): %.200s%s", req.Message, func() string {
-		if len(req.Message) > 200 {
-			return "..."
-		}
-		return ""
-	}())
-	log.Printf("[AI] File parameter: %s", req.File)
-	log.Printf("[AI] CreatedAt: %s", req.CreatedAt)
-	log.Printf("[AI] UpdatedAt: %s", req.UpdatedAt)
 
 	// Create/verify corpus for the teacher before processing the request
-	log.Printf("=== CORPUS MANAGEMENT ===")
-	log.Printf("[AI] Creating/verifying corpus for teacher: %s", req.TeacherId)
-	corpusStartTime := time.Now()
-	corpusResponse, err := createVertexAICorpus(req.TeacherId)
-	corpusEndTime := time.Now()
-	corpusDuration := corpusEndTime.Sub(corpusStartTime)
-
+	_, err := createVertexAICorpus(req.TeacherId)
 	if err != nil {
 		log.Printf("WARNING: Could not create/verify corpus for teacher %s: %v", req.TeacherId, err)
-		log.Printf("WARNING: Corpus operation failed after %v, continuing with RAG agent processing...", corpusDuration)
 		// Continue processing even if corpus creation fails
-	} else {
-		log.Printf("✓ Corpus operation completed successfully in %v", corpusDuration)
-		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
-		if corpusCreated, ok := corpusResponse["corpusCreated"].(bool); ok {
-			log.Printf("[AI] Corpus created: %v", corpusCreated)
-		}
-		if displayName, ok := corpusResponse["displayName"].(string); ok {
-			log.Printf("[AI] Corpus display name: %s", displayName)
-		}
 	}
 
 	// Call the gRPC microservice
-	log.Printf("=== GRPC SERVICE CALL ===")
-	log.Printf("[AI] Calling RAGAgentClient service...")
-	log.Printf("[AI] Parameters - TeacherId: %s, Message length: %d, File: %s", req.TeacherId, len(req.Message), req.File)
-	grpcStartTime := time.Now()
-
 	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, "")
-	grpcEndTime := time.Now()
-	grpcDuration := grpcEndTime.Sub(grpcStartTime)
-
 	if err != nil {
 		log.Printf("ERROR: Failed to process RAG agent request: %v", err)
-		log.Printf("ERROR: gRPC call failed after %v", grpcDuration)
-		log.Printf("ERROR: Returning 500 Internal Server Error")
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
 		return
 	}
-	log.Printf("✓ gRPC call completed successfully in %v", grpcDuration)
-
-	log.Printf("=== GRPC RESPONSE ANALYSIS ===")
-	if resp != nil {
-		log.Printf("[AI] gRPC response received successfully")
-		log.Printf("[AI] Agent response length: %d characters", len(resp.GetAgentResponse()))
-		log.Printf("[AI] Agent name: %s", resp.GetAgentName())
-		log.Printf("[AI] Teacher ID from response: %s", resp.GetTeacherId())
-		log.Printf("[AI] Session ID: %s", resp.GetSessionId())
-		log.Printf("[AI] Response time: %s", resp.GetResponseTime())
-		log.Printf("[AI] Role: %s", resp.GetRole())
-		log.Printf("[AI] Feedback: %s", resp.GetFeedback())
-		log.Printf("[AI] CreatedAt: %s", resp.GetCreatedAt())
-		log.Printf("[AI] UpdatedAt: %s", resp.GetUpdatedAt())
-
-		// Preview of agent response
-		agentResponse := resp.GetAgentResponse()
-		log.Printf("[AI] Agent response preview (first 300 chars): %.300s%s", agentResponse, func() string {
-			if len(agentResponse) > 300 {
-				return "..."
-			}
-			return ""
-		}())
-	} else {
-		log.Printf("WARNING: Received nil gRPC response")
-	}
 
 	// Process the agent response to determine data content and message
-	log.Printf("=== RESPONSE PROCESSING ===")
-	log.Printf("[AI] Processing agent response to determine content type...")
-	processingStartTime := time.Now()
-
 	responseData, responseMessage, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
-	processingEndTime := time.Now()
-	processingDuration := processingEndTime.Sub(processingStartTime)
-
 	if err != nil {
 		log.Printf("ERROR: Failed to process RAG agent response: %v", err)
-		log.Printf("ERROR: Response processing failed after %v", processingDuration)
-		log.Printf("ERROR: Returning 500 Internal Server Error")
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent response", "error": err.Error()})
 		return
 	}
-	log.Printf("✓ Response processing completed successfully in %v", processingDuration)
-
-	log.Printf("=== PROCESSED RESPONSE DETAILS ===")
-	log.Printf("[AI] Response data type: %T", responseData)
-	log.Printf("[AI] Response message length: %d", len(responseMessage))
-
-	if responseData != nil {
-		log.Printf("[AI] Response contains structured data")
-		if dataMap, ok := responseData.(map[string]interface{}); ok {
-			log.Printf("[AI] Data map keys: %v", func() []string {
-				keys := make([]string, 0, len(dataMap))
-				for k := range dataMap {
-					keys = append(keys, k)
-				}
-				return keys
-			}())
-
-			// Check for question data
-			if mcqs, ok := dataMap["mcqs"].([]string); ok {
-				log.Printf("[AI] MCQ question IDs: %d items", len(mcqs))
-			}
-			if msqs, ok := dataMap["msqs"].([]string); ok {
-				log.Printf("[AI] MSQ question IDs: %d items", len(msqs))
-			}
-			if nats, ok := dataMap["nats"].([]string); ok {
-				log.Printf("[AI] NAT question IDs: %d items", len(nats))
-			}
-			if subjectives, ok := dataMap["subjectives"].([]string); ok {
-				log.Printf("[AI] Subjective question IDs: %d items", len(subjectives))
-			}
-		}
-	} else {
-		log.Printf("[AI] Response contains text message only")
-		if len(responseMessage) > 0 {
-			log.Printf("[AI] Message preview (first 200 chars): %.200s%s", responseMessage, func() string {
-				if len(responseMessage) > 200 {
-					return "..."
-				}
-				return ""
-			}())
-		}
-	}
 
 	// Build standardized response format (matching /ai/agent structure)
-	log.Printf("=== BUILDING FINAL RESPONSE ===")
 	standardizedResponse := map[string]interface{}{
 		"message":      responseMessage,
 		"teacherId":    resp.GetTeacherId(),
@@ -532,32 +395,6 @@ func RAGAgentHandler(c *gin.Context) {
 		"role":         resp.GetRole(),
 		"feedback":     resp.GetFeedback(),
 	}
-
-	log.Printf("=== FINAL RESPONSE SUMMARY ===")
-	log.Printf("[AI] Response structure:")
-	log.Printf("  - Message: %s", func() string {
-		if len(responseMessage) > 0 {
-			return fmt.Sprintf("'%s' (%d chars)", responseMessage[:min(50, len(responseMessage))], len(responseMessage))
-		}
-		return "empty"
-	}())
-	log.Printf("  - Teacher ID: %s", resp.GetTeacherId())
-	log.Printf("  - Agent Name: %s", resp.GetAgentName())
-	log.Printf("  - Data Type: %T", responseData)
-	log.Printf("  - Session ID: %s", resp.GetSessionId())
-	log.Printf("  - Response Time: %s", resp.GetResponseTime())
-
-	// Calculate total processing time
-	totalEndTime := time.Now()
-	totalDuration := totalEndTime.Sub(corpusStartTime)
-	log.Printf("=== PERFORMANCE METRICS ===")
-	log.Printf("[AI] Corpus operation: %v", corpusDuration)
-	log.Printf("[AI] gRPC call: %v", grpcDuration)
-	log.Printf("[AI] Response processing: %v", processingDuration)
-	log.Printf("[AI] Total request processing: %v", totalDuration)
-
-	log.Printf("✓ RAG agent request processed successfully - returning 200 OK")
-	log.Printf("=== RAG AGENT HANDLER END ===")
 
 	c.JSON(http.StatusOK, standardizedResponse)
 }
@@ -824,14 +661,12 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/rag-agent/delete-corpus-document [post]
 func DeleteCorpusDocumentHandler(c *gin.Context) {
-	log.Println("[AI] /ai/rag-agent/delete-corpus-document called")
 	var req DeleteCorpusDocumentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Printf("[AI] Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	log.Printf("[AI] Request: %+v", req)
 
 	deleteResponse, err := deleteVertexAICorpusDocument(req.CorpusName, req.FileDisplayName)
 	if err != nil {
@@ -840,7 +675,6 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[AI] Delete corpus document success")
 	c.JSON(http.StatusOK, deleteResponse)
 }
 
@@ -858,6 +692,23 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 // @Router       /ai/rag-agent/add-corpus-document [post]
 func AddCorpusDocumentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/add-corpus-document called")
+
+	// Validate required environment variables
+	bucketName := os.Getenv("GCS_BUCKET_NAME")
+	if bucketName == "" {
+		log.Printf("[AI] GCS_BUCKET_NAME environment variable not set")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Storage configuration missing"})
+		return
+	}
+
+	projectID := utils.GetProjectID()
+	if projectID == "" {
+		log.Printf("[AI] Project ID not configured")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Project configuration missing"})
+		return
+	}
+
+	log.Printf("[AI] Using GCS bucket: %s, Project: %s", bucketName, projectID)
 
 	// Parse form data
 	var req AddCorpusDocumentFormRequest
@@ -910,6 +761,43 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	gcsURL := fmt.Sprintf("gs://%s/%s", os.Getenv("GCS_BUCKET_NAME"), tempObjectName)
 	log.Printf("[AI] GCS URL for Vertex AI: %s", gcsURL)
 
+	// Validate file type for RAG compatibility
+	allowedExtensions := []string{".pdf", ".txt", ".docx", ".doc", ".html", ".md"}
+	isValidType := false
+	for _, ext := range allowedExtensions {
+		if strings.EqualFold(fileExtension, ext) {
+			isValidType = true
+			break
+		}
+	}
+
+	if !isValidType {
+		log.Printf("[AI] Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions)
+		// Clean up uploaded file
+		if deleteErr := gcs.DeleteObject(ctx, tempObjectName); deleteErr != nil {
+			log.Printf("[AI] Failed to clean up GCS object: %v", deleteErr)
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions)})
+		return
+	}
+
+	log.Printf("[AI] File type %s is valid for RAG import", fileExtension)
+
+	// Verify GCS file accessibility
+	log.Printf("[AI] Verifying GCS file accessibility...")
+	exists, err := gcs.ObjectExists(ctx, tempObjectName)
+	if err != nil {
+		log.Printf("[AI] Error checking GCS file existence: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify file upload"})
+		return
+	}
+	if !exists {
+		log.Printf("[AI] GCS file does not exist: %s", tempObjectName)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "File upload verification failed"})
+		return
+	}
+	log.Printf("[AI] GCS file verified: %s", gcsURL)
+
 	// Check if corpus exists, create if it doesn't
 	log.Printf("[AI] Checking if corpus '%s' exists before adding document", req.CorpusName)
 	corpusResponse, err := createVertexAICorpus(req.CorpusName)
@@ -931,7 +819,8 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	log.Printf("[AI] Existing files in corpus before addition: %d", existingFileCount)
 
 	// Add document to Vertex AI RAG corpus using GCS URL
-	_, err = addVertexAICorpusDocument(req.CorpusName, gcsURL)
+	log.Printf("[AI] Starting to add document to RAG corpus...")
+	addResult, err := addVertexAICorpusDocument(req.CorpusName, gcsURL)
 	if err != nil {
 		log.Printf("[AI] Add corpus document error: %v", err)
 
@@ -944,25 +833,47 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	// Wait a bit for the operation to complete
-	time.Sleep(5 * time.Second)
+	log.Printf("[AI] Successfully added document to RAG corpus. Result: %+v", addResult)
+
+	// Wait a bit for the operation to complete and verify
+	log.Printf("[AI] Waiting for RAG import operation to complete...")
+	time.Sleep(10 * time.Second) // Increased wait time
 
 	// List files again to find the newly added RAG file
+	log.Printf("[AI] Verifying document was added to RAG corpus...")
 	updatedFiles, err := listVertexAICorpusContent(req.CorpusName)
 	var ragFileID string
+	var documentAdded bool
+
 	if err == nil {
 		if files, ok := updatedFiles["files"].([]interface{}); ok {
-			// Find the newest file (should be the one we just added)
+			log.Printf("[AI] Found %d files in corpus after addition (was %d before)", len(files), existingFileCount)
+
+			// Find the newly added file by comparing with previous count
 			if len(files) > existingFileCount {
-				// Get the last file in the list (most recently added)
-				if lastFile, ok := files[len(files)-1].(map[string]interface{}); ok {
-					if fileID, ok := lastFile["id"].(string); ok {
-						ragFileID = fileID
-						log.Printf("[AI] Found newly added RAG file ID: %s", ragFileID)
+				// Look for the file with matching display name
+				targetFileName := req.File.Filename
+				for _, file := range files {
+					if fileMap, ok := file.(map[string]interface{}); ok {
+						if displayName, ok := fileMap["displayName"].(string); ok && displayName == targetFileName {
+							if fileID, ok := fileMap["id"].(string); ok {
+								ragFileID = fileID
+								documentAdded = true
+								log.Printf("[AI] Found newly added RAG file: %s (ID: %s)", displayName, ragFileID)
+								break
+							}
+						}
 					}
 				}
 			}
 		}
+	} else {
+		log.Printf("[AI] Warning: Could not verify document addition: %v", err)
+	}
+
+	if !documentAdded {
+		log.Printf("[AI] Warning: Document may not have been successfully added to RAG corpus")
+		// Don't fail the request, but log the issue
 	}
 
 	// If we couldn't get the RAG file ID, use a fallback
@@ -1349,6 +1260,7 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 				},
 			},
 		}
+		log.Printf("[AI] Created GCS import request for file: %s", fileLink)
 	} else {
 		// Assume Google Drive URL
 		log.Printf("[AI] Adding Google Drive file to corpus: %s", fileLink)
@@ -1385,11 +1297,47 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	}
 
 	log.Printf("[AI] Adding file '%s' to corpus '%s'", fileDisplayName, corpusName)
+	log.Printf("[AI] Import request: %+v", importRequest)
 
 	// Trigger the import
 	operation, err := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest).Do()
 	if err != nil {
+		log.Printf("[AI] Failed to trigger import operation: %v", err)
 		return nil, fmt.Errorf("failed to add file to corpus: %v", err)
+	}
+
+	log.Printf("[AI] Import operation started: %s", operation.Name)
+
+	// Wait for the operation to complete with timeout
+	operationsService := service.Projects.Locations.Operations
+	timeout := time.Now().Add(5 * time.Minute) // 5 minute timeout
+
+	for time.Now().Before(timeout) {
+		op, err := operationsService.Get(operation.Name).Do()
+		if err != nil {
+			log.Printf("[AI] Failed to check operation status: %v", err)
+			break
+		}
+
+		log.Printf("[AI] Operation status: done=%v", op.Done)
+
+		if op.Done {
+			if op.Error != nil {
+				log.Printf("[AI] Import operation failed: %v", op.Error)
+				return nil, fmt.Errorf("import operation failed: %s", op.Error.Message)
+			}
+			log.Printf("[AI] Import operation completed successfully")
+			break
+		}
+
+		// Wait before checking again
+		time.Sleep(10 * time.Second)
+	}
+
+	// Check if operation timed out
+	if time.Now().After(timeout) {
+		log.Printf("[AI] Import operation timed out")
+		return nil, fmt.Errorf("import operation timed out after 5 minutes")
 	}
 
 	return map[string]interface{}{
@@ -1488,10 +1436,10 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	// Create result structure matching the desired format
 	result := map[string]interface{}{
 		"corpusUsed":              teacherId, // Use teacherId as corpusUsed
-		"mcqs":                    []interface{}{},
-		"msqs":                    []interface{}{},
-		"nats":                    []interface{}{},
-		"subjectives":             []interface{}{},
+		"mcqs":                    make([]interface{}, 0),
+		"msqs":                    make([]interface{}, 0),
+		"nats":                    make([]interface{}, 0),
+		"subjectives":             make([]interface{}, 0),
 		"totalQuestionsGenerated": 0,
 	}
 
@@ -1613,6 +1561,16 @@ func min(a, b int) int {
 	return b
 }
 
+// Helper function to safely extract string values from map[string]interface{}
+func getStringValue(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
 // ListCorpusDocumentsHandler godoc
 // @Summary      List Documents in RAG Corpus
 // @Description  List all documents in a specific RAG corpus
@@ -1625,16 +1583,13 @@ func min(a, b int) int {
 // @Failure      500   {object}  map[string]interface{}
 // @Router       /ai/rag-agent/corpus/{corpusName}/documents [get]
 func ListCorpusDocumentsHandler(c *gin.Context) {
-	log.Println("[AI] /ai/rag-agent/corpus/:corpusName/documents called")
-
 	corpusName := c.Param("corpusName")
 	if corpusName == "" {
-		log.Printf("[AI] Invalid request: missing corpus name")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Corpus name is required"})
 		return
 	}
 
-	log.Printf("[AI] Request to list documents in corpus: %s", corpusName)
+	log.Printf("[AI] Listing documents for corpus: %s", corpusName)
 
 	docRepo := repository.NewDocumentRepository()
 	ctx := context.Background()
@@ -1642,30 +1597,116 @@ func ListCorpusDocumentsHandler(c *gin.Context) {
 	// Get documents from database
 	documents, err := docRepo.GetDocumentsByCorpus(ctx, corpusName)
 	if err != nil {
-		log.Printf("[AI] Failed to retrieve documents for corpus %s: %v", corpusName, err)
+		log.Printf("[AI] Failed to retrieve documents from database: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve documents"})
 		return
 	}
 
-	// Convert to metadata format
-	var documentList []model.DocumentMetadata
-	for _, doc := range documents {
-		documentList = append(documentList, model.DocumentMetadata{
-			FileID:      doc.FileID,
-			DisplayName: doc.DisplayName,
-			ContentType: doc.ContentType,
-			Size:        doc.Size,
-			CorpusName:  doc.CorpusName,
-			CreatedAt:   doc.CreatedAt,
-		})
+	log.Printf("[AI] Found %d documents in database", len(documents))
+
+	// Get documents from RAG engine to verify consistency
+	ragContentResponse, err := listVertexAICorpusContent(corpusName)
+	if err != nil {
+		log.Printf("[AI] Failed to retrieve documents from RAG engine: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve documents from RAG engine"})
+		return
 	}
 
-	log.Printf("[AI] Found %d documents in corpus %s", len(documentList), corpusName)
-	c.JSON(http.StatusOK, gin.H{
+	// Extract RAG files and create a map for quick lookup
+	ragFiles := make(map[string]map[string]interface{})
+	ragFilesByID := make(map[string]map[string]interface{})
+
+	log.Printf("[AI] RAG response status: %v", ragContentResponse["status"])
+
+	if ragContentResponse["status"] != "error" {
+		if files, ok := ragContentResponse["files"].([]map[string]interface{}); ok {
+			log.Printf("[AI] Found %d documents in RAG engine", len(files))
+			for i, file := range files {
+				displayName := getStringValue(file, "displayName")
+				fileID := getStringValue(file, "id")
+				log.Printf("[AI] RAG file %d: displayName='%s', id='%s'", i+1, displayName, fileID)
+
+				if displayName != "" {
+					ragFiles[displayName] = file
+				}
+				if fileID != "" {
+					ragFilesByID[fileID] = file
+				}
+			}
+		}
+	} else {
+		log.Printf("[AI] RAG engine returned error: %v", ragContentResponse["message"])
+	}
+
+	// Filter database documents to only include those present in RAG engine
+	var documentList []model.DocumentMetadata
+	var inconsistentCount int
+
+	for i, doc := range documents {
+		log.Printf("[AI] DB document %d: displayName='%s', ragFileID='%s', fileID='%s'",
+			i+1, doc.DisplayName, doc.RAGFileID, doc.FileID)
+
+		// Try multiple matching strategies
+		var exists bool
+		var matchMethod string
+		var ragDisplayName string
+
+		// Strategy 1: Match by display name
+		if _, exists = ragFiles[doc.DisplayName]; exists {
+			matchMethod = "displayName"
+			ragDisplayName = doc.DisplayName
+		} else if doc.RAGFileID != "" {
+			// Strategy 2: Match by RAG file ID
+			if ragFileData, ragExists := ragFilesByID[doc.RAGFileID]; ragExists {
+				exists = true
+				matchMethod = "ragFileID"
+				ragDisplayName = getStringValue(ragFileData, "displayName")
+			} else {
+				// Strategy 3: Check if RAG file ID appears in any RAG display name
+				// (for cases where the file was renamed with UUID)
+				for ragName := range ragFiles {
+					if strings.Contains(ragName, doc.RAGFileID) {
+						exists = true
+						matchMethod = "ragFileID_in_displayName"
+						ragDisplayName = ragName
+						break
+					}
+				}
+			}
+		}
+
+		if exists {
+			log.Printf("[AI] Document matched using %s: DB='%s' -> RAG='%s'", matchMethod, doc.DisplayName, ragDisplayName)
+			// Document exists in both database and RAG engine
+			documentList = append(documentList, model.DocumentMetadata{
+				FileID:      doc.FileID,
+				DisplayName: doc.DisplayName,
+				ContentType: doc.ContentType,
+				Size:        doc.Size,
+				CorpusName:  doc.CorpusName,
+				CreatedAt:   doc.CreatedAt,
+			})
+		} else {
+			log.Printf("[AI] Document NOT found in RAG engine: %s (ragFileID: %s)", doc.DisplayName, doc.RAGFileID)
+			// Document exists in database but not in RAG engine - inconsistency
+			inconsistentCount++
+		}
+	}
+
+	response := gin.H{
 		"corpusName": corpusName,
 		"documents":  documentList,
 		"count":      len(documentList),
-	})
+	}
+
+	// Add inconsistency warning if any documents are missing from RAG engine
+	if inconsistentCount > 0 {
+		response["warning"] = fmt.Sprintf("%d documents exist in database but not in RAG engine", inconsistentCount)
+		response["inconsistentCount"] = inconsistentCount
+	}
+
+	log.Printf("[AI] Returning %d documents, %d inconsistent", len(documentList), inconsistentCount)
+	c.JSON(http.StatusOK, response)
 }
 
 // DeleteCorpusDocumentByIDHandler godoc
