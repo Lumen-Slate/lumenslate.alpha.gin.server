@@ -1,22 +1,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
-	"encoding/json"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"google.golang.org/api/option"
-	"google.golang.org/api/transport"
 
 	"lumenslate/internal/db"
 	"lumenslate/internal/routes"
@@ -146,26 +142,29 @@ func registerRoutes(router *gin.Engine) {
 }
 
 func logADCIdentity() {
-	ctx := context.Background()
+	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
 
-	creds, err := transport.Creds(ctx, option.WithScopes("https://www.googleapis.com/auth/cloud-platform"))
+	req, err := http.NewRequest("GET", metadataURL, nil)
 	if err != nil {
-		log.Printf("❌ Failed to load ADC credentials: %v", err)
+		log.Printf("❌ Failed to create request to metadata server: %v", err)
+		return
+	}
+	req.Header.Add("Metadata-Flavor", "Google")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("❌ Failed to call metadata server: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("❌ Failed to read response from metadata server: %v", err)
 		return
 	}
 
-	email := creds.ProjectID // fallback
-	if creds != nil && creds.JSON != nil {
-		var jsonData map[string]interface{}
-		if err := json.Unmarshal(creds.JSON, &jsonData); err == nil {
-			if saEmail, ok := jsonData["client_email"].(string); ok {
-				email = saEmail
-			}
-		} else {
-			log.Printf("❌ Failed to parse ADC credentials JSON: %v", err)
-		}
-	}
-	log.Printf("🔐 Using ADC credentials for service account: %s", email)
+	log.Printf("🔐 Cloud Run is using service account: %s", string(body))
 }
 
 func gracefulShutdown() {
