@@ -56,7 +56,7 @@ func GetAllAssignments() ([]model.Assignment, error) {
 	return assignments, nil
 }
 
-func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignment, error) {
+func FilterAssignments(limitStr, offsetStr, points, due, q string) ([]model.Assignment, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -74,7 +74,70 @@ func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignm
 	findOptions.SetLimit(limit)
 	findOptions.SetSkip(offset)
 
-	// Build filter
+	// Add search functionality for title and body (title gets priority)
+	if q != "" {
+		// Use aggregation pipeline to prioritize title matches
+		pipeline := []bson.M{
+			{
+				"$match": bson.M{
+					"$or": []bson.M{
+						{"title": bson.M{"$regex": q, "$options": "i"}},
+						{"body": bson.M{"$regex": q, "$options": "i"}},
+					},
+				},
+			},
+			{
+				"$addFields": bson.M{
+					"titleMatch": bson.M{
+						"$cond": bson.M{
+							"if":   bson.M{"$regexMatch": bson.M{"input": "$title", "regex": q, "options": "i"}},
+							"then": 1,
+							"else": 0,
+						},
+					},
+				},
+			},
+			{
+				"$sort": bson.M{
+					"titleMatch": -1, // Title matches first
+					"createdAt":  -1, // Then by creation date
+				},
+			},
+			{"$skip": offset},
+			{"$limit": limit},
+		}
+
+		// Apply other filters to the match stage
+		matchStage := pipeline[0]["$match"].(bson.M)
+		if points != "" {
+			if val, err := strconv.Atoi(points); err == nil {
+				matchStage["points"] = val
+			}
+		}
+		if due != "" {
+			if t, err := time.Parse(time.RFC3339, due); err == nil {
+				matchStage["dueDate"] = bson.M{"$gte": t}
+			}
+		}
+
+		cursor, err := db.GetCollection(db.AssignmentCollection).Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var results []model.Assignment
+		if err = cursor.All(ctx, &results); err != nil {
+			return nil, err
+		}
+
+		if results == nil {
+			results = make([]model.Assignment, 0)
+		}
+		return results, nil
+	}
+
+	// Regular filtering when no search query
 	filter := bson.M{}
 	if points != "" {
 		if val, err := strconv.Atoi(points); err == nil {
@@ -86,6 +149,9 @@ func FilterAssignments(limitStr, offsetStr, points, due string) ([]model.Assignm
 			filter["dueDate"] = bson.M{"$gte": t}
 		}
 	}
+
+	// Default sorting when no search query
+	findOptions.SetSort(bson.M{"createdAt": -1})
 
 	cursor, err := db.GetCollection(db.AssignmentCollection).Find(ctx, filter, findOptions)
 	if err != nil {

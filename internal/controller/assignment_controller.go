@@ -213,6 +213,7 @@ func UpdateAssignment(c *gin.Context) {
 // @Produce json
 // @Param points query string false "Filter by points"
 // @Param dueDate query string false "Filter by due date"
+// @Param q query string false "Search in title or body (partial match)"
 // @Param limit query string false "Pagination limit"
 // @Param offset query string false "Pagination offset"
 // @Success 200 {array} model.Assignment
@@ -224,6 +225,9 @@ func GetAllAssignments(c *gin.Context) {
 	}
 	if due := c.Query("dueDate"); due != "" {
 		filters["dueDate"] = due
+	}
+	if q := c.Query("q"); q != "" {
+		filters["q"] = q
 	}
 	if limit := c.Query("limit"); limit != "" {
 		filters["limit"] = limit
@@ -237,6 +241,7 @@ func GetAllAssignments(c *gin.Context) {
 		filters["offset"],
 		filters["points"],
 		filters["dueDate"],
+		filters["q"],
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
