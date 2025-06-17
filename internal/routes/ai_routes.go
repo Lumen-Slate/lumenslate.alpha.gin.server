@@ -1,34 +1,38 @@
 package routes
 
 import (
-	"lumenslate/internal/controller"
+	"lumenslate/internal/controller/ai"
 
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterAIRoutes(r *gin.Engine) {
-	ai := r.Group("/ai")
+	aiGroup := r.Group("/ai")
 	{
-		// Core AI services
-		ai.POST("/generate-context", controller.GenerateContextHandler)
-		ai.POST("/detect-variables", controller.DetectVariablesHandler)
-		ai.POST("/segment-question", controller.SegmentQuestionHandler)
-		ai.POST("/generate-mcq", controller.GenerateMCQVariationsHandler)
-		ai.POST("/generate-msq", controller.GenerateMSQVariationsHandler)
-		ai.POST("/filter-and-randomize", controller.FilterAndRandomizeHandler)
-		ai.POST("/agent", controller.AgentHandler)
-		ai.POST("/rag-agent", controller.RAGAgentHandler)
+		// Question-related AI services (from question_controller.go)
+		aiGroup.POST("/generate-context", ai.GenerateContextHandler)
+		aiGroup.POST("/detect-variables", ai.DetectVariablesHandler)
+		aiGroup.POST("/segment-question", ai.SegmentQuestionHandler)
+		aiGroup.POST("/generate-mcq", ai.GenerateMCQVariationsHandler)
+		aiGroup.POST("/generate-msq", ai.GenerateMSQVariationsHandler)
+		aiGroup.POST("/filter-and-randomize", ai.FilterAndRandomizeHandler)
 
-		// RAG Corpus management
-		ai.POST("/rag-agent/create-corpus", controller.CreateCorpusHandler)
-		ai.POST("/rag-agent/list-corpus-content", controller.ListCorpusContentHandler)
-		ai.POST("/rag-agent/list-all-corpora", controller.ListAllCorporaHandler)
-		ai.POST("/rag-agent/add-corpus-document", controller.AddCorpusDocumentHandler)
-		ai.POST("/rag-agent/delete-corpus-document", controller.DeleteCorpusDocumentHandler)
-		ai.GET("/rag-agent/:corpusName/documents", controller.ListCorpusDocumentsHandler)
+		// Agent services (from agent_controller.go)
+		aiGroup.POST("/agent", ai.AgentHandler)
 
-		// Individual document management
-		ai.GET("/documents/view/:id", controller.ViewDocumentHandler)
-		ai.DELETE("/documents/:id", controller.DeleteCorpusDocumentByIDHandler)
+		// RAG agent services (from rag_controller.go)
+		aiGroup.POST("/rag-agent", ai.RAGAgentHandler)
+
+		// Corpus management (from corpus_controller.go and rag_controller.go)
+		aiGroup.POST("/rag-agent/create-corpus", ai.CreateCorpusHandler)
+		aiGroup.POST("/rag-agent/list-corpus-content", ai.ListCorpusContentHandler)
+		aiGroup.POST("/rag-agent/list-all-corpora", ai.ListAllCorporaHandler)
+
+		// Document management (from document_controller.go)
+		aiGroup.POST("/rag-agent/add-corpus-document", ai.AddCorpusDocumentHandler)
+		aiGroup.POST("/rag-agent/delete-corpus-document", ai.DeleteCorpusDocumentHandler)
+		aiGroup.GET("/rag-agent/:corpusName/documents", ai.ListCorpusDocumentsHandler)
+		aiGroup.GET("/documents/view/:id", ai.ViewDocumentHandler)
+		aiGroup.DELETE("/documents/:id", ai.DeleteCorpusDocumentByIDHandler)
 	}
 }
