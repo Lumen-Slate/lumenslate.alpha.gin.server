@@ -34,6 +34,14 @@ jobs:
 
       - name: 🚀 Deploy to Cloud Run (with memory, env, port, service account)
         run: |
+          echo "Setting environment variables:"
+          echo "MONGO_URI: ${{ secrets.MONGO_URI != '' && 'SET' || 'NOT_SET' }}"
+          echo "GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID != '' && 'SET' || 'NOT_SET' }}"
+          echo "GOOGLE_CLOUD_LOCATION: ${{ secrets.GOOGLE_CLOUD_LOCATION != '' && 'SET' || 'NOT_SET' }}"
+          echo "GOOGLE_GENAI_USE_VERTEXAI: ${{ secrets.GOOGLE_GENAI_USE_VERTEXAI != '' && 'SET' || 'NOT_SET' }}"
+          echo "GRPC_SERVICE_URL: ${{ secrets.GRPC_SERVICE_URL != '' && 'SET' || 'NOT_SET' }}"
+          echo "GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME != '' && 'SET' || 'NOT_SET' }}"
+          
           gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE }} \
             --image asia-south1-docker.pkg.dev/${{ secrets.GOOGLE_PROJECT_ID }}/lumenslate/${{ secrets.CLOUD_RUN_SERVICE }} \
             --region asia-south1 \
