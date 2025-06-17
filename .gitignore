@@ -16,7 +16,6 @@ server
 # Go files
 *.log
 *.tmp
-go.sum
 vendor/
 
 # Env & Secrets
