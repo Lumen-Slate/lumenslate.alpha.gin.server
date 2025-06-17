@@ -1218,12 +1218,14 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	log.Printf("✓ Detected structured question data with fields: %v", foundQuestionFields)
 	log.Printf("[AI] Processing structured question data for database storage...")
 
+	// Create result structure matching the desired format
 	result := map[string]interface{}{
-		"mcqs":        []string{},
-		"msqs":        []string{},
-		"nats":        []string{},
-		"subjectives": []string{},
-		"questions":   questionsData, // Include the original question data
+		"corpusUsed":              teacherId, // Use teacherId as corpusUsed
+		"mcqs":                    []interface{}{},
+		"msqs":                    []interface{}{},
+		"nats":                    []interface{}{},
+		"subjectives":             []interface{}{},
+		"totalQuestionsGenerated": 0,
 	}
 
 	// Process MCQ questions (handle both "mcq" and "mcqs")
@@ -1237,22 +1239,8 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 		log.Printf("[AI] Found MCQ data, processing...")
 		if mcqArray, ok := mcqData.([]interface{}); ok {
 			log.Printf("[AI] MCQ array contains %d items", len(mcqArray))
-			for i, mcqInterface := range mcqArray {
-				if mcqMap, ok := mcqInterface.(map[string]interface{}); ok {
-					log.Printf("[AI] Processing MCQ %d: %+v", i+1, mcqMap)
-					_ = mcqMap // Suppress unused variable warning
-					// Note: Actual database saving is commented out in original code
-					// id, err := saveMCQQuestion(mcqMap, teacherId)
-					// if err != nil {
-					// 	log.Printf("[AI] Error saving MCQ question: %v", err)
-					// 	continue
-					// }
-					// result["mcqs"] = append(result["mcqs"].([]string), id)
-					log.Printf("[AI] MCQ %d processed (saving disabled)", i+1)
-				} else {
-					log.Printf("WARNING: MCQ %d is not a valid map structure", i+1)
-				}
-			}
+			result["mcqs"] = mcqArray // Include the actual MCQ data
+			log.Printf("[AI] MCQ data included in response")
 		} else {
 			log.Printf("WARNING: MCQ data is not an array: %T", mcqData)
 		}
@@ -1270,22 +1258,8 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 		log.Printf("[AI] Found MSQ data, processing...")
 		if msqArray, ok := msqData.([]interface{}); ok {
 			log.Printf("[AI] MSQ array contains %d items", len(msqArray))
-			for i, msqInterface := range msqArray {
-				if msqMap, ok := msqInterface.(map[string]interface{}); ok {
-					log.Printf("[AI] Processing MSQ %d: %+v", i+1, msqMap)
-					_ = msqMap // Suppress unused variable warning
-					// Note: Actual database saving is commented out in original code
-					// id, err := saveMSQQuestion(msqMap, teacherId)
-					// if err != nil {
-					// 	log.Printf("[AI] Error saving MSQ question: %v", err)
-					// 	continue
-					// }
-					// result["msqs"] = append(result["msqs"].([]string), id)
-					log.Printf("[AI] MSQ %d processed (saving disabled)", i+1)
-				} else {
-					log.Printf("WARNING: MSQ %d is not a valid map structure", i+1)
-				}
-			}
+			result["msqs"] = msqArray // Include the actual MSQ data
+			log.Printf("[AI] MSQ data included in response")
 		} else {
 			log.Printf("WARNING: MSQ data is not an array: %T", msqData)
 		}
@@ -1303,22 +1277,8 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 		log.Printf("[AI] Found NAT data, processing...")
 		if natArray, ok := natData.([]interface{}); ok {
 			log.Printf("[AI] NAT array contains %d items", len(natArray))
-			for i, natInterface := range natArray {
-				if natMap, ok := natInterface.(map[string]interface{}); ok {
-					log.Printf("[AI] Processing NAT %d: %+v", i+1, natMap)
-					_ = natMap // Suppress unused variable warning
-					// Note: Actual database saving is commented out in original code
-					// id, err := saveNATQuestion(natMap, teacherId)
-					// if err != nil {
-					// 	log.Printf("[AI] Error saving NAT question: %v", err)
-					// 	continue
-					// }
-					// result["nats"] = append(result["nats"].([]string), id)
-					log.Printf("[AI] NAT %d processed (saving disabled)", i+1)
-				} else {
-					log.Printf("WARNING: NAT %d is not a valid map structure", i+1)
-				}
-			}
+			result["nats"] = natArray // Include the actual NAT data
+			log.Printf("[AI] NAT data included in response")
 		} else {
 			log.Printf("WARNING: NAT data is not an array: %T", natData)
 		}
@@ -1336,22 +1296,8 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 		log.Printf("[AI] Found Subjective data, processing...")
 		if subjectiveArray, ok := subjectiveData.([]interface{}); ok {
 			log.Printf("[AI] Subjective array contains %d items", len(subjectiveArray))
-			for i, subjectiveInterface := range subjectiveArray {
-				if subjectiveMap, ok := subjectiveInterface.(map[string]interface{}); ok {
-					log.Printf("[AI] Processing Subjective %d: %+v", i+1, subjectiveMap)
-					_ = subjectiveMap // Suppress unused variable warning
-					// Note: Actual database saving is commented out in original code
-					// id, err := saveSubjectiveQuestion(subjectiveMap, teacherId)
-					// if err != nil {
-					// 	log.Printf("[AI] Error saving Subjective question: %v", err)
-					// 	continue
-					// }
-					// result["subjectives"] = append(result["subjectives"].([]string), id)
-					log.Printf("[AI] Subjective %d processed (saving disabled)", i+1)
-				} else {
-					log.Printf("WARNING: Subjective %d is not a valid map structure", i+1)
-				}
-			}
+			result["subjectives"] = subjectiveArray // Include the actual Subjective data
+			log.Printf("[AI] Subjective data included in response")
 		} else {
 			log.Printf("WARNING: Subjective data is not an array: %T", subjectiveData)
 		}
@@ -1360,11 +1306,26 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	}
 
 	log.Printf("=== QUESTION PROCESSING SUMMARY ===")
-	mcqCount := len(result["mcqs"].([]string))
-	msqCount := len(result["msqs"].([]string))
-	natCount := len(result["nats"].([]string))
-	subjectiveCount := len(result["subjectives"].([]string))
+	mcqCount := 0
+	msqCount := 0
+	natCount := 0
+	subjectiveCount := 0
+
+	if mcqs, ok := result["mcqs"].([]interface{}); ok {
+		mcqCount = len(mcqs)
+	}
+	if msqs, ok := result["msqs"].([]interface{}); ok {
+		msqCount = len(msqs)
+	}
+	if nats, ok := result["nats"].([]interface{}); ok {
+		natCount = len(nats)
+	}
+	if subjectives, ok := result["subjectives"].([]interface{}); ok {
+		subjectiveCount = len(subjectives)
+	}
+
 	totalQuestions := mcqCount + msqCount + natCount + subjectiveCount
+	result["totalQuestionsGenerated"] = totalQuestions
 
 	log.Printf("[AI] Question processing complete:")
 	log.Printf("  - MCQs: %d", mcqCount)
@@ -1372,10 +1333,9 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 	log.Printf("  - NATs: %d", natCount)
 	log.Printf("  - Subjectives: %d", subjectiveCount)
 	log.Printf("  - Total: %d questions", totalQuestions)
-	log.Printf("[AI] Note: Database saving is currently disabled in the codebase")
 	log.Printf("=== PROCESS RAG AGENT RESPONSE END (QUESTIONS) ===")
 
-	return result, "", nil
+	return result, "Agent response processed successfully", nil
 }
 
 // // saveMCQQuestion saves an MCQ question to MongoDB and returns its ID
