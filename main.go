@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -9,9 +10,13 @@ import (
 	"strings"
 	"syscall"
 
+	"encoding/json"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"google.golang.org/api/option"
+	"google.golang.org/api/transport"
 
 	"lumenslate/internal/db"
 	"lumenslate/internal/routes"
@@ -30,6 +35,8 @@ import (
 // @BasePath        /
 
 func init() {
+	logADCIdentity()
+
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
 		content, _ := io.ReadAll(file)
@@ -136,6 +143,29 @@ func registerRoutes(router *gin.Engine) {
 	questions.RegisterMSQRoutes(router)
 	questions.RegisterNATRoutes(router)
 	questions.RegisterSubjectiveRoutes(router)
+}
+
+func logADCIdentity() {
+	ctx := context.Background()
+
+	creds, err := transport.Creds(ctx, option.WithScopes("https://www.googleapis.com/auth/cloud-platform"))
+	if err != nil {
+		log.Printf("❌ Failed to load ADC credentials: %v", err)
+		return
+	}
+
+	email := creds.ProjectID // fallback
+	if creds != nil && creds.JSON != nil {
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal(creds.JSON, &jsonData); err == nil {
+			if saEmail, ok := jsonData["client_email"].(string); ok {
+				email = saEmail
+			}
+		} else {
+			log.Printf("❌ Failed to parse ADC credentials JSON: %v", err)
+		}
+	}
+	log.Printf("🔐 Using ADC credentials for service account: %s", email)
 }
 
 func gracefulShutdown() {
