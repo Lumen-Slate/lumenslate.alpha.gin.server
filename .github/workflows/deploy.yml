@@ -26,6 +26,9 @@ jobs:
       - name: 🔍 Show active service account
         run: gcloud auth list
 
+      - name: 🧾 Write service account key to file
+        run: echo '${{ secrets.GCP_SA_KEY }}' > service-account.json
+
       - name: 🐳 Build & Push Docker image to Artifact Registry
         run: |
           gcloud builds submit . \

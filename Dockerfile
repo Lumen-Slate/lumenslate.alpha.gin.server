@@ -13,6 +13,12 @@ RUN go mod download
 # Copy entire source code
 COPY . .
 
+# Copy service account from build context
+COPY service-account.json /secrets/service-account.json
+
+# Set ADC environment variable
+ENV GOOGLE_APPLICATION_CREDENTIALS=/secrets/service-account.json
+
 # Expose the port your app uses
 EXPOSE 8080
 
@@ -20,5 +26,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl --fail http://localhost:8080/health || exit 1
 
-# Run the app using go run
+# Run the app
 CMD ["go", "run", "main.go"]

@@ -689,6 +689,9 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 
 	// Project configuration - force RAG-compatible location
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+
+	log.Printf("🧪 GOOGLE_PROJECT_ID: %s", os.Getenv("GOOGLE_PROJECT_ID"))
+
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
