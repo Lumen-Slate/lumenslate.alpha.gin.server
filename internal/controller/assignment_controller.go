@@ -2,12 +2,12 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	"lumenslate/internal/model/questions"
 	repo "lumenslate/internal/repository"
 	quest "lumenslate/internal/repository/questions"
 	"lumenslate/internal/serializer"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -63,7 +63,7 @@ func CreateAssignment(c *gin.Context) {
 	// Save MCQs
 	for _, q := range req.MCQs {
 		q.ID = uuid.New().String()
-		if err := common.Validate.Struct(q); err != nil {
+		if err := utils.Validate.Struct(q); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid MCQ: " + err.Error()})
 			return
 		}
@@ -75,7 +75,7 @@ func CreateAssignment(c *gin.Context) {
 	// Save MSQs
 	for _, q := range req.MSQs {
 		q.ID = uuid.New().String()
-		if err := common.Validate.Struct(q); err != nil {
+		if err := utils.Validate.Struct(q); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid MSQ: " + err.Error()})
 			return
 		}
@@ -87,7 +87,7 @@ func CreateAssignment(c *gin.Context) {
 	// Save NATs
 	for _, q := range req.NATs {
 		q.ID = uuid.New().String()
-		if err := common.Validate.Struct(q); err != nil {
+		if err := utils.Validate.Struct(q); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid NAT: " + err.Error()})
 			return
 		}
@@ -99,7 +99,7 @@ func CreateAssignment(c *gin.Context) {
 	// Save Subjectives
 	for _, q := range req.Subjectives {
 		q.ID = uuid.New().String()
-		if err := common.Validate.Struct(q); err != nil {
+		if err := utils.Validate.Struct(q); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Subjective: " + err.Error()})
 			return
 		}
@@ -195,7 +195,7 @@ func UpdateAssignment(c *gin.Context) {
 	a.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(a); err != nil {
+	if err := utils.Validate.Struct(a); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

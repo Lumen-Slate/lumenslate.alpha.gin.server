@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateThread(c *gin.Context) {
 	thread.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(thread); err != nil {
+	if err := utils.Validate.Struct(thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -117,7 +117,7 @@ func UpdateThread(c *gin.Context) {
 	thread.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(thread); err != nil {
+	if err := utils.Validate.Struct(thread); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

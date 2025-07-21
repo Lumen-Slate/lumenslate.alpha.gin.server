@@ -2,9 +2,9 @@
 package questions
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model/questions"
 	repo "lumenslate/internal/repository/questions"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -30,7 +30,7 @@ func CreateMCQ(c *gin.Context) {
 	m.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(m); err != nil {
+	if err := utils.Validate.Struct(m); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -121,7 +121,7 @@ func UpdateMCQ(c *gin.Context) {
 	}
 
 	// Validate the struct
-	if err := common.Validate.Struct(m); err != nil {
+	if err := utils.Validate.Struct(m); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -184,7 +184,7 @@ func CreateBulkMCQs(c *gin.Context) {
 		mcqs[i].IsActive = true
 
 		// Validate each MCQ
-		if err := common.Validate.Struct(mcqs[i]); err != nil {
+		if err := utils.Validate.Struct(mcqs[i]); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

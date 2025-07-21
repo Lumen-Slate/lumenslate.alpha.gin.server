@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateVariable(c *gin.Context) {
 	variable.ID = uuid.New().String()
 
 	// Validate the variable
-	if err := common.Validate.Struct(variable); err != nil {
+	if err := utils.Validate.Struct(variable); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -115,7 +115,7 @@ func UpdateVariable(c *gin.Context) {
 	variable.UpdatedAt = time.Now()
 
 	// Validate the variable
-	if err := common.Validate.Struct(variable); err != nil {
+	if err := utils.Validate.Struct(variable); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -178,7 +178,7 @@ func CreateBulkVariables(c *gin.Context) {
 		variables[i].IsActive = true
 
 		// Validate each variable
-		if err := common.Validate.Struct(variables[i]); err != nil {
+		if err := utils.Validate.Struct(variables[i]); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

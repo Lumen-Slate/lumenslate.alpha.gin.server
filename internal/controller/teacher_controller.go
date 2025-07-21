@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -26,7 +26,7 @@ func CreateTeacher(c *gin.Context) {
 		return
 	}
 	t.ID = uuid.New().String()
-	if err := common.Validate.Struct(t); err != nil {
+	if err := utils.Validate.Struct(t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -108,7 +108,7 @@ func UpdateTeacher(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := common.Validate.Struct(t); err != nil {
+	if err := utils.Validate.Struct(t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -1,9 +1,9 @@
 package questions
 
 import (
-	"lumenslate/internal/common"
 	model "lumenslate/internal/model/questions"
 	repo "lumenslate/internal/repository/questions"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -32,7 +32,7 @@ func CreateSubjective(c *gin.Context) {
 	s.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(s); err != nil {
+	if err := utils.Validate.Struct(s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -122,7 +122,7 @@ func UpdateSubjective(c *gin.Context) {
 	s.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(s); err != nil {
+	if err := utils.Validate.Struct(s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -184,7 +184,7 @@ func CreateBulkSubjectives(c *gin.Context) {
 		subjectives[i].UpdatedAt = time.Now()
 		subjectives[i].IsActive = true
 
-		if err := common.Validate.Struct(subjectives[i]); err != nil {
+		if err := utils.Validate.Struct(subjectives[i]); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

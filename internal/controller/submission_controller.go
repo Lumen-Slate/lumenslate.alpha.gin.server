@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateSubmission(c *gin.Context) {
 	submission.ID = uuid.New().String()
 
 	// Validate the submission
-	if err := common.Validate.Struct(submission); err != nil {
+	if err := utils.Validate.Struct(submission); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -117,7 +117,7 @@ func UpdateSubmission(c *gin.Context) {
 	submission.UpdatedAt = time.Now()
 
 	// Validate the submission
-	if err := common.Validate.Struct(submission); err != nil {
+	if err := utils.Validate.Struct(submission); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -87,6 +88,14 @@ func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 		if rollNo, exists := filters["rollNo"]; exists && rollNo != "" {
 			matchStage["rollNo"] = rollNo
 		}
+		if classIds, exists := filters["classIds"]; exists && classIds != "" {
+			classIdList := strings.Split(classIds, ",")
+			// Trim whitespace from each classId
+			for i, id := range classIdList {
+				classIdList[i] = strings.TrimSpace(id)
+			}
+			matchStage["classIds"] = bson.M{"$in": classIdList}
+		}
 
 		cursor, err := db.GetCollection(db.StudentCollection).Aggregate(ctx, pipeline)
 		if err != nil {
@@ -112,6 +121,16 @@ func GetAllStudents(filters map[string]string) ([]model.Student, error) {
 	// Apply roll number filter if provided
 	if rollNo, ok := filters["rollNo"]; ok && rollNo != "" {
 		filter["rollNo"] = rollNo
+	}
+
+	// Apply classIds filter if provided
+	if classIds, ok := filters["classIds"]; ok && classIds != "" {
+		classIdList := strings.Split(classIds, ",")
+		// Trim whitespace from each classId
+		for i, id := range classIdList {
+			classIdList[i] = strings.TrimSpace(id)
+		}
+		filter["classIds"] = bson.M{"$in": classIdList}
 	}
 
 	opts := options.Find().

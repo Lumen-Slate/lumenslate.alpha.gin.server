@@ -2,10 +2,10 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
 	"lumenslate/internal/serializer"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -48,7 +48,7 @@ func CreateClassroom(c *gin.Context) {
 		if t.ID == "" {
 			t.ID = uuid.New().String()
 		}
-		if err := common.Validate.Struct(t); err != nil {
+		if err := utils.Validate.Struct(t); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid teacher: " + err.Error()})
 			return
 		}
@@ -65,7 +65,7 @@ func CreateClassroom(c *gin.Context) {
 		if a.ID == "" {
 			a.ID = uuid.New().String()
 		}
-		if err := common.Validate.Struct(a); err != nil {
+		if err := utils.Validate.Struct(a); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment: " + err.Error()})
 			return
 		}
@@ -82,7 +82,7 @@ func CreateClassroom(c *gin.Context) {
 	// log.Printf("AssignmentIDs: %+v", classroom.AssignmentIDs)
 
 	// Validate classroom
-	if err := common.Validate.Struct(classroom); err != nil {
+	if err := utils.Validate.Struct(classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -181,7 +181,7 @@ func UpdateClassroom(c *gin.Context) {
 	classroom.ID = id
 	classroom.UpdatedAt = time.Now()
 
-	if err := common.Validate.Struct(classroom); err != nil {
+	if err := utils.Validate.Struct(classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
