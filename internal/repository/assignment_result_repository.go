@@ -17,7 +17,7 @@ import (
 
 // GetAllAssignmentResults retrieves all assignment results with optional filtering
 func GetAllAssignmentResults(filters map[string]string) ([]model.AssignmentResult, error) {
-	collection := db.GetCollection("assignment_results")
+	collection := db.GetCollection(db.AssignmentResultCollection)
 
 	// Build MongoDB filter
 	filter := bson.M{}
@@ -64,7 +64,7 @@ func GetAllAssignmentResults(filters map[string]string) ([]model.AssignmentResul
 
 // GetAssignmentResultByID retrieves a specific assignment result by ID
 func GetAssignmentResultByID(id string) (*model.AssignmentResult, error) {
-	collection := db.GetCollection("assignment_results")
+	collection := db.GetCollection(db.AssignmentResultCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -83,7 +83,7 @@ func GetAssignmentResultByID(id string) (*model.AssignmentResult, error) {
 
 // CreateAssignmentResult creates a new assignment result
 func CreateAssignmentResult(result model.AssignmentResult) (*model.AssignmentResult, error) {
-	collection := db.GetCollection("assignment_results")
+	collection := db.GetCollection(db.AssignmentResultCollection)
 
 	result.CreatedAt = time.Now()
 	result.UpdatedAt = time.Now()
@@ -100,7 +100,7 @@ func CreateAssignmentResult(result model.AssignmentResult) (*model.AssignmentRes
 
 // UpdateAssignmentResult updates an existing assignment result
 func UpdateAssignmentResult(id string, updates map[string]interface{}) (*model.AssignmentResult, error) {
-	collection := db.GetCollection("assignment_results")
+	collection := db.GetCollection(db.AssignmentResultCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -122,7 +122,7 @@ func UpdateAssignmentResult(id string, updates map[string]interface{}) (*model.A
 
 // DeleteAssignmentResult deletes an assignment result by ID
 func DeleteAssignmentResult(id string) error {
-	collection := db.GetCollection("assignment_results")
+	collection := db.GetCollection(db.AssignmentResultCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {

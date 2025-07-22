@@ -17,7 +17,7 @@ type DocumentRepository struct {
 
 func NewDocumentRepository() *DocumentRepository {
 	return &DocumentRepository{
-		collection: db.GetCollection("documents"),
+		collection: db.GetCollection(db.DocumentCollection),
 	}
 }
 
