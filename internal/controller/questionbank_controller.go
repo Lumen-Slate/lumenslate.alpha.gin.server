@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -26,7 +26,7 @@ func CreateQuestionBank(c *gin.Context) {
 		return
 	}
 	q.ID = uuid.New().String()
-	if err := common.Validate.Struct(q); err != nil {
+	if err := utils.Validate.Struct(q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -110,7 +110,7 @@ func UpdateQuestionBank(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := common.Validate.Struct(q); err != nil {
+	if err := utils.Validate.Struct(q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

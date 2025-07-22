@@ -2,9 +2,9 @@
 package questions
 
 import (
-	"lumenslate/internal/common"
 	model "lumenslate/internal/model/questions"
 	repo "lumenslate/internal/repository/questions"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateNAT(c *gin.Context) {
 	n.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(n); err != nil {
+	if err := utils.Validate.Struct(n); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -124,7 +124,7 @@ func UpdateNAT(c *gin.Context) {
 	n.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(n); err != nil {
+	if err := utils.Validate.Struct(n); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -186,7 +186,7 @@ func CreateBulkNATs(c *gin.Context) {
 		nats[i].UpdatedAt = time.Now()
 		nats[i].IsActive = true
 
-		if err := common.Validate.Struct(nats[i]); err != nil {
+		if err := utils.Validate.Struct(nats[i]); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

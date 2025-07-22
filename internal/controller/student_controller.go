@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateStudent(c *gin.Context) {
 	student.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(student); err != nil {
+	if err := utils.Validate.Struct(student); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -82,15 +82,17 @@ func DeleteStudent(c *gin.Context) {
 // @Param offset query string false "Offset"
 // @Param email query string false "Filter by email"
 // @Param rollNo query string false "Filter by roll number"
+// @Param classIds query string false "Filter by class IDs (comma-separated)"
 // @Param q query string false "Search in name or email (partial match, name gets priority)"
 // @Success 200 {array} model.Student
 // @Router /students [get]
 func GetAllStudents(c *gin.Context) {
 	filters := map[string]string{
-		"limit":  c.DefaultQuery("limit", "10"),
-		"offset": c.DefaultQuery("offset", "0"),
-		"email":  c.Query("email"),
-		"rollNo": c.Query("rollNo"),
+		"limit":    c.DefaultQuery("limit", "10"),
+		"offset":   c.DefaultQuery("offset", "0"),
+		"email":    c.Query("email"),
+		"rollNo":   c.Query("rollNo"),
+		"classIds": c.Query("classIds"),
 	}
 	if q := c.Query("q"); q != "" {
 		filters["q"] = q
@@ -123,7 +125,7 @@ func UpdateStudent(c *gin.Context) {
 	student.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(student); err != nil {
+	if err := utils.Validate.Struct(student); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

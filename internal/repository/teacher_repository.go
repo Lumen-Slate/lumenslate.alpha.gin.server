@@ -8,19 +8,8 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const (
-	databaseName   = "lumen_slate"
-	collectionName = "teachers"
-)
-
-// getCollection returns a reference to the teachers collection
-func getCollection() *mongo.Collection {
-	return db.Client.Database(databaseName).Collection(collectionName)
-}
 
 func SaveTeacher(t model.Teacher) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

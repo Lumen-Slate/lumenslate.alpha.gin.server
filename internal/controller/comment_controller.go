@@ -2,9 +2,9 @@
 package controller
 
 import (
-	"lumenslate/internal/common"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func CreateComment(c *gin.Context) {
 	comment.ID = uuid.New().String()
 
 	// Validate the struct
-	if err := common.Validate.Struct(comment); err != nil {
+	if err := utils.Validate.Struct(comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -109,7 +109,7 @@ func UpdateComment(c *gin.Context) {
 	comment.UpdatedAt = time.Now()
 
 	// Validate the struct
-	if err := common.Validate.Struct(comment); err != nil {
+	if err := utils.Validate.Struct(comment); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
