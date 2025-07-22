@@ -29,37 +29,31 @@ import (
 // @BasePath        /
 
 func init() {
-	log.Println("[BOOT] init() called")
 	logADCIdentity()
 
 	if file, err := os.Open("/secrets/ENV_FILE"); err == nil {
 		defer file.Close()
 		_, _ = io.ReadAll(file)
-		log.Println("[BOOT] Loaded /secrets/ENV_FILE")
 		_ = godotenv.Load("/secrets/ENV_FILE")
 	} else {
-		log.Println("[BOOT] /secrets/ENV_FILE not found, loading local .env")
 		_ = godotenv.Load()
 	}
 
 	uri := os.Getenv("MONGO_URI")
-	log.Printf("[BOOT] MONGO_URI: %s", uri)
 	if err := db.InitMongoDB(uri); err != nil {
 		log.Fatal("Could not connect to MongoDB:", err)
 	}
 }
 
 func main() {
-	if os.Getenv("GO_ENV") == "production" {
-		gin.SetMode(gin.ReleaseMode)
-		log.Println("[BOOT] Running in PRODUCTION mode")
-	} else {
-		gin.SetMode(gin.DebugMode)
-		log.Println("[BOOT] Running in DEBUG mode")
-	}
+	gin.SetMode(gin.ReleaseMode) // This will suppress the debug logs
+	gin.DisableConsoleColor()
+	router := gin.New()
 
-	log.Println("[BOOT] Initializing Gin router and registering routes")
-	router := gin.Default()
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/health"}, // Skip logging health checks
+	}))
+	router.Use(gin.Recovery())
 	router.Use(cors.Default())
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
@@ -88,7 +82,6 @@ func main() {
 }
 
 func registerRoutes(router *gin.Engine) {
-	log.Println("[BOOT] Registering all API routes")
 	routes.RegisterAssignmentRoutes(router)
 	routes.RegisterClassroomRoutes(router)
 	routes.RegisterCommentRoutes(router)
