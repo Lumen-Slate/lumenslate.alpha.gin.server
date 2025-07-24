@@ -4,7 +4,7 @@ import "time"
 
 type Classroom struct {
 	ID            string    `json:"id,omitempty" bson:"_id" validate:"omitempty"`
-	Subject       string    `json:"subject" bson:"subject" validate:"required"`
+	Name          string    `json:"name" bson:"name" validate:"required"`
 	TeacherIDs    []string  `json:"teacherIds" bson:"teacherIds" validate:"required,dive,required"`
 	AssignmentIDs []string  `json:"assignmentIds" bson:"assignmentIds"`
 	Credits       int       `json:"credits" bson:"credits" validate:"required,min=0"`
