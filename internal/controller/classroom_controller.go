@@ -21,7 +21,7 @@ import (
 // @Success 201 {object} model.Classroom
 // @Router /classrooms [post]
 type ClassroomCreateRequest struct {
-	Subject       string             `json:"subject" binding:"required"`
+	Name          string             `json:"name" binding:"required"`
 	TeacherIDs    []string           `json:"teacherIds"`
 	Teachers      []model.Teacher    `json:"teachers"`
 	AssignmentIDs []string           `json:"assignmentIds"`
@@ -39,7 +39,7 @@ func CreateClassroom(c *gin.Context) {
 
 	classroom := *model.NewClassroom()
 	classroom.ID = uuid.New().String()
-	classroom.Subject = req.Subject
+	classroom.Name = req.Name
 	classroom.Credits = req.Credits
 	classroom.Tags = req.Tags
 
@@ -137,17 +137,17 @@ func DeleteClassroom(c *gin.Context) {
 // @Produce json
 // @Param limit query string false "Limit"
 // @Param offset query string false "Offset"
-// @Param subject query string false "Filter by subject"
+// @Param name query string false "Filter by name"
 // @Param teacherId query string false "Filter by teacher ID"
 // @Param tags query string false "Filter by tags"
-// @Param q query string false "Search in subject (partial match)"
+// @Param q query string false "Search in name (partial match)"
 // @Success 200 {array} model.Classroom
 // @Router /classrooms [get]
 func GetAllClassrooms(c *gin.Context) {
 	filters := map[string]string{
 		"limit":     c.DefaultQuery("limit", "10"),
 		"offset":    c.DefaultQuery("offset", "0"),
-		"subject":   c.Query("subject"),
+		"name":      c.Query("name"),
 		"teacherId": c.Query("teacherId"),
 		"tags":      c.Query("tags"),
 	}

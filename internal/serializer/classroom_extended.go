@@ -7,7 +7,7 @@ import (
 
 type ClassroomExtended struct {
 	ID          string              `json:"id"`
-	Subject     string              `json:"subject"`
+	Name        string              `json:"name"`
 	Teachers    []*model.Teacher    `json:"teachers"`
 	Assignments []*model.Assignment `json:"assignments"`
 	Credits     int                 `json:"credits"`
@@ -35,7 +35,7 @@ func NewClassroomExtended(c *model.Classroom) *ClassroomExtended {
 
 	return &ClassroomExtended{
 		ID:          c.ID,
-		Subject:     c.Subject,
+		Name:        c.Name,
 		Teachers:    teachers,
 		Assignments: assignments,
 		Credits:     c.Credits,

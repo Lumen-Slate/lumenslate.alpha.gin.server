@@ -112,7 +112,7 @@ definitions:
         type: string
       isActive:
         type: boolean
-      subject:
+      name:
         type: string
       tags:
         items:
@@ -126,7 +126,7 @@ definitions:
         type: string
     required:
     - credits
-    - subject
+    - name
     - teacherIds
     type: object
   model.Comment:

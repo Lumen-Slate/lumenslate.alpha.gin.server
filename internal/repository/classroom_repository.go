@@ -53,12 +53,12 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 		pipeline := []bson.M{
 			{
 				"$match": bson.M{
-					"subject": bson.M{"$regex": q, "$options": "i"},
+					"name": bson.M{"$regex": q, "$options": "i"},
 				},
 			},
 			{
 				"$sort": bson.M{
-					"subject":   1,  // Sort by subject alphabetically
+					"name":      1,  // Sort by name alphabetically
 					"createdAt": -1, // Then by creation date
 				},
 			},
@@ -78,12 +78,12 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 			matchStage["teacherIds"] = teacherID
 		}
 
-		if subject, exists := filters["subject"]; exists && subject != "" {
-			// If both q and subject filter exist, apply exact subject match in addition to search
-			delete(matchStage, "subject") // Remove the regex match
+		if name, exists := filters["name"]; exists && name != "" {
+			// If both q and name filter exist, apply exact name match in addition to search
+			delete(matchStage, "name") // Remove the regex match
 			matchStage["$and"] = []bson.M{
-				{"subject": bson.M{"$regex": q, "$options": "i"}},
-				{"subject": subject},
+				{"name": bson.M{"$regex": q, "$options": "i"}},
+				{"name": name},
 			}
 		}
 
@@ -114,9 +114,9 @@ func GetAllClassrooms(filters map[string]string) ([]model.Classroom, error) {
 		filter["teacherIds"] = teacherID
 	}
 
-	// Apply subject filter if provided
-	if subject, ok := filters["subject"]; ok && subject != "" {
-		filter["subject"] = subject
+	// Apply name filter if provided
+	if name, ok := filters["name"]; ok && name != "" {
+		filter["name"] = name
 	}
 
 	opts := options.Find().
