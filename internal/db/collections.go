@@ -24,7 +24,6 @@ const (
 	SubmissionCollection       = "submissions"
 	VariableCollection         = "variables"
 	QuestionsCollection        = "questions"
-	SubjectReportCollection    = "subject_reports"
 	AgentReportCardCollection  = "agent_report_cards"
 	DocumentCollection         = "documents"
 	AssignmentResultCollection = "assignment_results"
