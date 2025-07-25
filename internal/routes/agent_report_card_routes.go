@@ -8,13 +8,13 @@ import (
 
 // SetupAgentReportCardRoutes sets up all routes for agent report cards
 func SetupAgentReportCardRoutes(router *gin.Engine) {
-	agentReportCardRoutes := router.Group("/api/agent-report-cards")
+	api := router.Group("/api")
 	{
-		agentReportCardRoutes.GET("/", controller.GetAllAgentReportCards)
-		agentReportCardRoutes.GET("/:id", controller.GetAgentReportCardByID)
-		agentReportCardRoutes.GET("/student/:studentId", controller.GetAgentReportCardsByStudentID)
-		// agentReportCardRoutes.POST("/", controller.CreateAgentReportCard)
-		agentReportCardRoutes.PUT("/:id", controller.UpdateAgentReportCard)
-		agentReportCardRoutes.DELETE("/:id", controller.DeleteAgentReportCard)
+		api.GET("/agent-report-cards", controller.GetAllAgentReportCards)
+		api.GET("/agent-report-cards/:id", controller.GetAgentReportCardByID)
+		api.GET("/agent-report-cards/student/:studentId", controller.GetAgentReportCardsByStudentID)
+		// api.POST("/agent-report-cards", controller.CreateAgentReportCard)
+		api.PUT("/agent-report-cards/:id", controller.UpdateAgentReportCard)
+		api.DELETE("/agent-report-cards/:id", controller.DeleteAgentReportCard)
 	}
 }

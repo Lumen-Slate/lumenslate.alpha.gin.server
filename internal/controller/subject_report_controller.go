@@ -3,7 +3,6 @@ package controller
 import (
 	"log"
 	"net/http"
-	"strconv"
 
 	"lumenslate/internal/repository"
 
@@ -179,25 +178,18 @@ func GetSubjectReportsByStudentIDHandler(c *gin.Context) {
 	studentIdStr := c.Param("studentId")
 	log.Printf("[SubjectReport] /api/students/%s/subject-reports GET called", studentIdStr)
 
-	studentId, err := strconv.Atoi(studentIdStr)
-	if err != nil {
-		log.Printf("[SubjectReport] Invalid student ID: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student ID"})
-		return
-	}
-
-	reports, err := repository.GetSubjectReportsByStudentID(studentId)
+	reports, err := repository.GetSubjectReportsByStudentID(studentIdStr)
 	if err != nil {
 		log.Printf("[SubjectReport] Error getting subject reports by student ID: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[SubjectReport] Successfully retrieved %d subject reports for student %d", len(reports), studentId)
+	log.Printf("[SubjectReport] Successfully retrieved %d subject reports for student %s", len(reports), studentIdStr)
 	c.JSON(http.StatusOK, gin.H{
 		"success":    true,
 		"data":       reports,
 		"count":      len(reports),
-		"student_id": studentId,
+		"student_id": studentIdStr,
 	})
 }

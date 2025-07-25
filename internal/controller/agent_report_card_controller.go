@@ -5,6 +5,7 @@ import (
 
 	"lumenslate/internal/model"
 	"lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -39,9 +40,14 @@ func GetAllAgentReportCards(c *gin.Context) {
 		return
 	}
 
+	// Convert to camelCase before returning
+	camelCaseReportCards, err := utils.ConvertStructToMap(reportCards)
+	if err != nil {
+		camelCaseReportCards = reportCards // fallback to original if conversion fails
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"agent_report_cards": reportCards,
-		"total_count":        len(reportCards),
+		"agentReportCards": camelCaseReportCards,
+		"totalCount":       len(reportCards),
 	})
 }
 
@@ -58,7 +64,12 @@ func GetAgentReportCardByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, reportCard)
+	// Convert to camelCase before returning
+	camelCaseReportCard, err := utils.ConvertStructToMap(reportCard)
+	if err != nil {
+		camelCaseReportCard = reportCard // fallback to original if conversion fails
+	}
+	c.JSON(http.StatusOK, camelCaseReportCard)
 }
 
 // GetAgentReportCardsByStudentID handles GET /api/agent-report-cards/student/:studentId
@@ -76,16 +87,21 @@ func GetAgentReportCardsByStudentID(c *gin.Context) {
 
 	if len(reportCards) == 0 {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error":      "No agent report cards found for student",
-			"student_id": studentId,
+			"error":     "No agent report cards found for student",
+			"studentId": studentId,
 		})
 		return
 	}
 
+	// Convert to camelCase before returning
+	camelCaseReportCards, err := utils.ConvertStructToMap(reportCards)
+	if err != nil {
+		camelCaseReportCards = reportCards // fallback to original if conversion fails
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"agent_report_cards": reportCards,
-		"student_id":         studentId,
-		"total_count":        len(reportCards),
+		"agentReportCards": camelCaseReportCards,
+		"studentId":        studentId,
+		"totalCount":       len(reportCards),
 	})
 }
 
@@ -110,7 +126,12 @@ func CreateAgentReportCard(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, createdReportCard)
+	// Convert to camelCase before returning
+	camelCaseReportCard, err := utils.ConvertStructToMap(createdReportCard)
+	if err != nil {
+		camelCaseReportCard = createdReportCard // fallback to original if conversion fails
+	}
+	c.JSON(http.StatusCreated, camelCaseReportCard)
 }
 
 // UpdateAgentReportCard handles PUT /api/agent-report-cards/:id
@@ -135,7 +156,12 @@ func UpdateAgentReportCard(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, updatedReportCard)
+	// Convert to camelCase before returning
+	camelCaseReportCard, err := utils.ConvertStructToMap(updatedReportCard)
+	if err != nil {
+		camelCaseReportCard = updatedReportCard // fallback to original if conversion fails
+	}
+	c.JSON(http.StatusOK, camelCaseReportCard)
 }
 
 // DeleteAgentReportCard handles DELETE /api/agent-report-cards/:id

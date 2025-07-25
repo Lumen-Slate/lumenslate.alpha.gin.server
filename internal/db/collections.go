@@ -25,7 +25,7 @@ const (
 	VariableCollection         = "variables"
 	QuestionsCollection        = "questions"
 	SubjectReportCollection    = "subject_reports"
-	ReportCardCollection       = "report_cards"
+	AgentReportCardCollection  = "agent_report_cards"
 	DocumentCollection         = "documents"
 	AssignmentResultCollection = "assignment_results"
 )

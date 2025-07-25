@@ -124,3 +124,26 @@ func UpdateSubjectReport(id string, updates map[string]interface{}) (*model.Subj
 
 	return &updated, nil
 }
+
+// GetSubjectReportsByStudentID retrieves all subject reports for a specific student
+func GetSubjectReportsByStudentID(studentId string) ([]model.SubjectReport, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Query by studentId field and sort by creation date (newest first)
+	filter := bson.M{"studentId": studentId}
+	opts := options.Find().SetSort(bson.M{"createdAt": -1})
+
+	cursor, err := db.GetCollection(db.SubjectReportCollection).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []model.SubjectReport
+	if err = cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}

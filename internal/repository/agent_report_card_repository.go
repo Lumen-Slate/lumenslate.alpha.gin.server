@@ -17,7 +17,7 @@ import (
 
 // GetAllAgentReportCards retrieves all agent report cards with optional filtering
 func GetAllAgentReportCards(filters map[string]string) ([]model.AgentReportCard, error) {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	// Build MongoDB filter
 	filter := bson.M{}
@@ -64,7 +64,7 @@ func GetAllAgentReportCards(filters map[string]string) ([]model.AgentReportCard,
 
 // GetAgentReportCardByID retrieves a specific agent report card by ID
 func GetAgentReportCardByID(id string) (*model.AgentReportCard, error) {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -83,7 +83,7 @@ func GetAgentReportCardByID(id string) (*model.AgentReportCard, error) {
 
 // GetAgentReportCardsByStudentID retrieves all agent report cards for a specific student
 func GetAgentReportCardsByStudentID(studentId string) ([]model.AgentReportCard, error) {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	// Query by reportCard.studentId field and sort by creation date (newest first)
 	filter := bson.M{"reportCard.studentId": studentId}
@@ -107,7 +107,7 @@ func GetAgentReportCardsByStudentID(studentId string) ([]model.AgentReportCard, 
 
 // CreateAgentReportCard creates a new agent report card
 func CreateAgentReportCard(reportCard model.AgentReportCard) (*model.AgentReportCard, error) {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	reportCard.CreatedAt = time.Now()
 	reportCard.UpdatedAt = time.Now()
@@ -124,7 +124,7 @@ func CreateAgentReportCard(reportCard model.AgentReportCard) (*model.AgentReport
 
 // UpdateAgentReportCard updates an existing agent report card
 func UpdateAgentReportCard(id string, updates map[string]interface{}) (*model.AgentReportCard, error) {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -146,7 +146,7 @@ func UpdateAgentReportCard(id string, updates map[string]interface{}) (*model.Ag
 
 // DeleteAgentReportCard deletes an agent report card by ID
 func DeleteAgentReportCard(id string) error {
-	collection := db.GetCollection(db.ReportCardCollection)
+	collection := db.GetCollection(db.AgentReportCardCollection)
 
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {

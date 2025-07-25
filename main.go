@@ -93,7 +93,6 @@ func registerRoutes(router *gin.Engine) {
 	routes.RegisterVariableRoutes(router)
 	routes.RegisterAIRoutes(router)
 	routes.SetupSubjectReportRoutes(router)
-	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
 	routes.SetupAssignmentResultsRoutes(router)
 
