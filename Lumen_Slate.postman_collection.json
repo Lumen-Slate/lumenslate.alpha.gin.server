@@ -4474,6 +4474,38 @@
 					"response": []
 				},
 				{
+					"name": "Create Agent Report Card",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-001\",\n  \"reportCard\": {\n    \"student_id\": \"student-001\",\n    \"student_name\": \"John Doe\",\n    \"report_period\": \"Q1 2025\",\n    \"generation_date\": \"2025-01-15\",\n    \"overall_performance\": {\n      \"total_assignments_completed\": 12,\n      \"overall_percentage\": 87.5,\n      \"improvement_trend\": \"improving\",\n      \"strongest_question_type\": \"mcq\",\n      \"weakest_question_type\": \"subjective\"\n    },\n    \"subject_performance\": [\n      {\n        \"subject_name\": \"Mathematics\",\n        \"percentage_score\": 92.0,\n        \"assignment_count\": 4,\n        \"mcq_accuracy\": 0.95,\n        \"msq_accuracy\": 0.88,\n        \"nat_accuracy\": 0.90,\n        \"subjective_avg_score\": 85.0,\n        \"strengths\": [\"Problem solving\", \"Algebra\"],\n        \"weaknesses\": [\"Geometry\", \"Time management\"],\n        \"improvement_trend\": \"improving\"\n      }\n    ],\n    \"assignment_summaries\": [\n      {\n        \"assignment_id\": \"assign-001\",\n        \"assignment_title\": \"Algebra Quiz\",\n        \"percentage_score\": 92.0,\n        \"subject\": \"Mathematics\"\n      }\n    ],\n    \"ai_remarks\": \"Student shows strong analytical skills and consistent performance in mathematics.\",\n    \"teacher_remarks\": \"Keep up the excellent work! Focus on geometry concepts.\",\n    \"student_insights\": {\n      \"key_strengths\": [\"Problem solving\", \"Mathematical reasoning\", \"Logical thinking\"],\n      \"areas_for_improvement\": [\"Time management\", \"Geometry concepts\", \"Show detailed work\"],\n      \"recommended_actions\": [\"Practice timed quizzes\", \"Review geometry fundamentals\", \"Write step-by-step solutions\"]\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update Agent Report Card",
 					"request": {
 						"method": "PUT",
@@ -4606,6 +4638,38 @@
 									"key": "id",
 									"value": "result-001"
 								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Assignment Result",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"assignment_id\": \"assignment-001\",\n  \"student_id\": \"student-001\",\n  \"total_points_awarded\": 85,\n  \"total_max_points\": 100,\n  \"percentage_score\": 85.0,\n  \"mcq_results\": [\n    {\n      \"question_id\": \"mcq-001\",\n      \"student_answer\": 2,\n      \"correct_answer\": 2,\n      \"points_awarded\": 5,\n      \"max_points\": 5,\n      \"is_correct\": true\n    }\n  ],\n  \"msq_results\": [\n    {\n      \"question_id\": \"msq-001\",\n      \"student_answers\": [0, 2],\n      \"correct_answers\": [0, 1, 2],\n      \"points_awarded\": 3,\n      \"max_points\": 5,\n      \"is_correct\": false\n    }\n  ],\n  \"nat_results\": [\n    {\n      \"question_id\": \"nat-001\",\n      \"student_answer\": 42,\n      \"correct_answer\": 42,\n      \"points_awarded\": 10,\n      \"max_points\": 10,\n      \"is_correct\": true\n    }\n  ],\n  \"subjective_results\": [\n    {\n      \"question_id\": \"subj-001\",\n      \"student_answer\": \"This is my detailed answer explaining the concept with step-by-step solution.\",\n      \"ideal_answer\": \"The ideal answer should include these key points and methodology.\",\n      \"grading_criteria\": [\"Correct methodology\", \"Clear explanation\", \"Accurate calculation\"],\n      \"points_awarded\": 8,\n      \"max_points\": 10,\n      \"assessment_feedback\": \"Good understanding demonstrated, but could provide more detailed explanations.\",\n      \"criteria_met\": [\"Correct methodology\", \"Accurate calculation\"],\n      \"criteria_missed\": [\"Clear explanation\"]\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/assignment-results",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"assignment-results"
 							]
 						}
 					},
