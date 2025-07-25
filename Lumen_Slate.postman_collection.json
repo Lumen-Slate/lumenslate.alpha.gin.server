@@ -4374,6 +4374,622 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Report Card API",
+			"item": [
+				{
+					"name": "Get All Report Cards",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/report-cards",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"report-cards"
+							],
+							"query": [
+								{
+									"key": "userId",
+									"value": "",
+									"description": "Filter by user ID",
+									"disabled": true
+								},
+								{
+									"key": "studentId",
+									"value": "",
+									"description": "Filter by student ID",
+									"disabled": true
+								},
+								{
+									"key": "academicTerm",
+									"value": "",
+									"description": "Filter by academic term",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "",
+									"description": "Limit number of results (default 10)",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "",
+									"description": "Offset for pagination (default 0)",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Report Card by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "report-card-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Report Card",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-001\",\n  \"studentId\": 123,\n  \"studentName\": \"John Doe\",\n  \"academicTerm\": \"Fall 2024\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "report-card-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Report Card",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "report-card-001"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Subject Report API",
+			"item": [
+				{
+					"name": "Get All Subject Reports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/subject-reports",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"subject-reports"
+							],
+							"query": [
+								{
+									"key": "userId",
+									"value": "",
+									"description": "Filter by user ID",
+									"disabled": true
+								},
+								{
+									"key": "studentId",
+									"value": "",
+									"description": "Filter by student ID",
+									"disabled": true
+								},
+								{
+									"key": "subject",
+									"value": "",
+									"description": "Filter by subject",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "",
+									"description": "Limit number of results (default 10)",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "",
+									"description": "Offset for pagination (default 0)",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subject Report by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/subject-reports/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"subject-reports",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "subject-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Subject Report",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"user-001\",\n  \"studentId\": 123,\n  \"studentName\": \"John Doe\",\n  \"subject\": \"Mathematics\",\n  \"score\": 95\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/subject-reports/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"subject-reports",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "subject-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Subject Report",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/subject-reports/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"subject-reports",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "subject-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subject Reports by Student ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/students/:studentId/subject-reports",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								":studentId",
+								"subject-reports"
+							],
+							"variable": [
+								{
+									"key": "studentId",
+									"value": "student-001"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Agent Report Card API",
+			"item": [
+				{
+					"name": "Get All Agent Report Cards",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards"
+							],
+							"query": [
+								{
+									"key": "studentId",
+									"value": "",
+									"description": "Filter by student ID",
+									"disabled": true
+								},
+								{
+									"key": "userId",
+									"value": "",
+									"description": "Filter by user ID",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "",
+									"description": "Limit number of results (default 10)",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "",
+									"description": "Offset for pagination (default 0)",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent Report Card by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "agent-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent Report Cards by Student ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards/student/:studentId",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards",
+								"student",
+								":studentId"
+							],
+							"variable": [
+								{
+									"key": "studentId",
+									"value": "student-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Agent Report Card",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"studentId\": \"student-001\",\n  \"agentType\": \"ChatAgent\",\n  \"performance\": \"Good\",\n  \"metrics\": {\n    \"accuracy\": 88,\n    \"responseTime\": 1.5\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "agent-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Agent Report Card",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/agent-report-cards/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"agent-report-cards",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "agent-report-001"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Assignment Results API",
+			"item": [
+				{
+					"name": "Get All Assignment Results",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/assignment-results",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"assignment-results"
+							],
+							"query": [
+								{
+									"key": "studentId",
+									"value": "",
+									"description": "Filter by student ID",
+									"disabled": true
+								},
+								{
+									"key": "assignmentId",
+									"value": "",
+									"description": "Filter by assignment ID",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "",
+									"description": "Limit number of results (default 10)",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "",
+									"description": "Offset for pagination (default 0)",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Assignment Result by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/assignment-results/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"assignment-results",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "result-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Assignment Result",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"assignmentId\": \"assignment-001\",\n  \"studentId\": \"student-001\",\n  \"score\": 85,\n  \"maxScore\": 100,\n  \"feedback\": \"Good work, but could improve on problem-solving\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/api/assignment-results/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"assignment-results",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "result-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Assignment Result",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/api/assignment-results/:id",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"api",
+								"assignment-results",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "result-001"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }

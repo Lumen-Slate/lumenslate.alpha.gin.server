@@ -95,6 +95,7 @@ func registerRoutes(router *gin.Engine) {
 	routes.SetupSubjectReportRoutes(router)
 	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
+	routes.SetupAssignmentResultsRoutes(router)
 
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)

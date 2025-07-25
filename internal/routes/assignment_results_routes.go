@@ -13,7 +13,7 @@ func SetupAssignmentResultsRoutes(router *gin.Engine) {
 		// Assignment Results routes
 		api.GET("/assignment-results", controller.GetAllAssignmentResultsHandler)
 		api.GET("/assignment-results/:id", controller.GetAssignmentResultByIDHandler)
-		api.POST("/assignment-results", controller.CreateAssignmentResultHandler)
+		// api.POST("/assignment-results", controller.CreateAssignmentResultHandler)
 		api.PUT("/assignment-results/:id", controller.UpdateAssignmentResultHandler)
 		api.DELETE("/assignment-results/:id", controller.DeleteAssignmentResultHandler)
 	}
