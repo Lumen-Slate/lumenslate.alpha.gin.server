@@ -40,7 +40,7 @@ func GetAllAgentReportCards(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"agent_report_cards": reportCards,
+		"report_cards": reportCards,
 		"total_count":        len(reportCards),
 	})
 }
@@ -83,7 +83,7 @@ func GetAgentReportCardsByStudentID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"agent_report_cards": reportCards,
+		"report_cards": reportCards,
 		"student_id":         studentId,
 		"total_count":        len(reportCards),
 	})
