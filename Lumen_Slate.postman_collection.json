@@ -159,7 +159,7 @@
 							"formdata": [
 								{
 									"key": "teacherId",
-									"value": "3333359",
+									"value": "0692d515-1621-44ea-85e7-a41335858ee2",
 									"type": "text"
 								},
 								{
@@ -389,7 +389,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"teacherId\": \"3333359\",\n    \"message\": \"hi\",\n    \"file\": \"\",\n    \"role\": \"user\",\n    \"createdAt\": \"2025-06-23T18:00:00Z\",\n    \"updatedAt\": \"2025-06-23T18:00:00Z\"\n}",
+							"raw": "{\n    \"teacherId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n    \"message\": \"hi\",\n    \"file\": \"\",\n    \"role\": \"user\",\n    \"createdAt\": \"2025-06-23T18:00:00Z\",\n    \"updatedAt\": \"2025-06-23T18:00:00Z\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -874,7 +874,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"subject\": \"Mathematics\",\n  \"teacherId\": \"teacher-001\",\n  \"assignmentIds\": [\n    \"assign-1\",\n    \"assign-2\"\n  ],\n  \"credits\": 5,\n   \"tags\": [\"mechanics\", \"thermodynamics\"]\n}"
+							"raw": "{\n  \"subject\": \"Mathematics\",\n  \"teacherId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n  \"assignmentIds\": [\n    \"assign-1\",\n    \"assign-2\"\n  ],\n  \"credits\": 5,\n   \"tags\": [\"mechanics\", \"thermodynamics\"]\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/classrooms",
@@ -1097,7 +1097,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"subject\": \"Advanced Math\",\n  \"teacherId\": \"teacher-002\",\n  \"assignmentIds\": [\n    \"assign-3\"\n  ],\n  \"credits\": 6,\n  \"tags\": [\"mechanics\", \"thermodynamics\"]\n}"
+							"raw": "{\n  \"subject\": \"Advanced Math\",\n  \"teacherId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n  \"assignmentIds\": [\n    \"assign-3\"\n  ],\n  \"credits\": 6,\n  \"tags\": [\"mechanics\", \"thermodynamics\"]\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/classrooms/:id",
@@ -2521,7 +2521,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Sample Post\",\n  \"body\": \"This is the body of the post.\",\n  \"attachments\": [\n    \"link1\",\n    \"link2\"\n  ],\n  \"studentId\": \"student-123\",\n  \"commentIds\": [\n    \"comment-1\",\n    \"comment-2\"\n  ]\n}"
+							"raw": "{\n  \"title\": \"Sample Post\",\n  \"body\": \"This is the body of the post.\",\n  \"attachments\": [\n    \"link1\",\n    \"link2\"\n  ],\n  \"studentId\": \"aa93f343-c02a-4fe9-b4f7-f41708772c45\",\n  \"commentIds\": [\n    \"comment-1\",\n    \"comment-2\"\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/posts",
@@ -2738,7 +2738,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Updated Post\",\n  \"body\": \"Updated body text.\",\n  \"attachments\": [\n    \"link3\"\n  ],\n  \"studentId\": \"student-123\",\n  \"commentIds\": [\n    \"comment-3\"\n  ]\n}"
+							"raw": "{\n  \"title\": \"Updated Post\",\n  \"body\": \"Updated body text.\",\n  \"attachments\": [\n    \"link3\"\n  ],\n  \"studentId\": \"aa93f343-c02a-4fe9-b4f7-f41708772c45\",\n  \"commentIds\": [\n    \"comment-3\"\n  ]\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/posts/:id",
@@ -2958,7 +2958,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Algebra\",\n  \"topic\": \"Linear Equations\",\n  \"teacherId\": \"647d5ca7-be6e-4aaf-9b87-4dd69e52aa7f\",\n    \"tags\": [\"calculus\", \"limits\", \"continuity\"]\n}"
+							"raw": "{\n  \"name\": \"Algebra\",\n  \"topic\": \"Linear Equations\",\n  \"teacherId\": \"0692d515-1621-44ea-85e7-a41335858ee2\",\n    \"tags\": [\"calculus\", \"limits\", \"continuity\"]\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/question-banks",
@@ -3831,7 +3831,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"studentId\": \"student-001\",\n  \"assignmentId\": \"assign-001\",\n  \"mcqAnswers\": {\n    \"q1\": \"A\"\n  },\n  \"msqAnswers\": {\n    \"q2\": [\n      \"B\",\n      \"C\"\n    ]\n  },\n  \"natAnswers\": {\n    \"q3\": 42\n  },\n  \"subjectiveAnswers\": {\n    \"q4\": \"This is my answer.\"\n  }\n}"
+							"raw": "{\n  \"studentId\": \"aa93f343-c02a-4fe9-b4f7-f41708772c45\",\n  \"assignmentId\": \"assign-001\",\n  \"mcqAnswers\": {\n    \"q1\": \"A\"\n  },\n  \"msqAnswers\": {\n    \"q2\": [\n      \"B\",\n      \"C\"\n    ]\n  },\n  \"natAnswers\": {\n    \"q3\": 42\n  },\n  \"subjectiveAnswers\": {\n    \"q4\": \"This is my answer.\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/submissions",
@@ -3861,7 +3861,7 @@
 							"query": [
 								{
 									"key": "studentId",
-									"value": "student-001",
+									"value": "aa93f343-c02a-4fe9-b4f7-f41708772c45",
 									"disabled": true
 								},
 								{
@@ -3910,7 +3910,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"studentId\": \"student-001\",\n  \"assignmentId\": \"assign-001\",\n  \"mcqAnswers\": {\n    \"q1\": \"B\"\n  },\n  \"msqAnswers\": {\n    \"q2\": [\n      \"A\",\n      \"D\"\n    ]\n  },\n  \"natAnswers\": {\n    \"q3\": 36\n  },\n  \"subjectiveAnswers\": {\n    \"q4\": \"Updated answer.\"\n  }\n}"
+							"raw": "{\n  \"studentId\": \"aa93f343-c02a-4fe9-b4f7-f41708772c45\",\n  \"assignmentId\": \"assign-001\",\n  \"mcqAnswers\": {\n    \"q1\": \"B\"\n  },\n  \"msqAnswers\": {\n    \"q2\": [\n      \"A\",\n      \"D\"\n    ]\n  },\n  \"natAnswers\": {\n    \"q3\": 36\n  },\n  \"subjectiveAnswers\": {\n    \"q4\": \"Updated answer.\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{BaseUrl}}/submissions/:id",
