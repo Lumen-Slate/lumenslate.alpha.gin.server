@@ -76,6 +76,7 @@ func DeleteQuestionBank(c *gin.Context) {
 // @Param tags query string false "Tags (comma-separated)"
 // @Param limit query string false "Limit"
 // @Param offset query string false "Offset"
+// @Param q query string false "Search in name (partial match)"
 // @Success 200 {array} model.QuestionBank
 // @Router /question-banks [get]
 func GetAllQuestionBanks(c *gin.Context) {
@@ -86,6 +87,9 @@ func GetAllQuestionBanks(c *gin.Context) {
 		"tags":      c.Query("tags"),
 		"limit":     c.DefaultQuery("limit", "10"),
 		"offset":    c.DefaultQuery("offset", "0"),
+	}
+	if q := c.Query("q"); q != "" {
+		filters["q"] = q
 	}
 	items, err := repo.GetAllQuestionBanks(filters)
 	if err != nil {

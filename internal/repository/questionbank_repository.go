@@ -58,7 +58,61 @@ func GetAllQuestionBanks(filters map[string]string) ([]model.QuestionBank, error
 	findOptions.SetLimit(limit)
 	findOptions.SetSkip(offset)
 
-	// Build filter
+	// Check if search query is provided
+	if q, ok := filters["q"]; ok && q != "" {
+		// Use aggregation pipeline for search functionality
+		pipeline := []bson.M{
+			{
+				"$match": bson.M{
+					"name": bson.M{"$regex": q, "$options": "i"},
+				},
+			},
+			{
+				"$sort": bson.M{
+					"name":      1,  // Sort by name alphabetically
+					"createdAt": -1, // Then by creation date
+				},
+			},
+			{"$skip": offset},
+			{"$limit": limit},
+		}
+
+		// Apply other filters to the match stage
+		matchStage := pipeline[0]["$match"].(bson.M)
+
+		if topic, exists := filters["topic"]; exists && topic != "" {
+			matchStage["topic"] = topic
+		}
+		if name, exists := filters["name"]; exists && name != "" {
+			matchStage["name"] = name
+		}
+		if teacherId, exists := filters["teacherId"]; exists && teacherId != "" {
+			matchStage["teacherId"] = teacherId
+		}
+		if tags, exists := filters["tags"]; exists && tags != "" {
+			tagList := strings.Split(tags, ",")
+			matchStage["tags"] = bson.M{"$all": tagList}
+		}
+
+		cursor, err := db.GetCollection(db.QuestionBankCollection).Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var results []model.QuestionBank
+		if err = cursor.All(ctx, &results); err != nil {
+			return nil, err
+		}
+
+		// Ensure we return an empty slice instead of nil
+		if results == nil {
+			results = make([]model.QuestionBank, 0)
+		}
+		return results, nil
+	}
+
+	// Build filter for regular find (when no search query)
 	filter := bson.M{}
 	if topic, ok := filters["topic"]; ok && topic != "" {
 		filter["topic"] = topic
