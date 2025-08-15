@@ -19,15 +19,15 @@ import (
 )
 
 // RAGAgentHandler godoc
-// @Summary      Call RAG Agent AI method
-// @Description  Process text input using RAG agent for knowledge retrieval
-// @Tags         AI
+// @Summary      Process Text with RAG Agent
+// @Description  Process text input using Retrieval-Augmented Generation (RAG) agent for intelligent knowledge retrieval and response generation. Creates/verifies teacher-specific corpus automatically.
+// @Tags         AI RAG Agent
 // @Accept       json
 // @Produce      json
-// @Param        body body ai.RAGAgentRequest true "RAG agent request"
-// @Success      200 {object} map[string]interface{} "RAG agent response"
-// @Failure      400 {object} gin.H "Invalid request"
-// @Failure      500 {object} gin.H "Internal server error"
+// @Param        body  body  ai.RAGAgentRequest  true  "RAG agent request with teacher ID, role, and message"
+// @Success      200   {object}  map[string]interface{}  "RAG agent response with message, data, and metadata"
+// @Failure      400   {object}  gin.H  "Invalid request body or missing required fields"
+// @Failure      500   {object}  gin.H  "Internal server error during RAG processing"
 // @Router       /ai/rag-agent [post]
 func RAGAgentHandler(c *gin.Context) {
 	// Parse and validate request
@@ -80,14 +80,14 @@ func RAGAgentHandler(c *gin.Context) {
 
 // CreateCorpusHandler godoc
 // @Summary      Create RAG Corpus
-// @Description  Create a new RAG corpus directly in Vertex AI
-// @Tags         ai
+// @Description  Create a new RAG corpus in Vertex AI for document storage and retrieval. If the corpus already exists, returns the existing corpus information.
+// @Tags         AI RAG Management
 // @Accept       json
 // @Produce      json
-// @Param        body  body  ai.CreateCorpusRequest  true  "Request body"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        body  body  ai.CreateCorpusRequest  true  "Corpus creation request containing the corpus name"
+// @Success      200   {object}  map[string]interface{}  "Corpus created or retrieved successfully with corpus details"
+// @Failure      400   {object}  map[string]interface{}  "Invalid request body or missing corpus name"
+// @Failure      500   {object}  map[string]interface{}  "Internal server error during corpus creation"
 // @Router       /ai/rag-agent/create-corpus [post]
 func CreateCorpusHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/create-corpus called")
@@ -114,13 +114,13 @@ func CreateCorpusHandler(c *gin.Context) {
 // ListCorpusContentHandler godoc
 // @Summary      List RAG Corpus Content
 // @Description  List all documents/files inside a RAG corpus
-// @Tags         ai
+// @Tags         AI RAG Management
 // @Accept       json
 // @Produce      json
-// @Param        body  body  ai.CreateCorpusRequest  true  "Request body"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        body  body  ai.CreateCorpusRequest  true  "Request body with corpus name to list content for"
+// @Success      200   {object}  map[string]interface{}  "List of documents in the corpus with metadata"
+// @Failure      400   {object}  map[string]interface{}  "Invalid request body or missing corpus name"
+// @Failure      500   {object}  map[string]interface{}  "Internal server error during content retrieval"
 // @Router       /ai/rag-agent/list-corpus-content [post]
 func ListCorpusContentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/list-corpus-content called")
@@ -146,14 +146,14 @@ func ListCorpusContentHandler(c *gin.Context) {
 
 // ListCorpusDocumentsHandler godoc
 // @Summary      List Documents in RAG Corpus
-// @Description  List all documents in a specific RAG corpus
-// @Tags         ai
+// @Description  List all documents in a specific RAG corpus with cross-verification between database and RAG engine. Returns unified document information including storage status.
+// @Tags         AI RAG Management
 // @Accept       json
 // @Produce      json
-// @Param        corpusName path string true "Corpus name"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        corpusName  path    string  true  "Name of the corpus to list documents for"
+// @Success      200         {object}  map[string]interface{}  "List of documents with unified information from database and RAG engine"
+// @Failure      400         {object}  map[string]interface{}  "Invalid or missing corpus name"
+// @Failure      500         {object}  map[string]interface{}  "Internal server error during document retrieval"
 // @Router       /ai/rag-agent/corpus/{corpusName}/documents [get]
 func ListCorpusDocumentsHandler(c *gin.Context) {
 	corpusName := c.Param("corpusName")

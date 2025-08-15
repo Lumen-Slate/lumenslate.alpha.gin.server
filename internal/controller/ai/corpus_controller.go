@@ -16,12 +16,12 @@ import (
 
 // ListAllCorporaHandler godoc
 // @Summary      List All RAG Corpora
-// @Description  List the names of all RAG corpora
-// @Tags         ai
+// @Description  Retrieve a comprehensive list of all RAG corpora available in the Vertex AI project, including their display names, creation times, and update times.
+// @Tags         AI RAG Management
 // @Accept       json
 // @Produce      json
-// @Success      200   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Success      200  {object}  map[string]interface{}  "List of all corpora with their metadata and count"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error during corpora retrieval from Vertex AI"
 // @Router       /ai/rag-agent/list-all-corpora [post]
 func ListAllCorporaHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/list-all-corpora called")

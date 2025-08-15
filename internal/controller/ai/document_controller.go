@@ -25,14 +25,15 @@ import (
 
 // DeleteCorpusDocumentHandler godoc
 // @Summary      Delete Document from RAG Corpus
-// @Description  Delete a specific document from a RAG corpus using its display name
-// @Tags         ai
+// @Description  Delete a specific document from a RAG corpus using its file identifier (fileId, RAG file ID, or display name). This operation removes the document from the RAG corpus, Google Cloud Storage, and local database.
+// @Tags         AI Document Management
 // @Accept       json
 // @Produce      json
-// @Param        body  body  ai.DeleteCorpusDocumentRequest  true  "Request body"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        body  body  ai.DeleteCorpusDocumentRequest  true  "Delete corpus document request containing corpus name and file identifier"
+// @Success      200   {object}  map[string]interface{}  "Document deleted successfully with deletion status for each component"
+// @Failure      400   {object}  map[string]interface{}  "Invalid request body or missing required fields"
+// @Failure      404   {object}  map[string]interface{}  "Document or corpus not found"
+// @Failure      500   {object}  map[string]interface{}  "Internal server error during deletion process"
 // @Router       /ai/rag-agent/delete-corpus-document [post]
 func DeleteCorpusDocumentHandler(c *gin.Context) {
 	var req DeleteCorpusDocumentRequest
@@ -53,16 +54,16 @@ func DeleteCorpusDocumentHandler(c *gin.Context) {
 }
 
 // ViewDocumentHandler godoc
-// @Summary      Generate pre-signed URL for document viewing
-// @Description  Generate a time-limited pre-signed URL to view a document from GCS
-// @Tags         ai
+// @Summary      Generate Pre-signed URL for Document Viewing
+// @Description  Generate a time-limited pre-signed URL to securely view a document stored in Google Cloud Storage. The URL expires after 30 minutes for security purposes.
+// @Tags         AI Document Management
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Document ID"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      404   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        id   path    string  true  "Document ID (unique identifier for the document)"
+// @Success      200  {object}  map[string]interface{}  "Pre-signed URL generated successfully with document metadata"
+// @Failure      400  {object}  map[string]interface{}  "Invalid or missing document ID"
+// @Failure      404  {object}  map[string]interface{}  "Document not found in database or storage"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error during URL generation"
 // @Router       /ai/documents/view/{id} [get]
 func ViewDocumentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/documents/view/:id called")
@@ -140,16 +141,16 @@ func ViewDocumentHandler(c *gin.Context) {
 }
 
 // DeleteCorpusDocumentByIDHandler godoc
-// @Summary      Delete Document from RAG Corpus by ID
-// @Description  Delete a document from RAG corpus and GCS storage by document ID
-// @Tags         ai
+// @Summary      Delete Document by ID
+// @Description  Delete a document from RAG corpus, Google Cloud Storage, and database using its unique document ID. This is a comprehensive deletion that removes all traces of the document from the system.
+// @Tags         AI Document Management
 // @Accept       json
 // @Produce      json
-// @Param        id path string true "Document ID"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      404   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        id   path    string  true  "Document ID (unique identifier for the document to delete)"
+// @Success      200  {object}  map[string]interface{}  "Document deleted successfully from all systems"
+// @Failure      400  {object}  map[string]interface{}  "Invalid or missing document ID"
+// @Failure      404  {object}  map[string]interface{}  "Document not found"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error during deletion process"
 // @Router       /ai/documents/{id} [delete]
 func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 	log.Println("[AI] /ai/documents/:id DELETE called")
@@ -227,16 +228,16 @@ func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 }
 
 // AddCorpusDocumentHandler godoc
-// @Summary      Add Document to RAG Corpus
-// @Description  Upload a document to GCS, add it to RAG corpus, and store metadata
-// @Tags         ai
+// @Summary      Upload Document to RAG Corpus
+// @Description  Upload a document file to Google Cloud Storage, add it to a Vertex AI RAG corpus for knowledge retrieval, and store metadata in the database. Supports PDF, TXT, DOCX, DOC, HTML, and MD file formats.
+// @Tags         AI Document Management
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        corpusName formData string true "Corpus name"
-// @Param        file formData file true "Document file"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        corpusName  formData  string  true   "Name of the RAG corpus to add the document to"
+// @Param        file        formData  file    true   "Document file to upload (supported formats: PDF, TXT, DOCX, DOC, HTML, MD)"
+// @Success      200         {object}  map[string]interface{}  "Document uploaded and added to corpus successfully with file metadata"
+// @Failure      400         {object}  map[string]interface{}  "Invalid request, unsupported file type, or missing required fields"
+// @Failure      500         {object}  map[string]interface{}  "Internal server error during upload or corpus addition process"
 // @Router       /ai/rag-agent/add-corpus-document [post]
 func AddCorpusDocumentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/rag-agent/add-corpus-document called")

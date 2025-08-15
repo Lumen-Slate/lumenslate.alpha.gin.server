@@ -12,21 +12,21 @@ import (
 )
 
 // AgentHandler godoc
-// @Summary      Call Agent AI method
-// @Description  Calls the Agent gRPC method with the provided data including file upload support
-// @Tags         ai
+// @Summary      Process Request with AI Agent
+// @Description  Process requests using the AI Agent gRPC service with support for file uploads. Handles text processing, analysis, and generation tasks for educational content.
+// @Tags         AI Agent
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        teacherId formData string true "Teacher ID"
-// @Param        role formData string true "Role"
-// @Param        message formData string true "Message"
-// @Param        file formData file false "File upload"
-// @Param        fileType formData string false "File type"
-// @Param        createdAt formData string false "Created at timestamp"
-// @Param        updatedAt formData string false "Updated at timestamp"
-// @Success      200   {object}  map[string]interface{}
-// @Failure      400   {object}  map[string]interface{}
-// @Failure      500   {object}  map[string]interface{}
+// @Param        teacherId  formData  string  true   "Teacher ID for context and personalization"
+// @Param        role       formData  string  true   "Role/context for the AI agent processing"
+// @Param        message    formData  string  true   "Message or prompt for the AI agent"
+// @Param        file       formData  file    false  "Optional file upload for processing"
+// @Param        fileType   formData  string  false  "Type of the uploaded file (if file is provided)"
+// @Param        createdAt  formData  string  false  "Creation timestamp (ISO format)"
+// @Param        updatedAt  formData  string  false  "Update timestamp (ISO format)"
+// @Success      200        {object}  map[string]interface{}  "AI agent response with processed data and metadata"
+// @Failure      400        {object}  map[string]interface{}  "Invalid request body, missing required fields, or file processing error"
+// @Failure      500        {object}  map[string]interface{}  "Internal server error during AI processing"
 // @Router       /ai/agent [post]
 func AgentHandler(c *gin.Context) {
 	log.Println("[AI] /ai/agent called")
