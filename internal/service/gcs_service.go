@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -116,13 +117,24 @@ func (s *GCSService) GenerateSignedURL(ctx context.Context, objectName string, e
 	return url, nil
 }
 
-// DeleteObject deletes an object from GCS
+// DeleteObject deletes an object from GCS with proper error handling and audit logging
 func (s *GCSService) DeleteObject(ctx context.Context, objectName string) error {
 	obj := s.client.Bucket(s.bucketName).Object(objectName)
+
+	// Log deletion attempt for audit trail
+	log.Printf("Attempting to delete GCS object: bucket=%s, object=%s", s.bucketName, objectName)
+
 	if err := obj.Delete(ctx); err != nil {
-		return fmt.Errorf("failed to delete object from GCS: %v", err)
+		if err == storage.ErrObjectNotExist {
+			log.Printf("GCS object not found during deletion: bucket=%s, object=%s", s.bucketName, objectName)
+			return fmt.Errorf("object '%s' not found in bucket '%s'", objectName, s.bucketName)
+		}
+		log.Printf("Failed to delete GCS object: bucket=%s, object=%s, error=%v", s.bucketName, objectName, err)
+		return fmt.Errorf("failed to delete object '%s' from bucket '%s': %v", objectName, s.bucketName, err)
 	}
 
+	// Log successful deletion for audit trail
+	log.Printf("Successfully deleted GCS object: bucket=%s, object=%s", s.bucketName, objectName)
 	return nil
 }
 
@@ -149,30 +161,32 @@ func (s *GCSService) GetObjectAttributes(ctx context.Context, objectName string)
 	return attrs, nil
 }
 
-// RenameObject renames an object in GCS (implemented as copy + delete)
+// RenameObject atomically moves an object from oldObjectName to newObjectName using copy-and-delete pattern
 func (s *GCSService) RenameObject(ctx context.Context, oldObjectName, newObjectName string) error {
 	// Source and destination objects
 	src := s.client.Bucket(s.bucketName).Object(oldObjectName)
 	dst := s.client.Bucket(s.bucketName).Object(newObjectName)
 
-	// Copy the object
+	// Copy the object to new location
 	_, err := dst.CopierFrom(src).Run(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to copy object during rename: %v", err)
+		return fmt.Errorf("failed to copy object from '%s' to '%s' during rename operation: %v", oldObjectName, newObjectName, err)
 	}
 
 	// Delete the original object
 	if err := src.Delete(ctx); err != nil {
 		// Try to clean up the copied object if original deletion fails
-		dst.Delete(ctx)
-		return fmt.Errorf("failed to delete original object during rename: %v", err)
+		if cleanupErr := dst.Delete(ctx); cleanupErr != nil {
+			return fmt.Errorf("failed to delete original object '%s' during rename and cleanup of copied object '%s' also failed: original error: %v, cleanup error: %v", oldObjectName, newObjectName, err, cleanupErr)
+		}
+		return fmt.Errorf("failed to delete original object '%s' after copying to '%s': %v", oldObjectName, newObjectName, err)
 	}
 
 	return nil
 }
 
 // UploadFileWithCustomName uploads a file to GCS with a specific object name
-func (s *GCSService) UploadFileWithCustomName(ctx context.Context, file multipart.File, objectName, contentType, originalFilename string) (int64, error) {
+func (s *GCSService) UploadFileWithCustomName(ctx context.Context, file io.Reader, objectName, contentType, originalFilename string) (int64, error) {
 	// Create GCS object writer
 	obj := s.client.Bucket(s.bucketName).Object(objectName)
 	writer := obj.NewWriter(ctx)

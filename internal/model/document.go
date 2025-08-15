@@ -20,6 +20,30 @@ type Document struct {
 	UploadedBy  string             `bson:"uploadedBy" json:"uploadedBy"`   // User who uploaded the document
 	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt   time.Time          `bson:"updatedAt" json:"updatedAt"`
+
+	// Async processing fields
+	Status   string `bson:"status" json:"status"`                         // "pending", "completed", or "failed"
+	ErrorMsg string `bson:"errorMsg,omitempty" json:"errorMsg,omitempty"` // Error message if processing failed
+}
+
+// NewDocument creates a new Document with default values
+func NewDocument(fileID, displayName, gcsBucket, gcsObject, contentType, corpusName, ragFileID, uploadedBy string, size int64) *Document {
+	now := time.Now()
+	return &Document{
+		FileID:      fileID,
+		DisplayName: displayName,
+		GCSBucket:   gcsBucket,
+		GCSObject:   gcsObject,
+		ContentType: contentType,
+		Size:        size,
+		CorpusName:  corpusName,
+		RAGFileID:   ragFileID,
+		UploadedBy:  uploadedBy,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		Status:      "pending", // Default status for async processing
+		ErrorMsg:    "",        // Empty error message initially
+	}
 }
 
 // DocumentMetadata represents minimal document information for listings

@@ -15,9 +15,11 @@ import (
 	"lumenslate/internal/repository"
 	gcsService "lumenslate/internal/service"
 	"lumenslate/internal/utils"
+	"lumenslate/tasks"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/api/aiplatform/v1"
 	"google.golang.org/api/option"
@@ -193,7 +195,7 @@ func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 
 	// Delete from Vertex AI RAG corpus if RAG file ID exists
 	if document.RAGFileID != "" {
-		log.Printf("[AI] Deleting document from Vertex AI RAG corpus...")
+		log.Printf("[AI] Deleting document from Vertex AI RAG corpus using RAG file ID: %s", document.RAGFileID)
 		_, err := deleteVertexAICorpusDocument(document.CorpusName, document.RAGFileID)
 		if err != nil {
 			log.Printf("[AI] Warning: Failed to delete document from Vertex AI RAG corpus: %v", err)
@@ -201,6 +203,8 @@ func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 		} else {
 			log.Printf("[AI] Successfully deleted document from Vertex AI RAG corpus")
 		}
+	} else {
+		log.Printf("[AI] No RAG file ID found for document %s, skipping RAG engine deletion", documentID)
 	}
 
 	// Delete from GCS
@@ -228,48 +232,31 @@ func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 }
 
 // AddCorpusDocumentHandler godoc
-// @Summary      Upload Document to RAG Corpus
-// @Description  Upload a document file to Google Cloud Storage, add it to a Vertex AI RAG corpus for knowledge retrieval, and store metadata in the database. Supports PDF, TXT, DOCX, DOC, HTML, and MD file formats.
+// @Summary      Upload Document to RAG Corpus (Async)
+// @Description  Upload a document file to Google Cloud Storage and enqueue it for asynchronous processing with Vertex AI RAG corpus. Returns immediately with pending status. Supports PDF, TXT, DOCX, DOC, HTML, and MD file formats.
 // @Tags         AI Document Management
 // @Accept       multipart/form-data
 // @Produce      json
 // @Param        corpusName  formData  string  true   "Name of the RAG corpus to add the document to"
 // @Param        file        formData  file    true   "Document file to upload (supported formats: PDF, TXT, DOCX, DOC, HTML, MD)"
-// @Success      200         {object}  map[string]interface{}  "Document uploaded and added to corpus successfully with file metadata"
+// @Success      200         {object}  map[string]interface{}  "Document uploaded successfully and queued for processing with pending status"
 // @Failure      400         {object}  map[string]interface{}  "Invalid request, unsupported file type, or missing required fields"
-// @Failure      500         {object}  map[string]interface{}  "Internal server error during upload or corpus addition process"
+// @Failure      500         {object}  map[string]interface{}  "Internal server error during upload or task enqueue process"
 // @Router       /ai/rag-agent/add-corpus-document [post]
 func AddCorpusDocumentHandler(c *gin.Context) {
-	log.Println("[AI] /ai/rag-agent/add-corpus-document called")
+	startTime := time.Now()
 
-	// Log current environment configuration for debugging
-	log.Printf("[AI] Environment check - GCS_BUCKET_NAME: %s, GOOGLE_CLOUD_PROJECT: %s, GOOGLE_CLOUD_LOCATION: %s",
-		func() string {
-			if v := os.Getenv("GCS_BUCKET_NAME"); v != "" {
-				return v
-			} else {
-				return "NOT_SET"
-			}
-		}(),
-		func() string {
-			if v := os.Getenv("GOOGLE_CLOUD_PROJECT"); v != "" {
-				return v
-			} else {
-				return "NOT_SET"
-			}
-		}(),
-		func() string {
-			if v := os.Getenv("GOOGLE_CLOUD_LOCATION"); v != "" {
-				return v
-			} else {
-				return "NOT_SET"
-			}
-		}())
+	// Initialize structured logging with correlation ID
+	ctx := utils.WithCorrelationID(c.Request.Context(), "")
+	ctx = utils.WithRequestID(ctx, c.GetHeader("X-Request-ID"))
+	logger := utils.NewLogger("document_controller")
+
+	logger.InfoWithOperation(ctx, "upload_start", "Document upload request received")
 
 	// Validate required environment variables
 	bucketName := os.Getenv("GCS_BUCKET_NAME")
 	if bucketName == "" {
-		log.Printf("[AI] GCS_BUCKET_NAME environment variable not set")
+		logger.ErrorWithOperation(ctx, "config_validation", "GCS_BUCKET_NAME environment variable not set", nil)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Storage configuration missing: GCS_BUCKET_NAME environment variable is required",
 			"details": "Please set the GCS_BUCKET_NAME environment variable to your Google Cloud Storage bucket name",
@@ -279,7 +266,7 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 
 	projectID := utils.GetProjectID()
 	if projectID == "" {
-		log.Printf("[AI] Project ID not configured")
+		logger.ErrorWithOperation(ctx, "config_validation", "Project ID not configured", nil)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Project configuration missing: Google Cloud Project ID is required",
 			"details": "Please ensure GOOGLE_CLOUD_PROJECT or project ID is properly configured",
@@ -287,34 +274,43 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[AI] Using GCS bucket: %s, Project: %s", bucketName, projectID)
+	metadata := map[string]string{
+		"bucket_name": bucketName,
+		"project_id":  projectID,
+	}
+	logger.InfoWithMetrics(ctx, "config_validation", "Environment configuration validated", 0, metadata)
 
 	// Parse form data
 	var req AddCorpusDocumentFormRequest
 	if err := c.ShouldBind(&req); err != nil {
-		log.Printf("[AI] Invalid form request: %v", err)
+		logger.ErrorWithOperation(ctx, "request_parsing", "Invalid form request", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Printf("[AI] Request: corpusName=%s, file=%s", req.CorpusName, req.File.Filename)
+	requestMetadata := map[string]string{
+		"corpus_name": req.CorpusName,
+		"filename":    req.File.Filename,
+		"file_size":   fmt.Sprintf("%d", req.File.Size),
+	}
+	logger.InfoWithMetrics(ctx, "request_parsing", "Form request parsed successfully", 0, requestMetadata)
 
 	// Initialize services
 	gcs, err := gcsService.NewGCSService()
 	if err != nil {
-		log.Printf("[AI] Failed to initialize GCS service: %v", err)
+		logger.ErrorWithOperation(ctx, "service_init", "Failed to initialize GCS service", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
 		return
 	}
 	defer gcs.Close()
 
 	docRepo := repository.NewDocumentRepository()
-	ctx := context.Background()
+	logger.InfoWithOperation(ctx, "service_init", "Services initialized successfully")
 
 	// Open uploaded file
 	file, err := req.File.Open()
 	if err != nil {
-		log.Printf("[AI] Failed to open uploaded file: %v", err)
+		logger.ErrorWithOperation(ctx, "file_open", "Failed to open uploaded file", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read uploaded file"})
 		return
 	}
@@ -324,6 +320,31 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	tempFileID := uuid.New().String()
 	fileExtension := filepath.Ext(req.File.Filename)
 	tempObjectName := fmt.Sprintf("temp/%s%s", tempFileID, fileExtension)
+
+	fileMetadata := map[string]string{
+		"temp_file_id":     tempFileID,
+		"file_extension":   fileExtension,
+		"temp_object_name": tempObjectName,
+	}
+	logger.InfoWithMetrics(ctx, "file_processing", "File opened and temporary names generated", 0, fileMetadata)
+
+	// Validate file type for RAG compatibility before upload
+	allowedExtensions := []string{".pdf", ".txt", ".docx", ".doc", ".html", ".md"}
+	isValidType := false
+	for _, ext := range allowedExtensions {
+		if strings.EqualFold(fileExtension, ext) {
+			isValidType = true
+			break
+		}
+	}
+
+	if !isValidType {
+		logger.ErrorWithOperation(ctx, "file_validation", fmt.Sprintf("Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions), nil)
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions)})
+		return
+	}
+
+	logger.InfoWithMetrics(ctx, "file_validation", "File type validation passed", 0, map[string]string{"file_extension": fileExtension})
 
 	// Upload file to GCS with temporary name
 	log.Printf("[AI] Uploading file to GCS with temporary name: %s", tempObjectName)
@@ -335,32 +356,6 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	}
 
 	log.Printf("[AI] File uploaded to GCS temporarily: %s (size: %d bytes)", tempObjectName, fileSize)
-
-	// Generate GCS URL for Vertex AI to access
-	gcsURL := fmt.Sprintf("gs://%s/%s", os.Getenv("GCS_BUCKET_NAME"), tempObjectName)
-	log.Printf("[AI] GCS URL for Vertex AI: %s", gcsURL)
-
-	// Validate file type for RAG compatibility
-	allowedExtensions := []string{".pdf", ".txt", ".docx", ".doc", ".html", ".md"}
-	isValidType := false
-	for _, ext := range allowedExtensions {
-		if strings.EqualFold(fileExtension, ext) {
-			isValidType = true
-			break
-		}
-	}
-
-	if !isValidType {
-		log.Printf("[AI] Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions)
-		// Clean up uploaded file
-		if deleteErr := gcs.DeleteObject(ctx, tempObjectName); deleteErr != nil {
-			log.Printf("[AI] Failed to clean up GCS object: %v", deleteErr)
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Unsupported file type: %s. Allowed types: %v", fileExtension, allowedExtensions)})
-		return
-	}
-
-	log.Printf("[AI] File type %s is valid for RAG import", fileExtension)
 
 	// Verify GCS file accessibility
 	log.Printf("[AI] Verifying GCS file accessibility...")
@@ -375,135 +370,213 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "File upload verification failed"})
 		return
 	}
-	log.Printf("[AI] GCS file verified: %s", gcsURL)
-
-	// Check if corpus exists, create if it doesn't
-	log.Printf("[AI] Checking if corpus '%s' exists before adding document", req.CorpusName)
-	corpusResponse, err := createVertexAICorpus(req.CorpusName)
-	if err != nil {
-		log.Printf("[AI] Warning: Could not create/verify corpus '%s': %v", req.CorpusName, err)
-		// Continue with document addition even if corpus creation fails
-	} else {
-		log.Printf("[AI] Corpus operation result: %s", corpusResponse["message"])
-	}
-
-	// Store the count of existing files before adding
-	existingFiles, err := listVertexAICorpusContent(req.CorpusName)
-	var existingFileCount int
-	if err == nil {
-		if files, ok := existingFiles["files"].([]interface{}); ok {
-			existingFileCount = len(files)
-		}
-	}
-	log.Printf("[AI] Existing files in corpus before addition: %d", existingFileCount)
-
-	// Add document to Vertex AI RAG corpus using GCS URL
-	log.Printf("[AI] Starting to add document to RAG corpus...")
-	addResult, err := addVertexAICorpusDocument(req.CorpusName, gcsURL)
-	if err != nil {
-		log.Printf("[AI] Add corpus document error: %v", err)
-
-		// Clean up: delete the uploaded file from GCS
-		if deleteErr := gcs.DeleteObject(ctx, tempObjectName); deleteErr != nil {
-			log.Printf("[AI] Failed to clean up GCS object after Vertex AI error: %v", deleteErr)
-		}
-
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to add document to corpus: %v", err)})
-		return
-	}
-
-	log.Printf("[AI] Successfully added document to RAG corpus. Result: %+v", addResult)
-
-	// Wait a bit for the operation to complete and verify
-	log.Printf("[AI] Waiting for RAG import operation to complete...")
-	time.Sleep(10 * time.Second) // Increased wait time
-
-	// List files again to find the newly added RAG file
-	log.Printf("[AI] Verifying document was added to RAG corpus...")
-	updatedFiles, err := listVertexAICorpusContent(req.CorpusName)
-	var ragFileID string
-	var documentAdded bool
-
-	if err == nil {
-		if files, ok := updatedFiles["files"].([]interface{}); ok {
-			log.Printf("[AI] Found %d files in corpus after addition (was %d before)", len(files), existingFileCount)
-
-			// Find the newly added file by comparing with previous count
-			if len(files) > existingFileCount {
-				// Look for the file with matching display name
-				targetFileName := req.File.Filename
-				for _, file := range files {
-					if fileMap, ok := file.(map[string]interface{}); ok {
-						if displayName, ok := fileMap["displayName"].(string); ok && displayName == targetFileName {
-							if fileID, ok := fileMap["id"].(string); ok {
-								ragFileID = fileID
-								documentAdded = true
-								log.Printf("[AI] Found newly added RAG file: %s (ID: %s)", displayName, ragFileID)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-	} else {
-		log.Printf("[AI] Warning: Could not verify document addition: %v", err)
-	}
-
-	if !documentAdded {
-		log.Printf("[AI] Warning: Document may not have been successfully added to RAG corpus")
-		// Don't fail the request, but log the issue
-	}
-
-	// If we couldn't get the RAG file ID, use a fallback
-	if ragFileID == "" {
-		log.Printf("[AI] Warning: Could not determine RAG file ID, using temp file ID as fallback")
-		ragFileID = tempFileID
-	}
-
-	// Rename the GCS object to use the RAG file ID
-	finalObjectName := fmt.Sprintf("documents/%s%s", ragFileID, fileExtension)
-	log.Printf("[AI] Renaming GCS object from %s to %s", tempObjectName, finalObjectName)
-
-	if err := gcs.RenameObject(ctx, tempObjectName, finalObjectName); err != nil {
-		log.Printf("[AI] Warning: Failed to rename GCS object: %v", err)
-		// Continue with temp name if rename fails
-		finalObjectName = tempObjectName
-	}
+	log.Printf("[AI] GCS file verified successfully")
 
 	// Generate unique file ID for API access
 	fileID := uuid.New().String()
 
-	// Store document metadata in database
-	document := &model.Document{
-		FileID:      fileID,
-		DisplayName: req.File.Filename,
-		GCSBucket:   os.Getenv("GCS_BUCKET_NAME"),
-		GCSObject:   finalObjectName,
-		ContentType: req.File.Header.Get("Content-Type"),
-		Size:        fileSize,
-		CorpusName:  req.CorpusName,
-		RAGFileID:   ragFileID,
-		UploadedBy:  "system", // TODO: Get from authentication context
+	// Update context with file ID for correlation tracking
+	ctx = context.WithValue(ctx, "file_id", fileID)
+
+	// Generate final object name for when processing completes
+	finalObjectName := fmt.Sprintf("documents/%s%s", fileID, fileExtension)
+
+	idMetadata := map[string]string{
+		"file_id":           fileID,
+		"final_object_name": finalObjectName,
 	}
+	logger.InfoWithMetrics(ctx, "id_generation", "File ID and final object name generated", 0, idMetadata)
+
+	// Store document metadata in database with pending status
+	document := model.NewDocument(
+		fileID,
+		req.File.Filename,
+		bucketName,
+		tempObjectName, // Initially store with temp name
+		req.File.Header.Get("Content-Type"),
+		req.CorpusName,
+		"",       // RAG file ID will be set during background processing
+		"system", // TODO: Get from authentication context
+		fileSize,
+	)
 
 	if err := docRepo.CreateDocument(ctx, document); err != nil {
-		log.Printf("[AI] Failed to store document metadata: %v", err)
-		// Don't fail the request, just log the error
-	} else {
-		log.Printf("[AI] Document metadata stored successfully with fileID: %s", fileID)
+		logger.ErrorWithOperation(ctx, "database_store", "Failed to store document metadata", err)
+		// Clean up uploaded file on database error
+		if deleteErr := gcs.DeleteObject(ctx, tempObjectName); deleteErr != nil {
+			logger.ErrorWithOperation(ctx, "cleanup", "Failed to clean up GCS object after database error", deleteErr)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store document metadata"})
+		return
 	}
 
-	log.Printf("[AI] Add corpus document success")
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Document uploaded and added to corpus successfully",
-		"fileId":      fileID,
-		"displayName": req.File.Filename,
-		"size":        fileSize,
-		"corpusName":  req.CorpusName,
-		"ragFileId":   ragFileID,
-		"gcsObject":   finalObjectName,
+	dbMetadata := map[string]string{
+		"file_id": fileID,
+		"status":  document.Status,
+	}
+	logger.InfoWithMetrics(ctx, "database_store", "Document metadata stored successfully", 0, dbMetadata)
+
+	// Initialize Asynq client for task enqueuing
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379" // Default Redis address
+	}
+
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+	defer asynqClient.Close()
+
+	// Create task payload
+	taskPayload := tasks.DocumentTaskPayload{
+		FileID:          fileID,
+		TempObjectName:  tempObjectName,
+		FinalObjectName: finalObjectName,
+		CorpusName:      req.CorpusName,
+		DisplayName:     req.File.Filename,
+	}
+
+	// Create and enqueue the background task
+	task, err := tasks.NewAddDocumentToCorpusTask(taskPayload)
+	if err != nil {
+		logger.ErrorWithOperation(ctx, "task_creation", "Failed to create background task", err)
+		// Update document status to failed
+		if updateErr := docRepo.UpdateStatus(ctx, fileID, "failed", fmt.Sprintf("Task creation failed: %v", err)); updateErr != nil {
+			logger.ErrorWithOperation(ctx, "status_update", "Failed to update document status after task creation error", updateErr)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create background processing task"})
+		return
+	}
+
+	// Enqueue the task with logging
+	utils.LogTaskEnqueue(ctx, tasks.TypeAddDocumentToCorpus, fileID, map[string]string{
+		"corpus_name":       taskPayload.CorpusName,
+		"temp_object_name":  taskPayload.TempObjectName,
+		"final_object_name": taskPayload.FinalObjectName,
 	})
+
+	info, err := asynqClient.Enqueue(task)
+	if err != nil {
+		logger.ErrorWithOperation(ctx, "task_enqueue", "Failed to enqueue background task", err)
+		// Update document status to failed
+		if updateErr := docRepo.UpdateStatus(ctx, fileID, "failed", fmt.Sprintf("Task enqueue failed: %v", err)); updateErr != nil {
+			logger.ErrorWithOperation(ctx, "status_update", "Failed to update document status after task enqueue error", updateErr)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue background processing task"})
+		return
+	}
+
+	taskMetadata := map[string]string{
+		"task_id":   info.ID,
+		"task_type": tasks.TypeAddDocumentToCorpus,
+		"file_id":   fileID,
+	}
+	logger.InfoWithMetrics(ctx, "task_enqueue", "Background task enqueued successfully", 0, taskMetadata)
+
+	// Calculate response time for performance monitoring
+	responseTime := time.Since(startTime)
+
+	responseMetadata := map[string]string{
+		"file_id":       fileID,
+		"status":        "pending",
+		"response_time": responseTime.String(),
+		"corpus_name":   req.CorpusName,
+		"filename":      req.File.Filename,
+	}
+	logger.InfoWithMetrics(ctx, "upload_complete", "Document upload request completed successfully", responseTime, responseMetadata)
+
+	// Return immediate response with fileId and status="pending" for async processing
+	c.JSON(http.StatusOK, gin.H{
+		"fileId":       fileID,
+		"status":       "pending",
+		"message":      "Document uploaded successfully and queued for processing",
+		"responseTime": responseTime.String(),
+	})
+}
+
+// GetDocumentStatusHandler godoc
+// @Summary      Get Document Processing Status
+// @Description  Retrieve the current processing status of a document by its file ID. Returns status information including processing state, error messages (if any), and last update timestamp.
+// @Tags         AI Document Management
+// @Accept       json
+// @Produce      json
+// @Param        fileId   path    string  true  "Document file ID (unique identifier for the document)"
+// @Success      200      {object}  map[string]interface{}  "Document status retrieved successfully with fileId, status, errorMsg, and updatedAt"
+// @Failure      400      {object}  map[string]interface{}  "Invalid or missing file ID parameter"
+// @Failure      404      {object}  map[string]interface{}  "Document not found"
+// @Failure      500      {object}  map[string]interface{}  "Internal server error during status retrieval"
+// @Router       /ai/rag-agent/document-status/{fileId} [get]
+func GetDocumentStatusHandler(c *gin.Context) {
+	// Initialize structured logging with correlation ID
+	ctx := utils.WithCorrelationID(c.Request.Context(), "")
+	ctx = utils.WithRequestID(ctx, c.GetHeader("X-Request-ID"))
+	logger := utils.NewLogger("document_status")
+
+	logger.InfoWithOperation(ctx, "status_request", "Document status request received")
+
+	// Extract fileId from URL parameters with validation
+	fileID := c.Param("fileId")
+	if fileID == "" {
+		logger.ErrorWithOperation(ctx, "parameter_validation", "Missing fileId parameter", nil)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "fileId parameter is required"})
+		return
+	}
+
+	// Add file ID to context for correlation tracking
+	ctx = context.WithValue(ctx, "file_id", fileID)
+
+	statusMetadata := map[string]string{
+		"file_id": fileID,
+	}
+	logger.InfoWithMetrics(ctx, "parameter_validation", "File ID parameter validated", 0, statusMetadata)
+
+	// Initialize document repository
+	docRepo := repository.NewDocumentRepository()
+
+	// Query MongoDB using GetDocumentByFileID repository method
+	document, err := docRepo.GetDocumentByFileID(ctx, fileID)
+	if err != nil {
+		// Handle document not found cases with HTTP 404 responses
+		if err == mongo.ErrNoDocuments {
+			logger.ErrorWithOperation(ctx, "document_query", "Document not found", err)
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":   "Document not found",
+				"fileId":  fileID,
+				"message": "No document found with the specified fileId",
+			})
+			return
+		}
+
+		// Add proper error handling for database query failures
+		logger.ErrorWithOperation(ctx, "document_query", "Database error retrieving document status", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to retrieve document status",
+			"fileId":  fileID,
+			"message": "Database query failed",
+		})
+		return
+	}
+
+	resultMetadata := map[string]string{
+		"file_id": fileID,
+		"status":  document.Status,
+	}
+	if document.ErrorMsg != "" {
+		resultMetadata["error_msg"] = document.ErrorMsg
+	}
+	logger.InfoWithMetrics(ctx, "document_query", "Document status retrieved successfully", 0, resultMetadata)
+
+	// Return JSON response with fileId, status, errorMsg, and updatedAt
+	response := gin.H{
+		"fileId":    document.FileID,
+		"status":    document.Status,
+		"updatedAt": document.UpdatedAt,
+	}
+
+	// Include errorMsg only if it's not empty
+	if document.ErrorMsg != "" {
+		response["errorMsg"] = document.ErrorMsg
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // addVertexAICorpusDocument adds a document from GCS or Google Drive to a RAG corpus
@@ -651,13 +724,21 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 		return nil, fmt.Errorf("corpus '%s' not found", corpusName)
 	}
 
-	// Determine search term for RAG engine
-	var ragSearchTerm string
+	// Determine the RAG file to delete
 	var fileToDelete string
 
-	if documentToDelete != nil && documentToDelete.RAGFileID != "" {
-		ragSearchTerm = documentToDelete.RAGFileID
-		log.Printf("[AI] Searching for RAG file using RAG file ID from database: '%s'", ragSearchTerm)
+	// Case 1: If fileIdentifier looks like a RAG file ID (numeric), use it directly
+	if isNumeric(fileIdentifier) {
+		// Construct the full RAG file resource name
+		fileToDelete = fmt.Sprintf("%s/ragFiles/%s", corpusResourceName, fileIdentifier)
+		log.Printf("[AI] Using fileIdentifier as RAG file ID: %s -> %s", fileIdentifier, fileToDelete)
+	} else if documentToDelete != nil && documentToDelete.RAGFileID != "" {
+		// Case 2: Use RAG file ID from database
+		fileToDelete = fmt.Sprintf("%s/ragFiles/%s", corpusResourceName, documentToDelete.RAGFileID)
+		log.Printf("[AI] Using RAG file ID from database: %s -> %s", documentToDelete.RAGFileID, fileToDelete)
+	} else {
+		// Case 3: Search by display name or other identifiers
+		log.Printf("[AI] Searching for RAG file by display name or identifier: '%s'", fileIdentifier)
 
 		filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
 		if err != nil {
@@ -666,38 +747,29 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 
 		log.Printf("[AI] Found %d files in corpus '%s'", len(filesResponse.RagFiles), corpusName)
 
+		// Search term priority: fileIdentifier, then document display name if available
+		searchTerms := []string{fileIdentifier}
+		if documentToDelete != nil {
+			searchTerms = append(searchTerms, documentToDelete.DisplayName)
+		}
+
 		for _, file := range filesResponse.RagFiles {
 			log.Printf("[AI] Checking file: Name='%s', DisplayName='%s'", file.Name, file.DisplayName)
 
-			// Try multiple matching strategies
-			if file.DisplayName == ragSearchTerm ||
-				strings.Contains(file.Name, ragSearchTerm) ||
-				strings.Contains(file.DisplayName, ragSearchTerm) ||
-				strings.Contains(file.DisplayName, documentToDelete.DisplayName) ||
-				// Handle case where RAG file ID doesn't have extension but display name does
-				strings.HasPrefix(file.DisplayName, ragSearchTerm+".") {
-				fileToDelete = file.Name
-				log.Printf("[AI] Found matching RAG file: %s (matched display name: %s)", fileToDelete, file.DisplayName)
-				break
+			// Check against all search terms
+			for _, searchTerm := range searchTerms {
+				if file.DisplayName == searchTerm ||
+					strings.Contains(file.DisplayName, searchTerm) ||
+					strings.Contains(searchTerm, file.DisplayName) ||
+					// Handle case where search term doesn't have extension but display name does
+					strings.HasPrefix(file.DisplayName, searchTerm+".") {
+					fileToDelete = file.Name
+					log.Printf("[AI] Found matching RAG file: %s (matched with search term: %s)", fileToDelete, searchTerm)
+					break
+				}
 			}
-		}
-	} else {
-		log.Printf("[AI] No RAG file ID in database, trying to find by display name: '%s'", documentToDelete.DisplayName)
-		ragSearchTerm = documentToDelete.DisplayName
 
-		filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
-		if err != nil {
-			return nil, fmt.Errorf("failed to list files in corpus: %v", err)
-		}
-
-		for _, file := range filesResponse.RagFiles {
-			log.Printf("[AI] Checking file: Name='%s', DisplayName='%s'", file.Name, file.DisplayName)
-
-			if file.DisplayName == ragSearchTerm ||
-				strings.Contains(file.DisplayName, ragSearchTerm) ||
-				strings.Contains(ragSearchTerm, file.DisplayName) {
-				fileToDelete = file.Name
-				log.Printf("[AI] Found matching RAG file by display name: %s", fileToDelete)
+			if fileToDelete != "" {
 				break
 			}
 		}
@@ -793,4 +865,17 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 		"corpusName":      corpusName,
 		"deletionResults": deletionResults,
 	}, nil
+}
+
+// isNumeric checks if a string contains only numeric characters
+func isNumeric(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, char := range s {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }

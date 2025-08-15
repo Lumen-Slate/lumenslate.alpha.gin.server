@@ -31,8 +31,15 @@ func RegisterAIRoutes(r *gin.Engine) {
 		// Document management (from document_controller.go)
 		aiGroup.POST("/rag-agent/add-corpus-document", ai.AddCorpusDocumentHandler)
 		aiGroup.POST("/rag-agent/delete-corpus-document", ai.DeleteCorpusDocumentHandler)
+		aiGroup.GET("/rag-agent/document-status/:fileId", ai.GetDocumentStatusHandler)
 		aiGroup.GET("/rag-agent/:corpusName/documents", ai.ListCorpusDocumentsHandler)
 		aiGroup.GET("/documents/view/:id", ai.ViewDocumentHandler)
 		aiGroup.DELETE("/documents/:id", ai.DeleteCorpusDocumentByIDHandler)
+
+		// Operation management (from operation_controller.go)
+		aiGroup.POST("/operations/status", ai.CheckOperationStatusHandler)
+
+		// RAG utilities (from rag_utils.go)
+		aiGroup.POST("/rag-agent/sync-file-ids", ai.SyncRAGFileIDsHandler)
 	}
 }

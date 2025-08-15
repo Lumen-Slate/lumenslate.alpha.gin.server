@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,8 @@ import (
 	"lumenslate/internal/db"
 	"lumenslate/internal/routes"
 	"lumenslate/internal/routes/questions"
+	"lumenslate/internal/service"
+	"lumenslate/tasks"
 
 	_ "lumenslate/internal/docs"
 
@@ -46,6 +49,8 @@ func init() {
 }
 
 func main() {
+	startTime := time.Now()
+
 	gin.SetMode(gin.DebugMode) // This will suppress the debug logs
 	gin.DisableConsoleColor()
 	router := gin.New()
@@ -58,12 +63,20 @@ func main() {
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 	router.Static("/media", "./media")
-	registerRoutes(router)
+
+	// Initialize metrics collector for monitoring
+	metricsCollector := initializeMetricsCollector()
+
+	// Register routes including health endpoints
+	registerRoutes(router, metricsCollector, startTime)
 
 	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+
+	// Initialize and start Asynq server for background task processing
+	asynqServer := initializeAsynqServer()
+	if err := asynqServer.Start(); err != nil {
+		log.Fatalf("❌ Failed to start Asynq server: %v", err)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -78,10 +91,10 @@ func main() {
 		}
 	}()
 
-	gracefulShutdown()
+	gracefulShutdown(asynqServer, metricsCollector)
 }
 
-func registerRoutes(router *gin.Engine) {
+func registerRoutes(router *gin.Engine, metricsCollector *service.MetricsCollector, startTime time.Time) {
 	routes.RegisterAssignmentRoutes(router)
 	routes.RegisterClassroomRoutes(router)
 	routes.RegisterCommentRoutes(router)
@@ -95,6 +108,9 @@ func registerRoutes(router *gin.Engine) {
 	routes.SetupSubjectReportRoutes(router)
 	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
+
+	// Register health and monitoring routes
+	routes.RegisterHealthRoutes(router, metricsCollector, startTime)
 
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
@@ -121,14 +137,68 @@ func logADCIdentity() {
 	log.Println("[BOOT] Successfully called metadata server for ADC identity")
 }
 
-func gracefulShutdown() {
+// initializeAsynqServer creates and configures the Asynq server with task handlers
+func initializeAsynqServer() *service.AsynqServer {
+	// Get Redis configuration from environment
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	// Create Asynq server with default concurrency
+	asynqServer := service.NewAsynqServer(redisAddr, 0) // 0 uses default from env or 10
+
+	// Register document processing task handler
+	if err := asynqServer.RegisterTaskHandler(tasks.TypeAddDocumentToCorpus, tasks.HandleAddDocumentToCorpusTask); err != nil {
+		log.Fatalf("❌ Failed to register document task handler: %v", err)
+	}
+
+	log.Printf("[BOOT] Asynq server initialized with Redis at %s", redisAddr)
+	return asynqServer
+}
+
+// initializeMetricsCollector creates and configures the metrics collector
+func initializeMetricsCollector() *service.MetricsCollector {
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+
+	metricsCollector, err := service.NewMetricsCollector(redisAddr)
+	if err != nil {
+		log.Fatalf("❌ Failed to initialize metrics collector: %v", err)
+	}
+
+	// Set the global metrics collector for task handlers
+	tasks.SetMetricsCollector(metricsCollector)
+
+	log.Printf("[BOOT] Metrics collector initialized with Redis at %s", redisAddr)
+	return metricsCollector
+}
+
+func gracefulShutdown(asynqServer *service.AsynqServer, metricsCollector *service.MetricsCollector) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("🛑 Shutting down server...")
+
+	// Stop Asynq server first
+	if asynqServer != nil {
+		asynqServer.Stop()
+	}
+
+	// Close metrics collector
+	if metricsCollector != nil {
+		if err := metricsCollector.Close(); err != nil {
+			log.Printf("❌ Error closing metrics collector: %v", err)
+		}
+	}
+
+	// Close MongoDB connection
 	if err := db.CloseMongoDB(); err != nil {
 		log.Printf("❌ Error closing MongoDB connection: %v", err)
 	}
+
 	log.Println("✅ Server exited cleanly")
 }
