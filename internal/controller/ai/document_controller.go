@@ -13,7 +13,7 @@ import (
 
 	"lumenslate/internal/model"
 	"lumenslate/internal/repository"
-	gcsService "lumenslate/internal/service"
+	"lumenslate/internal/service"
 	"lumenslate/internal/utils"
 	"lumenslate/tasks"
 
@@ -81,7 +81,7 @@ func ViewDocumentHandler(c *gin.Context) {
 	log.Printf("[AI] Request to view document ID: %s", documentID)
 
 	// Initialize services
-	gcs, err := gcsService.NewGCSService()
+	gcs, err := service.NewGCSService()
 	if err != nil {
 		log.Printf("[AI] Failed to initialize GCS service: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
@@ -167,7 +167,7 @@ func DeleteCorpusDocumentByIDHandler(c *gin.Context) {
 	log.Printf("[AI] Request to delete document ID: %s", documentID)
 
 	// Initialize services
-	gcs, err := gcsService.NewGCSService()
+	gcs, err := service.NewGCSService()
 	if err != nil {
 		log.Printf("[AI] Failed to initialize GCS service: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
@@ -296,7 +296,7 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 	logger.InfoWithMetrics(ctx, "request_parsing", "Form request parsed successfully", 0, requestMetadata)
 
 	// Initialize services
-	gcs, err := gcsService.NewGCSService()
+	gcs, err := service.NewGCSService()
 	if err != nil {
 		logger.ErrorWithOperation(ctx, "service_init", "Failed to initialize GCS service", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to initialize storage service"})
@@ -583,6 +583,30 @@ func GetDocumentStatusHandler(c *gin.Context) {
 func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interface{}, error) {
 	ctx := context.Background()
 
+	// Check GCS object existence before ingestion
+	gcsBucket, gcsObject := "", ""
+	if strings.HasPrefix(fileLink, "gs://") {
+		parts := strings.SplitN(strings.TrimPrefix(fileLink, "gs://"), "/", 2)
+		if len(parts) == 2 {
+			gcsBucket = parts[0]
+			gcsObject = parts[1]
+		}
+	}
+	if gcsBucket == "" || gcsObject == "" {
+		return nil, fmt.Errorf("invalid GCS URI: %s", fileLink)
+	}
+	gcsService, err := service.NewGCSService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize GCS service: %v", err)
+	}
+	exists, err := gcsService.ObjectExists(ctx, gcsObject)
+	if err != nil {
+		return nil, fmt.Errorf("error checking GCS object existence: %v", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("GCS object does not exist: gs://%s/%s", gcsBucket, gcsObject)
+	}
+
 	// Project configuration - force RAG-compatible location
 	projectID := utils.GetProjectID()
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
@@ -594,7 +618,7 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	endpoint := fmt.Sprintf("https://%s-aiplatform.googleapis.com/", location)
 
 	// Create AI Platform service client with regional endpoint (using ADC)
-	service, err := aiplatform.NewService(ctx, option.WithEndpoint(endpoint))
+	serviceClient, err := aiplatform.NewService(ctx, option.WithEndpoint(endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create AI Platform service: %v", err)
 	}
@@ -604,7 +628,7 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 
 	// Find the corpus first
 	parent := fmt.Sprintf("projects/%s/locations/%s", projectID, location)
-	listCall := service.Projects.Locations.RagCorpora.List(parent)
+	listCall := serviceClient.Projects.Locations.RagCorpora.List(parent)
 
 	existingCorpora, err := listCall.Do()
 	if err != nil {
@@ -633,7 +657,7 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	}
 
 	// Import the file to the corpus
-	operation, err := service.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest).Do()
+	operation, err := serviceClient.Projects.Locations.RagCorpora.RagFiles.Import(corpusResourceName, importRequest).Do()
 	if err != nil {
 		return nil, fmt.Errorf("failed to import file to corpus: %v", err)
 	}
@@ -654,7 +678,7 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 	log.Printf("[AI] Starting comprehensive document deletion for '%s' in corpus '%s'", fileIdentifier, corpusName)
 
 	// Initialize services
-	gcs, err := gcsService.NewGCSService()
+	gcs, err := service.NewGCSService()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize GCS service: %v", err)
 	}
@@ -732,43 +756,39 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 		// Construct the full RAG file resource name
 		fileToDelete = fmt.Sprintf("%s/ragFiles/%s", corpusResourceName, fileIdentifier)
 		log.Printf("[AI] Using fileIdentifier as RAG file ID: %s -> %s", fileIdentifier, fileToDelete)
-	} else if documentToDelete != nil && documentToDelete.RAGFileID != "" {
-		// Case 2: Use RAG file ID from database
-		fileToDelete = fmt.Sprintf("%s/ragFiles/%s", corpusResourceName, documentToDelete.RAGFileID)
-		log.Printf("[AI] Using RAG file ID from database: %s -> %s", documentToDelete.RAGFileID, fileToDelete)
 	} else {
-		// Case 3: Search by display name or other identifiers
-		log.Printf("[AI] Searching for RAG file by display name or identifier: '%s'", fileIdentifier)
-
+		// Always resolve display name/UUID to numeric RAG file ID by listing corpus files
+		log.Printf("[AI] Resolving fileIdentifier '%s' to numeric RAG file ID by listing corpus files", fileIdentifier)
 		filesResponse, err := service.Projects.Locations.RagCorpora.RagFiles.List(corpusResourceName).Do()
 		if err != nil {
 			return nil, fmt.Errorf("failed to list files in corpus: %v", err)
 		}
-
 		log.Printf("[AI] Found %d files in corpus '%s'", len(filesResponse.RagFiles), corpusName)
 
-		// Search term priority: fileIdentifier, then document display name if available
+		// Search term priority: fileIdentifier, then document display name if available, then RAGFileID from DB
 		searchTerms := []string{fileIdentifier}
 		if documentToDelete != nil {
-			searchTerms = append(searchTerms, documentToDelete.DisplayName)
+			if documentToDelete.DisplayName != "" {
+				searchTerms = append(searchTerms, documentToDelete.DisplayName)
+			}
+			if documentToDelete.RAGFileID != "" {
+				searchTerms = append(searchTerms, documentToDelete.RAGFileID)
+			}
 		}
 
 		for _, file := range filesResponse.RagFiles {
 			log.Printf("[AI] Checking file: Name='%s', DisplayName='%s'", file.Name, file.DisplayName)
-
-			// Check against all search terms
 			for _, searchTerm := range searchTerms {
+				// Match by display name (with or without extension), or by UUID substring
 				if file.DisplayName == searchTerm ||
+					strings.TrimSuffix(file.DisplayName, filepath.Ext(file.DisplayName)) == searchTerm ||
 					strings.Contains(file.DisplayName, searchTerm) ||
-					strings.Contains(searchTerm, file.DisplayName) ||
-					// Handle case where search term doesn't have extension but display name does
-					strings.HasPrefix(file.DisplayName, searchTerm+".") {
+					strings.Contains(searchTerm, file.DisplayName) {
 					fileToDelete = file.Name
 					log.Printf("[AI] Found matching RAG file: %s (matched with search term: %s)", fileToDelete, searchTerm)
 					break
 				}
 			}
-
 			if fileToDelete != "" {
 				break
 			}

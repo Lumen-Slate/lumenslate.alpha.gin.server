@@ -5,21 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"lumenslate/internal/repository"
-	"lumenslate/internal/service"
-	"lumenslate/internal/utils"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/hibiken/asynq"
 	"go.mongodb.org/mongo-driver/bson"
+
+	"lumenslate/internal/repository"
+	"lumenslate/internal/service"
+	"lumenslate/internal/utils"
 )
 
-// Task type constants
-const (
-	TypeAddDocumentToCorpus = "add:document_to_corpus"
-)
+const TypeAddDocumentToCorpus = "add_document_to_corpus"
 
 // Global metrics collector instance
 var globalMetricsCollector *service.MetricsCollector
@@ -222,30 +220,36 @@ func HandleAddDocumentToCorpusTask(ctx context.Context, t *asynq.Task) error {
 				// Operation succeeded - extract RAG file information
 				operationDuration := time.Since(operationStartTime)
 
-				// Try to extract RAG file ID from the operation response
+				// Try to extract RAG file ID: First attempt is direct from temp_object_name
 				var ragFileID string
-				if response, hasResponse := operationStatus["response"]; hasResponse {
-					if responseMap, ok := response.(map[string]interface{}); ok {
-						if ragFiles, hasRagFiles := responseMap["ragFiles"]; hasRagFiles {
-							if ragFilesList, ok := ragFiles.([]interface{}); ok && len(ragFilesList) > 0 {
-								if ragFile, ok := ragFilesList[0].(map[string]interface{}); ok {
-									if name, hasName := ragFile["name"].(string); hasName {
-										// Extract the RAG file ID from the full resource name
-										// Format: projects/.../ragCorpora/.../ragFiles/{ragFileId}
-										parts := strings.Split(name, "/")
-										if len(parts) > 0 {
-											ragFileID = parts[len(parts)-1]
-										}
-									}
-								}
-							}
-						}
+				ragFileID = extractRagFileIdFromTempObjectName(payload.TempObjectName)
+				if ragFileID != "" {
+					logger.InfoWithOperation(ctx, "rag_file_id_direct", "Extracted RAG file ID directly from temp_object_name")
+				}
+
+				// Second attempt: Extract from operation response
+				if ragFileID == "" {
+					ragFileID = extractRAGFileIDFromOperationResponse(operationStatus)
+					if ragFileID != "" {
+						logger.InfoWithOperation(ctx, "rag_file_id_operation_response", "Extracted RAG file ID from operation response")
+					}
+				}
+
+				// Third attempt: Fallback to VertexAIService
+				if ragFileID == "" {
+					logger.InfoWithOperation(ctx, "rag_file_id_fallback", "Direct and operation response extraction failed, querying RAG engine directly")
+					ragFileID, err = vertexAIService.ExtractRAGFileIDFromDocument(ctx, payload.CorpusName, payload.DisplayName)
+					if err != nil {
+						logger.ErrorWithOperation(ctx, "rag_file_id_fallback", "Failed to extract RAG file ID from RAG engine", err)
+						// Continue to the failure handling below
+					} else {
+						logger.InfoWithOperation(ctx, "rag_file_id_fallback", "Successfully extracted RAG file ID from RAG engine")
 					}
 				}
 
 				// RAG file ID extraction is now compulsory - task fails if we can't get it
 				if ragFileID == "" {
-					errorMsg := "Could not extract RAG file ID from operation response - this is required for proper document tracking"
+					errorMsg := "Could not extract RAG file ID from operation response or temp_object_name - this is required for proper document tracking"
 					logger.ErrorWithOperation(ctx, "rag_file_id_extract", errorMsg, nil)
 
 					// Update document status to failed
@@ -440,4 +444,43 @@ func checkRAGOperationStatus(operationName string) (map[string]interface{}, erro
 
 	// Use the service's method to check operation status
 	return vertexService.CheckOperationStatus(ctx, operationName)
+}
+
+// extractRAGFileIDFromOperationResponse extracts RAG file ID from operation response
+func extractRAGFileIDFromOperationResponse(operationStatus map[string]interface{}) string {
+	if response, hasResponse := operationStatus["response"]; hasResponse {
+		if responseMap, ok := response.(map[string]interface{}); ok {
+			if ragFiles, hasRagFiles := responseMap["ragFiles"]; hasRagFiles {
+				if ragFilesList, ok := ragFiles.([]interface{}); ok && len(ragFilesList) > 0 {
+					if ragFile, ok := ragFilesList[0].(map[string]interface{}); ok {
+						if name, hasName := ragFile["name"].(string); hasName {
+							// Extract the RAG file ID from the full resource name
+							// Format: projects/.../ragCorpora/.../ragFiles/{ragFileId}
+							parts := strings.Split(name, "/")
+							if len(parts) > 0 {
+								return parts[len(parts)-1]
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// Helper to extract RagFileId from temp_object_name
+func extractRagFileIdFromTempObjectName(tempObjectName string) string {
+	// Expect format: temp/8251d763-69d5-4086-b105-b721e55b7b76.pdf
+	parts := strings.Split(tempObjectName, "/")
+	if len(parts) < 2 {
+		return ""
+	}
+	file := parts[1]
+	// Remove extension
+	dot := strings.LastIndex(file, ".")
+	if dot != -1 {
+		file = file[:dot]
+	}
+	return file
 }

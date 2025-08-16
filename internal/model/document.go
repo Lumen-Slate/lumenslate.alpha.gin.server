@@ -16,7 +16,7 @@ type Document struct {
 	ContentType string             `bson:"contentType" json:"contentType"` // MIME type of the file
 	Size        int64              `bson:"size" json:"size"`               // File size in bytes
 	CorpusName  string             `bson:"corpusName" json:"corpusName"`   // RAG corpus this document belongs to
-	RAGFileID   string             `bson:"ragFileId" json:"ragFileId"`     // Vertex AI RAG file ID
+	RAGFileID   string             `bson:"ragFileId" json:"ragFileId"`     // Vertex AI RAG file ID (set only after ingestion)
 	UploadedBy  string             `bson:"uploadedBy" json:"uploadedBy"`   // User who uploaded the document
 	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
 	UpdatedAt   time.Time          `bson:"updatedAt" json:"updatedAt"`
