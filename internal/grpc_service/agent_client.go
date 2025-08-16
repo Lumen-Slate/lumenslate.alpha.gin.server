@@ -1111,7 +1111,7 @@ func createRAGErrorResponse(teacherId, errorMessage string, res *pb.RAGAgentResp
 }
 */
 
-func RAGAgentClient(teacherId, message, file string) (*pb.RAGAgentResponse, error) {
+func RAGAgentClient(teacherId string, message string) (*pb.RAGAgentResponse, error) {
 	client, conn, err := DialGRPC()
 	if err != nil {
 		log.Printf("ERROR: Failed to establish gRPC connection: %v", err)
@@ -1125,7 +1125,6 @@ func RAGAgentClient(teacherId, message, file string) (*pb.RAGAgentResponse, erro
 	req := &pb.RAGAgentRequest{
 		TeacherId: teacherId,
 		Message:   message,
-		File:      file,
 	}
 
 	resp, err := client.RAGAgent(ctx, req)

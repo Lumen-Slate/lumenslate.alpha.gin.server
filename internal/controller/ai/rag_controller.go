@@ -46,7 +46,7 @@ func RAGAgentHandler(c *gin.Context) {
 	}
 
 	// Call the gRPC microservice
-	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, "")
+	resp, err := service.RAGAgentClient(req.TeacherId, req.Message)
 	if err != nil {
 		log.Printf("ERROR: Failed to process RAG agent request: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
