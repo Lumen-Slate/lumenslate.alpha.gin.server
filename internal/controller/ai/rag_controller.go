@@ -225,6 +225,7 @@ func ListCorpusDocumentsHandler(c *gin.Context) {
 			"inDatabase":    true,
 			"inRAGEngine":   false,
 			"ragEngineInfo": nil,
+			"status":        doc.Status,
 		}
 
 		// Check if this document exists in RAG engine
