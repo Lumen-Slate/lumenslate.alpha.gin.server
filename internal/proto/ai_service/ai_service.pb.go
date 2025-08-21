@@ -1123,7 +1123,7 @@ func (x *AgentResponse) GetFeedback() string {
 
 type RAGAgentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TeacherId     string                 `protobuf:"bytes,1,opt,name=teacherId,proto3" json:"teacherId,omitempty"`
+	CorpusName    string                 `protobuf:"bytes,1,opt,name=corpusName,proto3" json:"corpusName,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,4,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
@@ -1162,9 +1162,9 @@ func (*RAGAgentRequest) Descriptor() ([]byte, []int) {
 	return file_internal_proto_ai_service_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *RAGAgentRequest) GetTeacherId() string {
+func (x *RAGAgentRequest) GetCorpusName() string {
 	if x != nil {
-		return x.TeacherId
+		return x.CorpusName
 	}
 	return ""
 }
@@ -1200,7 +1200,7 @@ func (x *RAGAgentRequest) GetUpdatedAt() string {
 type RAGAgentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-	TeacherId     string                 `protobuf:"bytes,2,opt,name=teacherId,proto3" json:"teacherId,omitempty"`
+	CorpusName    string                 `protobuf:"bytes,2,opt,name=corpusName,proto3" json:"corpusName,omitempty"`
 	AgentName     string                 `protobuf:"bytes,3,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
 	AgentResponse string                 `protobuf:"bytes,4,opt,name=agent_response,json=agentResponse,proto3" json:"agent_response,omitempty"`
 	SessionId     string                 `protobuf:"bytes,5,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -1250,9 +1250,9 @@ func (x *RAGAgentResponse) GetMessage() string {
 	return ""
 }
 
-func (x *RAGAgentResponse) GetTeacherId() string {
+func (x *RAGAgentResponse) GetCorpusName() string {
 	if x != nil {
-		return x.TeacherId
+		return x.CorpusName
 	}
 	return ""
 }
@@ -1399,16 +1399,20 @@ const file_internal_proto_ai_service_proto_rawDesc = "" +
 	"\rresponse_time\x18\b \x01(\tR\fresponseTime\x12\x12\n" +
 	"\x04role\x18\t \x01(\tR\x04role\x12\x1a\n" +
 	"\bfeedback\x18\n" +
-	" \x01(\tR\bfeedback\"\x99\x01\n" +
-	"\x0fRAGAgentRequest\x12\x1c\n" +
-	"\tteacherId\x18\x01 \x01(\tR\tteacherId\x12\x18\n" +
+	" \x01(\tR\bfeedback\"\x9b\x01\n" +
+	"\x0fRAGAgentRequest\x12\x1e\n" +
+	"\n" +
+	"corpusName\x18\x01 \x01(\tR\n" +
+	"corpusName\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12\x1c\n" +
 	"\tcreatedAt\x18\x04 \x01(\tR\tcreatedAt\x12\x1c\n" +
-	"\tupdatedAt\x18\x05 \x01(\tR\tupdatedAt\"\xc0\x02\n" +
+	"\tupdatedAt\x18\x05 \x01(\tR\tupdatedAt\"\xc2\x02\n" +
 	"\x10RAGAgentResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1c\n" +
-	"\tteacherId\x18\x02 \x01(\tR\tteacherId\x12\x1d\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1e\n" +
+	"\n" +
+	"corpusName\x18\x02 \x01(\tR\n" +
+	"corpusName\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x03 \x01(\tR\tagentName\x12%\n" +
 	"\x0eagent_response\x18\x04 \x01(\tR\ragentResponse\x12\x1d\n" +

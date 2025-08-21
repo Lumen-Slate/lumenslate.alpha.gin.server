@@ -19,7 +19,7 @@ swagger:
 
 # Generate protobuf Go code
 proto:
-	protoc --go_out=$(PROTO_OUT) --go-grpc_out=$(PROTO_OUT) $(PROTO_SRC)
+	protoc --go_out=. --go-grpc_out=. internal/proto/ai_service.proto
 
 # Run with Swagger and Proto regeneration
 dev-all:
