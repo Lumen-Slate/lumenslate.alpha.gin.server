@@ -64,12 +64,12 @@ type AgentRequest struct {
 }
 
 type RAGAgentRequest struct {
-	TeacherId string `json:"teacherId" binding:"required"`
-	Role      string `json:"role" binding:"required"`
-	Message   string `json:"message" binding:"required"`
-	File      string `json:"file"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	CorpusName string `json:"corpusName" binding:"required"`
+	Role       string `json:"role" binding:"required"`
+	Message    string `json:"message" binding:"required"`
+	File       string `json:"file"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
 }
 
 // --- Response Types ---
