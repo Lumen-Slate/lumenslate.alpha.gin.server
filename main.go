@@ -51,7 +51,7 @@ func init() {
 func main() {
 	startTime := time.Now()
 
-	gin.SetMode(gin.DebugMode) // This will suppress the debug logs
+	gin.SetMode(os.Getenv("GIN_MODE")) // This will suppress the debug logs
 	gin.DisableConsoleColor()
 	router := gin.New()
 
