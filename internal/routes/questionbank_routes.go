@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterQuestionBankRoutes(r *gin.Engine) {
+func RegisterQuestionBankRoutes(r *gin.RouterGroup) {
 	q := r.Group("/question-banks")
 	{
 		q.GET("", controller.GetAllQuestionBanks)

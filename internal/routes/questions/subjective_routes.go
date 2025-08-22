@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterSubjectiveRoutes(r *gin.Engine) {
+func RegisterSubjectiveRoutes(r *gin.RouterGroup) {
 	s := r.Group("/subjectives")
 	{
 		s.GET("", questions.GetAllSubjectives)

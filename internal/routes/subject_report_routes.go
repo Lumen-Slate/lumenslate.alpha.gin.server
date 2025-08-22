@@ -7,7 +7,7 @@ import (
 )
 
 // SetupSubjectReportRoutes sets up all subject report related routes
-func SetupSubjectReportRoutes(router *gin.Engine) {
+func SetupSubjectReportRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api")
 	{
 		// Subject Report routes

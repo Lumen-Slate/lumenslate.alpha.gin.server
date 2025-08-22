@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAIRoutes(r *gin.Engine) {
+func RegisterAIRoutes(r *gin.RouterGroup) {
 	aiGroup := r.Group("/ai")
 	{
 		// Question-related AI services (from question_controller.go)

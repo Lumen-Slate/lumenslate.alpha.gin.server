@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAssignmentRoutes(r *gin.Engine) {
+func RegisterAssignmentRoutes(r *gin.RouterGroup) {
 	a := r.Group("/assignments")
 	{
 		a.POST("/", controller.CreateAssignment)

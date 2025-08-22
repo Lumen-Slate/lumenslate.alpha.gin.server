@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterThreadRoutes(r *gin.Engine) {
+func RegisterThreadRoutes(r *gin.RouterGroup) {
 	p := r.Group("/threads")
 	{
 		p.GET("", controller.GetAllThreads)

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterVariableRoutes(r *gin.Engine) {
+func RegisterVariableRoutes(r *gin.RouterGroup) {
 	v := r.Group("/variables")
 	{
 		v.GET("", controller.GetAllVariables)

@@ -67,9 +67,16 @@ func main() {
 	// Initialize metrics collector for monitoring
 	metricsCollector := initializeMetricsCollector()
 
-	// Register routes including health endpoints
-	registerRoutes(router, metricsCollector, startTime)
+	// Create API v1 group
+	apiV1 := router.Group("/api/v1")
 
+	// Register all API routes under /api/v1
+	registerRoutes(apiV1, metricsCollector, startTime)
+
+	// Health and docs endpoints remain at root
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Initialize and start Asynq server for background task processing
@@ -94,7 +101,8 @@ func main() {
 	gracefulShutdown(asynqServer, metricsCollector)
 }
 
-func registerRoutes(router *gin.Engine, metricsCollector *service.MetricsCollector, startTime time.Time) {
+// Change router type from *gin.Engine to gin.IRoutes to allow both *gin.Engine and *gin.RouterGroup
+func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCollector, startTime time.Time) {
 	routes.RegisterAssignmentRoutes(router)
 	routes.RegisterClassroomRoutes(router)
 	routes.RegisterCommentRoutes(router)
@@ -108,9 +116,6 @@ func registerRoutes(router *gin.Engine, metricsCollector *service.MetricsCollect
 	routes.SetupSubjectReportRoutes(router)
 	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
-
-	// Register health and monitoring routes
-	routes.RegisterHealthRoutes(router, metricsCollector, startTime)
 
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
