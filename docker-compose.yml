@@ -36,6 +36,8 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
+    networks:
+      - lumenslate-network
 
   async:
     build:
@@ -70,6 +72,8 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
+    networks:
+      - lumenslate-network
 
   redis:
     image: redis:7.2-alpine
@@ -99,6 +103,8 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+    networks:
+      - lumenslate-network
 
   asynqmon:
     image: hibiken/asynqmon:latest
@@ -129,6 +135,12 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+    networks:
+      - lumenslate-network
 
 volumes:
   redis_data:
+
+networks:
+  lumenslate-network:
+    external: true
