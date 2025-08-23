@@ -11,7 +11,6 @@ import (
 
 	"lumenslate/internal/model"
 	"lumenslate/internal/repository"
-	"lumenslate/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -116,7 +115,7 @@ func listRAGFiles(corpusName string) ([]map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1"

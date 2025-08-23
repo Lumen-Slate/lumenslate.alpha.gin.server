@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"lumenslate/internal/utils"
-
 	"google.golang.org/api/aiplatform/v1"
 	"google.golang.org/api/option"
 )
@@ -62,7 +60,7 @@ func (v *VertexAIService) ListRAGFilesInCorpus(ctx context.Context, corpusName s
 
 // NewVertexAIService creates a new Vertex AI service instance
 func NewVertexAIService() *VertexAIService {
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback

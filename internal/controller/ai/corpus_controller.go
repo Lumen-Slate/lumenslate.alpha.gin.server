@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"lumenslate/internal/utils"
-
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/aiplatform/v1"
 	"google.golang.org/api/option"
@@ -43,7 +41,7 @@ func listAllVertexAICorpora() (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {

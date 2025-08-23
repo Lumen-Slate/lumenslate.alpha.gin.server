@@ -264,7 +264,7 @@ func AddCorpusDocumentHandler(c *gin.Context) {
 		return
 	}
 
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	if projectID == "" {
 		logger.ErrorWithOperation(ctx, "config_validation", "Project ID not configured", nil)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -608,7 +608,7 @@ func addVertexAICorpusDocument(corpusName, fileLink string) (map[string]interfac
 	}
 
 	// Project configuration - force RAG-compatible location
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback
@@ -709,7 +709,7 @@ func deleteVertexAICorpusDocument(corpusName, fileIdentifier string) (map[string
 	}
 
 	// Project configuration for RAG operations
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1" // Default fallback
