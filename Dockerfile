@@ -1,7 +1,9 @@
-FROM golang:1.24.4-alpine
+FROM golang:1.25.0-trixie
 
 # Install necessary dependencies
-RUN apk add --no-cache git curl ca-certificates openssl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates openssl \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
