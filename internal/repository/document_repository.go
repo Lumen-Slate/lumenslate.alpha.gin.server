@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"lumenslate/internal/db"
 	"lumenslate/internal/model"
 	"time"
@@ -10,6 +11,25 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+// DocumentError represents a document repository error with context
+type DocumentError struct {
+	Op      string // Operation that failed
+	FileID  string // Document file ID (if available)
+	Message string // Human-readable error message
+	Err     error  // Underlying error
+}
+
+func (e *DocumentError) Error() string {
+	if e.FileID != "" {
+		return fmt.Sprintf("document repository %s (fileId: %s): %s: %v", e.Op, e.FileID, e.Message, e.Err)
+	}
+	return fmt.Sprintf("document repository %s: %s: %v", e.Op, e.Message, e.Err)
+}
+
+func (e *DocumentError) Unwrap() error {
+	return e.Err
+}
 
 type DocumentRepository struct {
 	collection *mongo.Collection
@@ -21,17 +41,43 @@ func NewDocumentRepository() *DocumentRepository {
 	}
 }
 
-// CreateDocument creates a new document record in the database
+// CreateDocument creates a new document record in the database with proper error handling
 func (r *DocumentRepository) CreateDocument(ctx context.Context, doc *model.Document) error {
-	doc.CreatedAt = time.Now()
-	doc.UpdatedAt = time.Now()
+	// Set timestamps
+	now := time.Now()
+	doc.CreatedAt = now
+	doc.UpdatedAt = now
 
-	result, err := r.collection.InsertOne(ctx, doc)
-	if err != nil {
-		return err
+	// Set default status for async processing
+	if doc.Status == "" {
+		doc.Status = "pending"
 	}
 
-	doc.ID = result.InsertedID.(primitive.ObjectID)
+	// Insert document with proper error handling
+	result, err := r.collection.InsertOne(ctx, doc)
+	if err != nil {
+		// Wrap MongoDB errors with context
+		if mongo.IsDuplicateKeyError(err) {
+			return &DocumentError{
+				Op:      "CreateDocument",
+				FileID:  doc.FileID,
+				Message: "document with this fileId already exists",
+				Err:     err,
+			}
+		}
+		return &DocumentError{
+			Op:      "CreateDocument",
+			FileID:  doc.FileID,
+			Message: "failed to insert document",
+			Err:     err,
+		}
+	}
+
+	// Set the generated ID
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		doc.ID = oid
+	}
+
 	return nil
 }
 
@@ -42,7 +88,20 @@ func (r *DocumentRepository) GetDocumentByFileID(ctx context.Context, fileID str
 
 	err := r.collection.FindOne(ctx, filter).Decode(&doc)
 	if err != nil {
-		return nil, err
+		if err == mongo.ErrNoDocuments {
+			return nil, &DocumentError{
+				Op:      "GetDocumentByFileID",
+				FileID:  fileID,
+				Message: "document not found",
+				Err:     err,
+			}
+		}
+		return nil, &DocumentError{
+			Op:      "GetDocumentByFileID",
+			FileID:  fileID,
+			Message: "failed to retrieve document",
+			Err:     err,
+		}
 	}
 
 	return &doc, nil
@@ -66,7 +125,98 @@ func (r *DocumentRepository) GetDocumentsByCorpus(ctx context.Context, corpusNam
 	return documents, nil
 }
 
-// UpdateDocument updates an existing document
+// UpdateStatus atomically updates document status, error message, and timestamp
+func (r *DocumentRepository) UpdateStatus(ctx context.Context, fileID string, status string, errorMsg string) error {
+	filter := bson.M{"fileId": fileID}
+
+	update := bson.M{
+		"$set": bson.M{
+			"status":    status,
+			"updatedAt": time.Now(),
+		},
+	}
+
+	// Only set errorMsg if it's not empty, otherwise unset it
+	if errorMsg != "" {
+		update["$set"].(bson.M)["errorMsg"] = errorMsg
+	} else {
+		update["$unset"] = bson.M{"errorMsg": ""}
+	}
+
+	result, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return &DocumentError{
+			Op:      "UpdateStatus",
+			FileID:  fileID,
+			Message: "failed to update document status",
+			Err:     err,
+		}
+	}
+
+	// Check if document was found and updated
+	if result.MatchedCount == 0 {
+		return &DocumentError{
+			Op:      "UpdateStatus",
+			FileID:  fileID,
+			Message: "document not found",
+			Err:     mongo.ErrNoDocuments,
+		}
+	}
+
+	return nil
+}
+
+// UpdateFields flexibly updates document fields with validation against immutable fields
+func (r *DocumentRepository) UpdateFields(ctx context.Context, fileID string, updates bson.M) error {
+	// Define immutable fields that cannot be updated
+	immutableFields := map[string]bool{
+		"fileId":    true,
+		"_id":       true,
+		"createdAt": true,
+	}
+
+	// Validate that no immutable fields are being updated
+	for field := range updates {
+		if immutableFields[field] {
+			return &DocumentError{
+				Op:      "UpdateFields",
+				FileID:  fileID,
+				Message: fmt.Sprintf("cannot update immutable field: %s", field),
+				Err:     nil,
+			}
+		}
+	}
+
+	// Automatically update the updatedAt timestamp
+	updates["updatedAt"] = time.Now()
+
+	filter := bson.M{"fileId": fileID}
+	updateDoc := bson.M{"$set": updates}
+
+	result, err := r.collection.UpdateOne(ctx, filter, updateDoc)
+	if err != nil {
+		return &DocumentError{
+			Op:      "UpdateFields",
+			FileID:  fileID,
+			Message: "failed to update document fields",
+			Err:     err,
+		}
+	}
+
+	// Check if document was found and updated
+	if result.MatchedCount == 0 {
+		return &DocumentError{
+			Op:      "UpdateFields",
+			FileID:  fileID,
+			Message: "document not found",
+			Err:     mongo.ErrNoDocuments,
+		}
+	}
+
+	return nil
+}
+
+// UpdateDocument updates an existing document (deprecated - use UpdateFields instead)
 func (r *DocumentRepository) UpdateDocument(ctx context.Context, fileID string, update bson.M) error {
 	update["updatedAt"] = time.Now()
 

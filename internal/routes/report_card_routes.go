@@ -7,7 +7,7 @@ import (
 )
 
 // SetupReportCardRoutes sets up all report card related routes
-func SetupReportCardRoutes(router *gin.Engine) {
+func SetupReportCardRoutes(router *gin.RouterGroup) {
 	api := router.Group("/api")
 	{
 		// Report Card routes

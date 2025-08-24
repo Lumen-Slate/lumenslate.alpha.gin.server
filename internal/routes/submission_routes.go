@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterSubmissionRoutes(r *gin.Engine) {
+func RegisterSubmissionRoutes(r *gin.RouterGroup) {
 	sub := r.Group("/submissions")
 	{
 		sub.GET("", controller.GetAllSubmissions)

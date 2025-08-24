@@ -11,7 +11,6 @@ import (
 
 	service "lumenslate/internal/grpc_service"
 	"lumenslate/internal/repository"
-	"lumenslate/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/aiplatform/v1"
@@ -225,6 +224,7 @@ func ListCorpusDocumentsHandler(c *gin.Context) {
 			"inDatabase":    true,
 			"inRAGEngine":   false,
 			"ragEngineInfo": nil,
+			"status":        doc.Status,
 		}
 
 		// Check if this document exists in RAG engine
@@ -289,7 +289,7 @@ func createVertexAICorpus(corpusName string) (map[string]interface{}, error) {
 	ctx := context.Background()
 
 	// Project configuration - force RAG-compatible location
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	log.Printf("[AI] Using projectID: %s, location: %s", projectID, location)
 	if location == "" {
@@ -367,7 +367,7 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 	ctx := context.Background()
 
 	// Project configuration
-	projectID := utils.GetProjectID()
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	location := os.Getenv("GOOGLE_CLOUD_LOCATION")
 	if location == "" {
 		location = "us-central1"

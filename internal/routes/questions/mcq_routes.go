@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterMCQRoutes(r *gin.Engine) {
+func RegisterMCQRoutes(r *gin.RouterGroup) {
 	group := r.Group("/mcqs")
 	{
 		group.GET("", questions.GetAllMCQs)

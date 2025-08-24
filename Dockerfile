@@ -1,24 +1,22 @@
-FROM golang:1.24.4-alpine
+FROM golang:1.25.0-trixie
 
 # Install necessary dependencies
-RUN apk add --no-cache git curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl ca-certificates openssl \
+ && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy go mod files and download dependencies
+# Download Go modules
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy entire source code
-COPY . .
+# Copy all Go source files from the root directory
+COPY . ./
 
-# Expose the port your app uses
+# Build the binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o /lumenslate-server
+
 EXPOSE 8080
 
-# Health check (optional)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl --fail http://localhost:8080/health || exit 1
-
-# Run the app
-CMD ["go", "run", "main.go"]
+CMD ["/lumenslate-server"]

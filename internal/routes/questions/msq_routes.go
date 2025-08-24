@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterMSQRoutes(r *gin.Engine) {
+func RegisterMSQRoutes(r *gin.RouterGroup) {
 	group := r.Group("/msqs")
 	{
 		group.GET("", questions.GetAllMSQs)

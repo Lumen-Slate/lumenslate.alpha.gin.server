@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterCommentRoutes(r *gin.Engine) {
+func RegisterCommentRoutes(r *gin.RouterGroup) {
 	comment := r.Group("/comments")
 	{
 		comment.GET("", controller.GetAllComments)

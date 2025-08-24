@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterClassroomRoutes(r *gin.Engine) {
+func RegisterClassroomRoutes(r *gin.RouterGroup) {
 	cls := r.Group("/classrooms")
 	{
 		cls.GET("", controller.GetAllClassrooms)

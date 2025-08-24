@@ -7,7 +7,7 @@ import (
 )
 
 // SetupAgentReportCardRoutes sets up all routes for agent report cards
-func SetupAgentReportCardRoutes(router *gin.Engine) {
+func SetupAgentReportCardRoutes(router *gin.RouterGroup) {
 	agentReportCardRoutes := router.Group("/api/agent-report-cards")
 	{
 		agentReportCardRoutes.GET("/", controller.GetAllAgentReportCards)

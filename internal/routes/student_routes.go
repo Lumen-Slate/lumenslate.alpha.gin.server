@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterStudentRoutes(r *gin.Engine) {
+func RegisterStudentRoutes(r *gin.RouterGroup) {
 	students := r.Group("/students")
 	{
 		students.GET("", controller.GetAllStudents)

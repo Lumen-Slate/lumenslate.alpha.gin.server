@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterNATRoutes(r *gin.Engine) {
+func RegisterNATRoutes(r *gin.RouterGroup) {
 	n := r.Group("/nats")
 	{
 		n.GET("", questions.GetAllNATs)
