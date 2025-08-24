@@ -172,7 +172,7 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 
 		if assignmentResultData != nil {
 			// Handle assignment result saving (from assessor agent)
-			if assignmentResult, err := handleAssignmentResultSaving(assignmentResultData, teacherId); err == nil {
+			if assignmentResult, err := handleAssignmentResultSaving(assignmentResultData); err == nil {
 				responseData = assignmentResult
 				agentName = "assessor_agent"
 				responseMessage = "Assignment assessment completed successfully"
@@ -183,7 +183,7 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 			}
 		} else if len(agentResponse.QuestionsRequested) > 0 {
 			// Handle question generation (both AGG and AGT)
-			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, teacherId, rawAgentResponse); err == nil {
+			if questionsData, err := handleQuestionGeneration(agentResponse.QuestionsRequested, rawAgentResponse); err == nil {
 				responseData = questionsData
 				agentName = "assignment_generator_general"
 				responseMessage = "Assignment generated successfully"
@@ -291,7 +291,7 @@ func createErrorResponse(teacherId, errorMessage string, res *pb.AgentResponse) 
 	}
 }
 
-func handleQuestionGeneration(questionsRequested []QuestionRequest, teacherId string, rawAgentResponse string) (map[string]interface{}, error) {
+func handleQuestionGeneration(questionsRequested []QuestionRequest, rawAgentResponse string) (map[string]interface{}, error) {
 	// Parse the raw agent response to extract title and body
 	var agentResponseData map[string]interface{}
 	var assignmentTitle, assignmentBody string
@@ -929,7 +929,7 @@ func handleReportCardGeneration(reportCardDataInterface interface{}, teacherId s
 }
 
 // handleAssignmentResultSaving processes assignment result data from assessor agent
-func handleAssignmentResultSaving(assignmentResultData interface{}, teacherId string) (map[string]interface{}, error) {
+func handleAssignmentResultSaving(assignmentResultData interface{}) (map[string]interface{}, error) {
 	// Convert interface{} to map[string]interface{}
 	resultMap, ok := assignmentResultData.(map[string]interface{})
 	if !ok {
@@ -1111,7 +1111,7 @@ func createRAGErrorResponse(teacherId, errorMessage string, res *pb.RAGAgentResp
 }
 */
 
-func RAGAgentClient(teacherId, message, file string) (*pb.RAGAgentResponse, error) {
+func RAGAgentClient(corpusName string, message string) (*pb.RAGAgentResponse, error) {
 	client, conn, err := DialGRPC()
 	if err != nil {
 		log.Printf("ERROR: Failed to establish gRPC connection: %v", err)
@@ -1123,9 +1123,8 @@ func RAGAgentClient(teacherId, message, file string) (*pb.RAGAgentResponse, erro
 	defer cancel()
 
 	req := &pb.RAGAgentRequest{
-		TeacherId: teacherId,
-		Message:   message,
-		File:      file,
+		CorpusName: corpusName,
+		Message:    message,
 	}
 
 	resp, err := client.RAGAgent(ctx, req)

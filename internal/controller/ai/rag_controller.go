@@ -38,14 +38,14 @@ func RAGAgentHandler(c *gin.Context) {
 	}
 
 	// Create/verify corpus for the teacher before processing the request
-	_, err := createVertexAICorpus(req.TeacherId)
+	_, err := createVertexAICorpus(req.CorpusName)
 	if err != nil {
-		log.Printf("WARNING: Could not create/verify corpus for teacher %s: %v", req.TeacherId, err)
+		log.Printf("WARNING: Could not create/verify corpus for teacher %s: %v", req.CorpusName, err)
 		// Continue processing even if corpus creation fails
 	}
 
 	// Call the gRPC microservice
-	resp, err := service.RAGAgentClient(req.TeacherId, req.Message, "")
+	resp, err := service.RAGAgentClient(req.CorpusName, req.Message)
 	if err != nil {
 		log.Printf("ERROR: Failed to process RAG agent request: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent request", "error": err.Error()})
@@ -53,7 +53,7 @@ func RAGAgentHandler(c *gin.Context) {
 	}
 
 	// Process the agent response to determine data content and message
-	responseData, responseMessage, err := processRAGAgentResponse(resp.GetAgentResponse(), req.TeacherId)
+	responseData, responseMessage, err := processRAGAgentResponse(resp.GetAgentResponse(), req.CorpusName)
 	if err != nil {
 		log.Printf("ERROR: Failed to process RAG agent response: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to process RAG agent response", "error": err.Error()})
@@ -63,7 +63,7 @@ func RAGAgentHandler(c *gin.Context) {
 	// Build standardized response format (matching /ai/agent structure)
 	standardizedResponse := map[string]interface{}{
 		"message":      responseMessage,
-		"teacherId":    resp.GetTeacherId(),
+		"corpusName":   resp.GetCorpusName(),
 		"agentName":    resp.GetAgentName(),
 		"data":         responseData,
 		"sessionId":    resp.GetSessionId(),
@@ -432,10 +432,10 @@ func listVertexAICorpusContent(corpusName string) (map[string]interface{}, error
 // processRAGAgentResponse processes the agent response from Python microservice
 // If it's structured JSON with questions, saves them to MongoDB and returns question IDs
 // If it's regular text, returns it as-is
-func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, string, error) {
+func processRAGAgentResponse(agentResponse, CorpusName string) (interface{}, string, error) {
 	log.Printf("=== PROCESS RAG AGENT RESPONSE START ===")
-	log.Printf("[AI] Processing RAG agent response for teacherId: %s", teacherId)
-	log.Printf("[AI] Agent response length: %d characters", len(agentResponse))
+	log.Printf("[AI] Processing RAG agent response for corpusName: %s", CorpusName)
+	log.Printf("[AI] Agent response: %s", agentResponse)
 
 	// Try to parse as JSON to see if it contains structured questions
 	log.Printf("[AI] Attempting to parse agent response as JSON...")
@@ -472,7 +472,7 @@ func processRAGAgentResponse(agentResponse, teacherId string) (interface{}, stri
 
 	// Create result structure
 	result := map[string]interface{}{
-		"corpusUsed":              teacherId,
+		"corpusUsed":              CorpusName,
 		"mcqs":                    make([]interface{}, 0),
 		"msqs":                    make([]interface{}, 0),
 		"nats":                    make([]interface{}, 0),

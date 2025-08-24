@@ -120,17 +120,16 @@ message AgentResponse {
 }
 
 message RAGAgentRequest {
-    string teacherId = 1;
+    string corpusName = 1;
     string message = 2;
-    string file = 3;
-    string role = 4;
-    string createdAt = 5;
-    string updatedAt = 6;
+    string role = 3;
+    string createdAt = 4;
+    string updatedAt = 5;
 }
 
 message RAGAgentResponse {
     string message = 1;
-    string teacherId = 2;
+    string corpusName = 2;
     string agent_name = 3;
     string agent_response = 4;
     string session_id = 5;
