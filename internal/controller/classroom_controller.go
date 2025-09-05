@@ -42,6 +42,8 @@ func CreateClassroom(c *gin.Context) {
 	classroom.Name = req.Name
 	classroom.Credits = req.Credits
 	classroom.Tags = req.Tags
+	// Generate a random classroom code (e.g., 12 alphanumeric chars)
+	classroom.ClassroomCode = utils.GenerateRandomCode(12)
 
 	// Validate and process teachers
 	for _, t := range req.Teachers {

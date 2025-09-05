@@ -12,6 +12,7 @@ type Classroom struct {
 	CreatedAt     time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt" bson:"updatedAt"`
 	IsActive      bool      `json:"isActive" bson:"isActive"`
+	ClassroomCode string    `json:"classroomCode" bson:"classroomCode"`
 }
 
 // NewClassroom creates a new Classroom with default values
@@ -24,5 +25,6 @@ func NewClassroom() *Classroom {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 		IsActive:      true,
+		ClassroomCode: "", // Set code when creating/inviting
 	}
 }
