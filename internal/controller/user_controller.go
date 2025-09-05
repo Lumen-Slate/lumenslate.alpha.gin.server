@@ -4,9 +4,12 @@ import (
 	"context"
 	"lumenslate/internal/model"
 	"lumenslate/internal/repository"
+	"lumenslate/internal/utils"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,16 +22,21 @@ func NewUserController(repo *repository.UserRepository) *UserController {
 }
 
 func (uc *UserController) CreateUser(c *gin.Context) {
-	var user model.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	u := &model.User{}
+	if err := c.ShouldBindJSON(u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := uc.Repo.CreateUser(context.Background(), &user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	u.ID = uuid.New().String()
+	if err := utils.Validate.Struct(u); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, user)
+	if err := uc.Repo.CreateUser(context.Background(), u); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+	c.JSON(http.StatusCreated, u)
 }
 
 func (uc *UserController) GetUser(c *gin.Context) {
@@ -43,32 +51,76 @@ func (uc *UserController) GetUser(c *gin.Context) {
 
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	var update bson.M
-	if err := c.ShouldBindJSON(&update); err != nil {
+	var u model.User
+	if err := c.ShouldBindJSON(&u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := uc.Repo.UpdateUser(context.Background(), id, update); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := utils.Validate.Struct(u); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "User updated"})
+	u.ID = id
+	// Optionally set updatedAt if you add that field
+	if err := uc.Repo.UpdateUser(context.Background(), id, bson.M{
+		"name":         u.Name,
+		"email":        u.Email,
+		"role":         u.Role,
+		"phone_number": u.PhoneNumber,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
+		return
+	}
+	c.JSON(http.StatusOK, u)
 }
 
 func (uc *UserController) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	if err := uc.Repo.DeleteUser(context.Background(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
 }
 
 func (uc *UserController) ListUsers(c *gin.Context) {
-	users, err := uc.Repo.ListUsers(context.Background(), bson.M{}, nil)
+	filters := map[string]string{
+		"email":  c.Query("email"),
+		"phone":  c.Query("phone"),
+		"name":   c.Query("name"),
+		"limit":  c.DefaultQuery("limit", "10"),
+		"offset": c.DefaultQuery("offset", "0"),
+	}
+	query := bson.M{}
+	if filters["email"] != "" {
+		query["email"] = filters["email"]
+	}
+	if filters["phone"] != "" {
+		query["phone_number"] = filters["phone"]
+	}
+	if filters["name"] != "" {
+		query["name"] = filters["name"]
+	}
+	users, err := uc.Repo.ListUsers(context.Background(), query, nil)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
 	c.JSON(http.StatusOK, users)
+}
+
+func (uc *UserController) PatchUser(c *gin.Context) {
+	id := c.Param("id")
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	updates["updatedAt"] = time.Now()
+	if err := uc.Repo.UpdateUser(context.Background(), id, updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch user"})
+		return
+	}
+	user, _ := uc.Repo.GetUserByID(context.Background(), id)
+	c.JSON(http.StatusOK, user)
 }
