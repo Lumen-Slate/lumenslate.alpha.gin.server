@@ -1,9 +1,8 @@
 package controller
 
 import (
-	"context"
 	"lumenslate/internal/model"
-	"lumenslate/internal/repository"
+	repo "lumenslate/internal/repository"
 	"lumenslate/internal/utils"
 	"net/http"
 	"time"
@@ -13,15 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-type UserController struct {
-	Repo *repository.UserRepository
-}
-
-func NewUserController(repo *repository.UserRepository) *UserController {
-	return &UserController{Repo: repo}
-}
-
-func (uc *UserController) CreateUser(c *gin.Context) {
+func CreateUser(c *gin.Context) {
 	u := &model.User{}
 	if err := c.ShouldBindJSON(u); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -32,16 +23,16 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := uc.Repo.CreateUser(context.Background(), u); err != nil {
+	if err := repo.SaveUser(*u); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 	c.JSON(http.StatusCreated, u)
 }
 
-func (uc *UserController) GetUser(c *gin.Context) {
+func GetUser(c *gin.Context) {
 	id := c.Param("id")
-	user, err := uc.Repo.GetUserByID(context.Background(), id)
+	user, err := repo.GetUserByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -49,7 +40,7 @@ func (uc *UserController) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func (uc *UserController) UpdateUser(c *gin.Context) {
+func UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var u model.User
 	if err := c.ShouldBindJSON(&u); err != nil {
@@ -61,29 +52,30 @@ func (uc *UserController) UpdateUser(c *gin.Context) {
 		return
 	}
 	u.ID = id
-	// Optionally set updatedAt if you add that field
-	if err := uc.Repo.UpdateUser(context.Background(), id, bson.M{
+	updates := map[string]interface{}{
 		"name":         u.Name,
 		"email":        u.Email,
 		"role":         u.Role,
 		"phone_number": u.PhoneNumber,
-	}); err != nil {
+	}
+	user, err := repo.PatchUser(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
-	c.JSON(http.StatusOK, u)
+	c.JSON(http.StatusOK, user)
 }
 
-func (uc *UserController) DeleteUser(c *gin.Context) {
+func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
-	if err := uc.Repo.DeleteUser(context.Background(), id); err != nil {
+	if err := repo.DeleteUser(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
 }
 
-func (uc *UserController) ListUsers(c *gin.Context) {
+func ListUsers(c *gin.Context) {
 	filters := map[string]string{
 		"email":  c.Query("email"),
 		"phone":  c.Query("phone"),
@@ -101,7 +93,7 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 	if filters["name"] != "" {
 		query["name"] = filters["name"]
 	}
-	users, err := uc.Repo.ListUsers(context.Background(), query, nil)
+	users, err := repo.GetAllUsers(filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
@@ -109,7 +101,7 @@ func (uc *UserController) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func (uc *UserController) PatchUser(c *gin.Context) {
+func PatchUser(c *gin.Context) {
 	id := c.Param("id")
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
@@ -117,10 +109,10 @@ func (uc *UserController) PatchUser(c *gin.Context) {
 		return
 	}
 	updates["updatedAt"] = time.Now()
-	if err := uc.Repo.UpdateUser(context.Background(), id, updates); err != nil {
+	user, err := repo.PatchUser(id, updates)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to patch user"})
 		return
 	}
-	user, _ := uc.Repo.GetUserByID(context.Background(), id)
 	c.JSON(http.StatusOK, user)
 }

@@ -8,13 +8,12 @@ import (
 
 func RegisterUserRoutes(router *gin.RouterGroup) {
 	user := router.Group("/users")
-	userController := &controller.UserController{}
 	{
-		user.POST("/", userController.CreateUser)
-		user.GET("/:id", userController.GetUser)
-		user.PUT("/:id", userController.UpdateUser)
-		user.PATCH("/:id", userController.PatchUser)
-		user.DELETE("/:id", userController.DeleteUser)
-		user.GET("/", userController.ListUsers)
+		user.POST("/", controller.CreateUser)
+		user.GET("/:id", controller.GetUser)
+		user.PUT("/:id", controller.UpdateUser)
+		user.PATCH("/:id", controller.PatchUser)
+		user.DELETE("/:id", controller.DeleteUser)
+		user.GET("/", controller.ListUsers)
 	}
 }
