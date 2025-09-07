@@ -14,7 +14,9 @@ import (
 
 func SaveClassroom(c model.Classroom) error {
 	ctx := context.Background()
-	_, err := db.GetCollection(db.ClassroomCollection).InsertOne(ctx, c)
+	filter := bson.M{"_id": c.ID}
+	update := bson.M{"$set": c}
+	_, err := db.GetCollection(db.ClassroomCollection).UpdateOne(ctx, filter, update)
 	return err
 }
 
