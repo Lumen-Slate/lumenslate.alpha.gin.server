@@ -6,7 +6,7 @@ type Student struct {
 	ID        string    `json:"id,omitempty" bson:"_id" validate:"omitempty"`
 	Name      string    `json:"name" bson:"name" validate:"required"`
 	Email     string    `json:"email" bson:"email" validate:"required,email"`
-	RollNo    string    `json:"rollNo" bson:"rollNo" validate:"required"`
+	RollNo    *string   `json:"rollNo" bson:"rollNo"`
 	ClassIDs  []string  `json:"classIds" bson:"classIds"`
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
