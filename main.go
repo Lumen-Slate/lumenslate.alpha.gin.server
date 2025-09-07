@@ -116,7 +116,7 @@ func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCo
 	routes.SetupSubjectReportRoutes(router)
 	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
-
+	routes.RegisterUserRoutes(router)
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
 	questions.RegisterNATRoutes(router)
