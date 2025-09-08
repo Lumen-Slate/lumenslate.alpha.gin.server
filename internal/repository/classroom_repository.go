@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -22,11 +21,8 @@ func SaveClassroom(c model.Classroom) error {
 func GetClassroomByID(id string) (*model.Classroom, error) {
 	ctx := context.Background()
 	var c model.Classroom
-	objectID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, err
-	}
-	err = db.GetCollection(db.ClassroomCollection).FindOne(ctx, bson.M{"_id": objectID}).Decode(&c)
+
+	err := db.GetCollection(db.ClassroomCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&c)
 	if err != nil {
 		return nil, err
 	}

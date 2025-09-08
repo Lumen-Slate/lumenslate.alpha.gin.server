@@ -250,29 +250,36 @@ func GetStudentClassrooms(c *gin.Context) {
 
 // JoinClassroomByCode allows a student to join a classroom using classroom code
 func JoinClassroomByCode(c *gin.Context) {
+	logger := utils.NewLogger("student_controller")
+	ctx := c.Request.Context()
+	studentID := c.Param("id")
+	logger.Info(ctx, "JoinClassroomByCode request for studentID="+studentID)
 	var req struct {
-		StudentID     string `json:"studentId" binding:"required"`
 		ClassroomCode string `json:"classroomCode" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Error(ctx, "Invalid request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	student, err := repo.GetStudentByID(req.StudentID)
+	logger.Info(ctx, "Looking up student by ID: "+studentID)
+	student, err := repo.GetStudentByID(studentID)
 	if err != nil || student == nil {
+		logger.Error(ctx, "Student not found for ID="+studentID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Student not found"})
 		return
 	}
 
-	// Find classroom by code
+	logger.Info(ctx, "Looking up classroom by code: "+req.ClassroomCode)
 	classroom, err := repo.GetClassroomByCode(req.ClassroomCode)
 	if err != nil || classroom == nil {
+		logger.Error(ctx, "Classroom not found for code="+req.ClassroomCode, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Classroom not found"})
 		return
 	}
 
-	// Add classroom ID to student's ClassIDs if not already present
+	logger.Info(ctx, "Checking if student already joined classroom: "+classroom.ID)
 	alreadyJoined := false
 	for _, cid := range student.ClassIDs {
 		if cid == classroom.ID {
@@ -280,14 +287,33 @@ func JoinClassroomByCode(c *gin.Context) {
 			break
 		}
 	}
-	if !alreadyJoined {
-		student.ClassIDs = append(student.ClassIDs, classroom.ID)
-		student.UpdatedAt = time.Now()
-		if err := repo.SaveStudent(*student); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join classroom"})
-			return
-		}
+	if alreadyJoined {
+		logger.Info(ctx, "Student already joined classroom")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":       "Student already joined classroom",
+			"studentId":   student.ID,
+			"classroomId": classroom.ID,
+		})
+		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Joined classroom successfully", "student": student, "classroom": classroom})
+	logger.Info(ctx, "Student not joined yet, adding classroomID="+classroom.ID)
+	student.ClassIDs = append(student.ClassIDs, classroom.ID)
+	student.UpdatedAt = time.Now()
+	updates := map[string]interface{}{
+		"classIds":  student.ClassIDs,
+		"updatedAt": student.UpdatedAt,
+	}
+	updatedStudent, err := repo.PatchStudent(student.ID, updates)
+	if err != nil {
+		logger.Error(ctx, "Failed to join classroom for studentID="+studentID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join classroom"})
+		return
+	}
+	student = updatedStudent
+	logger.Info(ctx, "Student joined classroom successfully")
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Joined classroom successfully",
+		"studentId":   student.ID,
+		"classroomId": classroom.ID,
+	})
 }
