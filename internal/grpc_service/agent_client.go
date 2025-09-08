@@ -134,7 +134,7 @@ func LumenAgent(file, fileType, teacherId, role, message, createdAt, updatedAt s
 		UpdatedAt: updatedAt,
 	}
 
-	res, err := client.Agent(ctx, req)
+	res, err := client.LumenAgent(ctx, req)
 	if err != nil {
 		log.Printf("ERROR: gRPC Agent call failed: %v", err)
 		errorResponse := createErrorResponse(teacherId, err.Error(), res)

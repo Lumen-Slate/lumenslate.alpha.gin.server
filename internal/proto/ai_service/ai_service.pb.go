@@ -1423,15 +1423,16 @@ const file_internal_proto_ai_service_proto_rawDesc = "" +
 	"\rresponse_time\x18\b \x01(\tR\fresponseTime\x12\x12\n" +
 	"\x04role\x18\t \x01(\tR\x04role\x12\x1a\n" +
 	"\bfeedback\x18\n" +
-	" \x01(\tR\bfeedback2\xad\x05\n" +
+	" \x01(\tR\bfeedback2\xb2\x05\n" +
 	"\tAIService\x12Z\n" +
 	"\x0fGenerateContext\x12\".ai_service.GenerateContextRequest\x1a#.ai_service.GenerateContextResponse\x12\\\n" +
 	"\x0fDetectVariables\x12#.ai_service.VariableDetectorRequest\x1a$.ai_service.VariableDetectorResponse\x12d\n" +
 	"\x0fSegmentQuestion\x12'.ai_service.QuestionSegmentationRequest\x1a(.ai_service.QuestionSegmentationResponse\x12I\n" +
 	"\x15GenerateMCQVariations\x12\x16.ai_service.MCQRequest\x1a\x18.ai_service.MCQVariation\x12I\n" +
 	"\x15GenerateMSQVariations\x12\x16.ai_service.MSQRequest\x1a\x18.ai_service.MSQVariation\x12e\n" +
-	"\x12FilterAndRandomize\x12&.ai_service.FilterAndRandomizerRequest\x1a'.ai_service.FilterAndRandomizerResponse\x12<\n" +
-	"\x05Agent\x12\x18.ai_service.AgentRequest\x1a\x19.ai_service.AgentResponse\x12E\n" +
+	"\x12FilterAndRandomize\x12&.ai_service.FilterAndRandomizerRequest\x1a'.ai_service.FilterAndRandomizerResponse\x12A\n" +
+	"\n" +
+	"LumenAgent\x12\x18.ai_service.AgentRequest\x1a\x19.ai_service.AgentResponse\x12E\n" +
 	"\bRAGAgent\x12\x1b.ai_service.RAGAgentRequest\x1a\x1c.ai_service.RAGAgentResponseB&Z$internal/proto/ai_service;ai_serviceb\x06proto3"
 
 var (
@@ -1482,7 +1483,7 @@ var file_internal_proto_ai_service_proto_depIdxs = []int32{
 	7,  // 8: ai_service.AIService.GenerateMCQVariations:input_type -> ai_service.MCQRequest
 	10, // 9: ai_service.AIService.GenerateMSQVariations:input_type -> ai_service.MSQRequest
 	13, // 10: ai_service.AIService.FilterAndRandomize:input_type -> ai_service.FilterAndRandomizerRequest
-	17, // 11: ai_service.AIService.Agent:input_type -> ai_service.AgentRequest
+	17, // 11: ai_service.AIService.LumenAgent:input_type -> ai_service.AgentRequest
 	19, // 12: ai_service.AIService.RAGAgent:input_type -> ai_service.RAGAgentRequest
 	1,  // 13: ai_service.AIService.GenerateContext:output_type -> ai_service.GenerateContextResponse
 	3,  // 14: ai_service.AIService.DetectVariables:output_type -> ai_service.VariableDetectorResponse
@@ -1490,7 +1491,7 @@ var file_internal_proto_ai_service_proto_depIdxs = []int32{
 	8,  // 16: ai_service.AIService.GenerateMCQVariations:output_type -> ai_service.MCQVariation
 	11, // 17: ai_service.AIService.GenerateMSQVariations:output_type -> ai_service.MSQVariation
 	14, // 18: ai_service.AIService.FilterAndRandomize:output_type -> ai_service.FilterAndRandomizerResponse
-	18, // 19: ai_service.AIService.Agent:output_type -> ai_service.AgentResponse
+	18, // 19: ai_service.AIService.LumenAgent:output_type -> ai_service.AgentResponse
 	20, // 20: ai_service.AIService.RAGAgent:output_type -> ai_service.RAGAgentResponse
 	13, // [13:21] is the sub-list for method output_type
 	5,  // [5:13] is the sub-list for method input_type

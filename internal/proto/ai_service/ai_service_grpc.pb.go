@@ -25,7 +25,7 @@ const (
 	AIService_GenerateMCQVariations_FullMethodName = "/ai_service.AIService/GenerateMCQVariations"
 	AIService_GenerateMSQVariations_FullMethodName = "/ai_service.AIService/GenerateMSQVariations"
 	AIService_FilterAndRandomize_FullMethodName    = "/ai_service.AIService/FilterAndRandomize"
-	AIService_Agent_FullMethodName                 = "/ai_service.AIService/Agent"
+	AIService_LumenAgent_FullMethodName            = "/ai_service.AIService/LumenAgent"
 	AIService_RAGAgent_FullMethodName              = "/ai_service.AIService/RAGAgent"
 )
 
@@ -39,7 +39,7 @@ type AIServiceClient interface {
 	GenerateMCQVariations(ctx context.Context, in *MCQRequest, opts ...grpc.CallOption) (*MCQVariation, error)
 	GenerateMSQVariations(ctx context.Context, in *MSQRequest, opts ...grpc.CallOption) (*MSQVariation, error)
 	FilterAndRandomize(ctx context.Context, in *FilterAndRandomizerRequest, opts ...grpc.CallOption) (*FilterAndRandomizerResponse, error)
-	Agent(ctx context.Context, in *AgentRequest, opts ...grpc.CallOption) (*AgentResponse, error)
+	LumenAgent(ctx context.Context, in *AgentRequest, opts ...grpc.CallOption) (*AgentResponse, error)
 	RAGAgent(ctx context.Context, in *RAGAgentRequest, opts ...grpc.CallOption) (*RAGAgentResponse, error)
 }
 
@@ -111,10 +111,10 @@ func (c *aIServiceClient) FilterAndRandomize(ctx context.Context, in *FilterAndR
 	return out, nil
 }
 
-func (c *aIServiceClient) Agent(ctx context.Context, in *AgentRequest, opts ...grpc.CallOption) (*AgentResponse, error) {
+func (c *aIServiceClient) LumenAgent(ctx context.Context, in *AgentRequest, opts ...grpc.CallOption) (*AgentResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AgentResponse)
-	err := c.cc.Invoke(ctx, AIService_Agent_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, AIService_LumenAgent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ type AIServiceServer interface {
 	GenerateMCQVariations(context.Context, *MCQRequest) (*MCQVariation, error)
 	GenerateMSQVariations(context.Context, *MSQRequest) (*MSQVariation, error)
 	FilterAndRandomize(context.Context, *FilterAndRandomizerRequest) (*FilterAndRandomizerResponse, error)
-	Agent(context.Context, *AgentRequest) (*AgentResponse, error)
+	LumenAgent(context.Context, *AgentRequest) (*AgentResponse, error)
 	RAGAgent(context.Context, *RAGAgentRequest) (*RAGAgentResponse, error)
 	mustEmbedUnimplementedAIServiceServer()
 }
@@ -171,8 +171,8 @@ func (UnimplementedAIServiceServer) GenerateMSQVariations(context.Context, *MSQR
 func (UnimplementedAIServiceServer) FilterAndRandomize(context.Context, *FilterAndRandomizerRequest) (*FilterAndRandomizerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FilterAndRandomize not implemented")
 }
-func (UnimplementedAIServiceServer) Agent(context.Context, *AgentRequest) (*AgentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Agent not implemented")
+func (UnimplementedAIServiceServer) LumenAgent(context.Context, *AgentRequest) (*AgentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LumenAgent not implemented")
 }
 func (UnimplementedAIServiceServer) RAGAgent(context.Context, *RAGAgentRequest) (*RAGAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RAGAgent not implemented")
@@ -306,20 +306,20 @@ func _AIService_FilterAndRandomize_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AIService_Agent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _AIService_LumenAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AgentRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AIServiceServer).Agent(ctx, in)
+		return srv.(AIServiceServer).LumenAgent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AIService_Agent_FullMethodName,
+		FullMethod: AIService_LumenAgent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AIServiceServer).Agent(ctx, req.(*AgentRequest))
+		return srv.(AIServiceServer).LumenAgent(ctx, req.(*AgentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -374,8 +374,8 @@ var AIService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AIService_FilterAndRandomize_Handler,
 		},
 		{
-			MethodName: "Agent",
-			Handler:    _AIService_Agent_Handler,
+			MethodName: "LumenAgent",
+			Handler:    _AIService_LumenAgent_Handler,
 		},
 		{
 			MethodName: "RAGAgent",
