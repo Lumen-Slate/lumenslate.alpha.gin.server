@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates openssl \
  && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get install -y pkg-config python3-dev default-libmysqlclient-dev build-essential
 WORKDIR /app
 
 # Download Go modules
