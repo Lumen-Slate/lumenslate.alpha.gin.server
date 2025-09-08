@@ -15,5 +15,7 @@ func RegisterStudentRoutes(r *gin.RouterGroup) {
 		students.PUT(":id", controller.UpdateStudent)
 		students.PATCH(":id", controller.PatchStudent)
 		students.DELETE(":id", controller.DeleteStudent)
+		students.GET(":id/classrooms", controller.GetStudentClassrooms)
+		students.POST(":id/join-classroom", controller.JoinClassroomByCode)
 	}
 }

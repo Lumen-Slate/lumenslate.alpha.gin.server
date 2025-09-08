@@ -2,6 +2,7 @@
 package controller
 
 import (
+	"log"
 	"lumenslate/internal/model"
 	repo "lumenslate/internal/repository"
 	"lumenslate/internal/serializer"
@@ -20,68 +21,23 @@ import (
 // @Param classroom body model.Classroom true "Classroom JSON"
 // @Success 201 {object} model.Classroom
 // @Router /classrooms [post]
-type ClassroomCreateRequest struct {
-	Name          string             `json:"name" binding:"required"`
-	TeacherIDs    []string           `json:"teacherIds"`
-	Teachers      []model.Teacher    `json:"teachers"`
-	AssignmentIDs []string           `json:"assignmentIds"`
-	Assignments   []model.Assignment `json:"assignments"`
-	Credits       int                `json:"credits" binding:"required,min=0"`
-	Tags          []string           `json:"tags"`
-}
 
 func CreateClassroom(c *gin.Context) {
-	var req ClassroomCreateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var classroom model.Classroom
+	if err := c.ShouldBindJSON(&classroom); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	classroom := *model.NewClassroom()
 	classroom.ID = uuid.New().String()
-	classroom.Name = req.Name
-	classroom.Credits = req.Credits
-	classroom.Tags = req.Tags
-	// Generate a random classroom code (e.g., 12 alphanumeric chars)
-	classroom.ClassroomCode = utils.GenerateRandomCode(12)
-
-	// Validate and process teachers
-	for _, t := range req.Teachers {
-		if t.ID == "" {
-			t.ID = uuid.New().String()
-		}
-		if err := utils.Validate.Struct(t); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid teacher: " + err.Error()})
-			return
-		}
-		if err := repo.SaveTeacher(t); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save teacher: " + err.Error()})
-			return
-		}
-		classroom.TeacherIDs = append(classroom.TeacherIDs, t.ID)
+	classroom.CreatedAt = time.Now()
+	classroom.UpdatedAt = time.Now()
+	if classroom.ClassroomCode == "" {
+		classroom.ClassroomCode = utils.GenerateRandomCode(12)
 	}
-	classroom.TeacherIDs = append(classroom.TeacherIDs, req.TeacherIDs...)
-
-	// Validate and process assignments
-	for _, a := range req.Assignments {
-		if a.ID == "" {
-			a.ID = uuid.New().String()
-		}
-		if err := utils.Validate.Struct(a); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid assignment: " + err.Error()})
-			return
-		}
-		if err := repo.SaveAssignment(a); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save assignment: " + err.Error()})
-			return
-		}
-		classroom.AssignmentIDs = append(classroom.AssignmentIDs, a.ID)
+	if classroom.IsActive == false {
+		classroom.IsActive = true
 	}
-	classroom.AssignmentIDs = append(classroom.AssignmentIDs, req.AssignmentIDs...)
-
-	// Debugging log (optional)
-	// log.Printf("TeacherIDs: %+v", classroom.TeacherIDs)
-	// log.Printf("AssignmentIDs: %+v", classroom.AssignmentIDs)
 
 	// Validate classroom
 	if err := utils.Validate.Struct(classroom); err != nil {
@@ -174,24 +130,31 @@ func GetAllClassrooms(c *gin.Context) {
 // @Router /classrooms/{id} [put]
 func UpdateClassroom(c *gin.Context) {
 	id := c.Param("id")
+	log.Printf("[UpdateClassroom] Received request for ID: %s", id)
 	var classroom model.Classroom
 	if err := c.ShouldBindJSON(&classroom); err != nil {
+		log.Printf("[UpdateClassroom] JSON binding error for ID %s: %v", id, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[UpdateClassroom] Request body: %+v", classroom)
 	classroom.ID = id
 	classroom.UpdatedAt = time.Now()
 
 	if err := utils.Validate.Struct(classroom); err != nil {
+		log.Printf("[UpdateClassroom] Validation error for ID %s: %v", id, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("[UpdateClassroom] Validation passed for ID: %s", id)
 	if err := repo.SaveClassroom(classroom); err != nil {
+		log.Printf("[UpdateClassroom] DB save error for ID %s: %v", id, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Update failed"})
 		return
 	}
+	log.Printf("[UpdateClassroom] Classroom updated successfully: %s", id)
 	c.JSON(http.StatusOK, classroom)
 }
 

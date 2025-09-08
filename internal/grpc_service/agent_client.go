@@ -113,7 +113,7 @@ func convertKeysToCamelCase(data interface{}) interface{} {
 	}
 }
 
-func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string) (map[string]interface{}, error) {
+func LumenAgent(file, fileType, teacherId, role, message, createdAt, updatedAt string) (map[string]interface{}, error) {
 	client, conn, err := DialGRPC()
 	if err != nil {
 		log.Printf("ERROR: Failed to establish gRPC connection: %v", err)
@@ -134,7 +134,7 @@ func Agent(file, fileType, teacherId, role, message, createdAt, updatedAt string
 		UpdatedAt: updatedAt,
 	}
 
-	res, err := client.Agent(ctx, req)
+	res, err := client.LumenAgent(ctx, req)
 	if err != nil {
 		log.Printf("ERROR: gRPC Agent call failed: %v", err)
 		errorResponse := createErrorResponse(teacherId, err.Error(), res)

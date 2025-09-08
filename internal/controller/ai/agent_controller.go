@@ -55,6 +55,7 @@ func AgentHandler(c *gin.Context) {
 		if err != nil {
 			log.Printf("[AI] Error reading file content: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file content"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read file content"})
 			return
 		}
 
@@ -63,7 +64,7 @@ func AgentHandler(c *gin.Context) {
 		log.Printf("[AI] File processed: %s, size: %d bytes", req.File.Filename, len(fileBytes))
 	}
 
-	resp, err := service.Agent(
+	resp, err := service.LumenAgent(
 		fileContent,
 		req.FileType,
 		req.TeacherId,

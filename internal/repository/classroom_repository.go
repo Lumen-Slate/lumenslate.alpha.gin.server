@@ -21,6 +21,7 @@ func SaveClassroom(c model.Classroom) error {
 func GetClassroomByID(id string) (*model.Classroom, error) {
 	ctx := context.Background()
 	var c model.Classroom
+
 	err := db.GetCollection(db.ClassroomCollection).FindOne(ctx, bson.M{"_id": id}).Decode(&c)
 	if err != nil {
 		return nil, err
@@ -159,4 +160,16 @@ func PatchClassroom(id string, updates map[string]interface{}) (*model.Classroom
 	}
 
 	return &updated, nil
+}
+
+// GetClassroomByCode fetches a classroom by its classroomCode
+func GetClassroomByCode(code string) (*model.Classroom, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var classroom model.Classroom
+	err := db.GetCollection("classrooms").FindOne(ctx, bson.M{"classroomCode": code}).Decode(&classroom)
+	if err != nil {
+		return nil, err
+	}
+	return &classroom, nil
 }
