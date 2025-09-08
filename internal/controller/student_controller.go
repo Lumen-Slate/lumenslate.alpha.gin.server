@@ -232,8 +232,16 @@ func GetStudentClassrooms(c *gin.Context) {
 	}
 
 	if len(classrooms) == 0 {
-		logger.Error(ctx, "No classrooms found for studentID="+studentID, nil)
-		c.JSON(http.StatusNotFound, gin.H{"error": "No classrooms found for this student"})
+		logger.Info(ctx, "No classrooms found for studentID="+studentID)
+		c.JSON(http.StatusOK, gin.H{
+			"classrooms": []model.Classroom{},
+			"pagination": gin.H{
+				"total":    total,
+				"limit":    limit,
+				"offset":   offset,
+				"returned": 0,
+			},
+		})
 		return
 	}
 	logger.Info(ctx, "Returning "+strconv.Itoa(len(classrooms))+" classrooms for studentID="+studentID)
