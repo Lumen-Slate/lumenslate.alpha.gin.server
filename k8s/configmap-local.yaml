@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lumenslate-env-local
+#
+# This ConfigMap is for local development only. Do NOT store secrets here for production.
+#
+data:
+  MONGO_URI: "mongodb+srv://Shubham:YZiXWtDbYKTzXo8C@lumen-slate-core.ggq6fue.mongodb.net/?retryWrites=true&w=majority&appName=lumen-slate-core&tls=true"
+  GOOGLE_CLOUD_LOCATION: "us-central1"
+  GOOGLE_GENAI_USE_VERTEXAI: "True"
+  GOOGLE_PROJECT_ID: "central-hold-468106-i3"
+  GRPC_SERVICE_URL: "localhost:50051"
+  GOOGLE_APPLICATION_CREDENTIALS: "service-account.json"
+  GCS_BUCKET_NAME: "lumenslate"
+  ASYNQ_REDIS_ADDR: "redis:6379"
+  GIN_MODE: "debug"
+

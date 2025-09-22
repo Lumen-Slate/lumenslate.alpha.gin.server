@@ -40,7 +40,63 @@ server/
 
 ---
 
-## 📦 Setup Instructions
+
+
+## ☸️ Kubernetes Deployment (Local & Production)
+
+### 1. Build & Push Docker Image
+
+Build your Docker image and push it to your container registry:
+
+```bash
+docker build -t <your-dockerhub-username>/lumenslate-server:latest .
+docker push <your-dockerhub-username>/lumenslate-server:latest
+```
+
+Update the `image:` field in the appropriate deployment manifest with your image name.
+
+### 2. Choose Environment
+
+- **Local development:** Use manifests in `k8s/configmap-local.yaml` and `k8s/deployment-local.yaml` (debug mode, local DB, etc.)
+- **Production:** Use manifests in `k8s/configmap-prod.yaml` and `k8s/deployment-prod.yaml` (release mode, production DB, resource limits, etc.)
+
+### 3. Deploy to Kubernetes
+
+Apply the ConfigMap and Deployment manifests for your environment:
+
+**Local:**
+```bash
+kubectl apply -f k8s/configmap-local.yaml
+kubectl apply -f k8s/deployment-local.yaml
+```
+
+**Production:**
+```bash
+kubectl apply -f k8s/configmap-prod.yaml
+kubectl apply -f k8s/deployment-prod.yaml
+```
+
+This will create the Deployment, Service, and ConfigMap for your app.
+
+### 4. Access the Service
+
+If running locally (e.g., with minikube):
+
+```bash
+minikube service lumenslate-server-local
+```
+
+Or, port-forward manually:
+
+```bash
+kubectl port-forward svc/lumenslate-server-local 8080:80
+```
+
+For production, use your cloud provider's LoadBalancer or Ingress as appropriate.
+
+---
+
+## 📦 Local Setup Instructions
 
 ### 1. Install Go Dependencies
 

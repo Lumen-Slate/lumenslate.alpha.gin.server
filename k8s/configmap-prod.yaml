@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lumenslate-env-prod
+#
+# This ConfigMap is for non-sensitive production configuration only.
+# Do NOT store secrets here. Use Kubernetes Secrets for sensitive data.
+#
+data:
+  GOOGLE_CLOUD_LOCATION: us-central1
+  GOOGLE_GENAI_USE_VERTEXAI: "True"
+  GOOGLE_PROJECT_ID: central-hold-468106-i3
+  GRPC_SERVICE_URL: ai-microservice:50051
+  GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+  GCS_BUCKET_NAME: lumenslate
+  GIN_MODE: release

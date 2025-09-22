@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumenslate-server-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lumenslate-server-local
+  template:
+    metadata:
+      labels:
+        app: lumenslate-server-local
+    spec:
+      containers:
+      - name: lumenslate-server
+        image: lumenslate-server:local 
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: lumenslate-secret-local
+              key: MONGO_URI
+        - name: ASYNQ_REDIS_ADDR
+          valueFrom:
+            secretKeyRef:
+              name: lumenslate-secret-local
+              key: ASYNQ_REDIS_ADDR
+        envFrom:
+        - configMapRef:
+            name: lumenslate-env-local
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        volumeMounts:
+        - name: env-file
+          mountPath: /secrets
+      volumes:
+      - name: env-file
+        configMap:
+          name: lumenslate-env-local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lumenslate-server-local
+spec:
+  selector:
+    app: lumenslate-server-local
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
