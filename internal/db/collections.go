@@ -28,6 +28,8 @@ const (
 	ReportCardCollection       = "report_cards"
 	DocumentCollection         = "documents"
 	AssignmentResultCollection = "assignment_results"
+	SubscriptionCollection     = "subscriptions"
+	UsageTrackingCollection    = "usage_tracking"
 )
 
 // GetCollection returns a reference to the specified collection
