@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
 	"lumenslate/internal/db"
+	"lumenslate/internal/middleware"
 	"lumenslate/internal/routes"
 	"lumenslate/internal/routes/questions"
 	"lumenslate/internal/service"
@@ -55,11 +55,19 @@ func main() {
 	gin.DisableConsoleColor()
 	router := gin.New()
 
+	// Initialize Firebase Authentication
+	firebaseAuth, err := middleware.InitializeFirebaseAuth()
+	if err != nil {
+		log.Fatalf("❌ Failed to initialize Firebase Auth: %v", err)
+	}
+	log.Println("✅ Firebase Authentication initialized successfully")
+
+	// Global middleware
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
 		SkipPaths: []string{"/health"}, // Skip logging health checks
 	}))
 	router.Use(gin.Recovery())
-	router.Use(cors.Default())
+	router.Use(middleware.DefaultCORSMiddleware()) // Use our custom CORS middleware
 	router.RedirectTrailingSlash = false
 	router.RedirectFixedPath = false
 	router.Static("/media", "./media")
@@ -67,11 +75,17 @@ func main() {
 	// Initialize metrics collector for monitoring
 	metricsCollector := initializeMetricsCollector()
 
-	// Create API v1 group
+	// Create API v1 group with optional auth (for backward compatibility)
 	apiV1 := router.Group("/api/v1")
+	apiV1.Use(middleware.OptionalAuthMiddleware(firebaseAuth.GetAuthClient()))
+
+	// Create protected API v1 group (requires authentication)
+	protectedV1 := router.Group("/api/v1/protected")
+	protectedV1.Use(middleware.AuthMiddleware(firebaseAuth.GetAuthClient()))
 
 	// Register all API routes under /api/v1
 	registerRoutes(apiV1, metricsCollector, startTime)
+	registerProtectedRoutes(protectedV1, metricsCollector, startTime)
 
 	// Health and docs endpoints remain at root
 	router.GET("/health", func(c *gin.Context) {
@@ -118,7 +132,10 @@ func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCo
 	routes.SetupAgentReportCardRoutes(router)
 	routes.RegisterUserRoutes(router)
 
-	// Subscription and Usage Tracking
+	// Authentication routes (with optional auth for backward compatibility)
+	routes.RegisterAuthRoutes(router)
+
+	// Subscription and Usage Tracking (with optional auth for backward compatibility)
 	routes.RegisterSubscriptionRoutes(router)
 	routes.RegisterUsageTrackingRoutes(router)
 
@@ -126,6 +143,17 @@ func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCo
 	questions.RegisterMSQRoutes(router)
 	questions.RegisterNATRoutes(router)
 	questions.RegisterSubjectiveRoutes(router)
+}
+
+// registerProtectedRoutes registers routes that require authentication
+func registerProtectedRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCollector, startTime time.Time) {
+	// Protected authentication routes
+	routes.RegisterProtectedAuthRoutes(router)
+
+	// You can add other protected routes here as needed
+	// For example:
+	// routes.RegisterProtectedSubscriptionRoutes(router)
+	// routes.RegisterProtectedUsageTrackingRoutes(router)
 }
 
 func logADCIdentity() {
