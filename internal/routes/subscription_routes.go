@@ -7,7 +7,7 @@ import (
 )
 
 // RegisterSubscriptionRoutes registers subscription management routes
-func RegisterSubscriptionRoutes(router *gin.Engine) {
+func RegisterSubscriptionRoutes(router *gin.RouterGroup) {
 	subscriptions := router.Group("/subscriptions")
 	{
 		// Basic CRUD operations
@@ -24,14 +24,11 @@ func RegisterSubscriptionRoutes(router *gin.Engine) {
 		// Query operations
 		subscriptions.GET("", controller.GetSubscriptionsByStatus)   // Get subscriptions by status (query param: status)
 		subscriptions.GET("/stats", controller.GetSubscriptionStats) // Get subscription statistics
-	}
 
-	// User-specific subscription routes
-	users := router.Group("/users")
-	{
-		users.GET("/:userId/subscription", controller.GetUserSubscription)                // Get active subscription for user
-		users.GET("/:userId/subscriptions", controller.GetAllUserSubscriptions)           // Get all subscriptions for user
-		users.GET("/:userId/subscription/status", controller.CheckUserSubscriptionStatus) // Check if user is subscribed
+		// User-specific subscription routes under /subscriptions
+		subscriptions.GET("/user/:id", controller.GetUserSubscription)                // Get active subscription for user
+		subscriptions.GET("/user/:id/all", controller.GetAllUserSubscriptions)        // Get all subscriptions for user
+		subscriptions.GET("/user/:id/status", controller.CheckUserSubscriptionStatus) // Check if user is subscribed
 	}
 
 	// Admin operations

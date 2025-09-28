@@ -117,6 +117,11 @@ func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCo
 	routes.SetupReportCardRoutes(router)
 	routes.SetupAgentReportCardRoutes(router)
 	routes.RegisterUserRoutes(router)
+
+	// Subscription and Usage Tracking
+	routes.RegisterSubscriptionRoutes(router)
+	routes.RegisterUsageTrackingRoutes(router)
+
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
 	questions.RegisterNATRoutes(router)

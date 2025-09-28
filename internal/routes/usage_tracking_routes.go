@@ -7,7 +7,7 @@ import (
 )
 
 // RegisterUsageTrackingRoutes registers usage tracking routes
-func RegisterUsageTrackingRoutes(router *gin.Engine) {
+func RegisterUsageTrackingRoutes(router *gin.RouterGroup) {
 	usage := router.Group("/usage")
 	{
 		// Get all usage tracking records with filters
@@ -15,37 +15,33 @@ func RegisterUsageTrackingRoutes(router *gin.Engine) {
 
 		// Get usage summary by period
 		usage.GET("/summary/:period", controller.GetUsageSummaryByPeriod) // Get aggregated usage for a period
-	}
 
-	// User-specific usage tracking routes
-	users := router.Group("/users/:userId/usage")
-	{
-		// Get usage metrics and history
-		users.GET("/current", controller.GetCurrentUsageMetrics)          // Get current period usage metrics
-		users.GET("/aggregated", controller.GetAggregatedUsageMetrics)    // Get all-time aggregated usage metrics
-		users.GET("/history", controller.GetAllUserUsageHistory)          // Get all usage history for user
-		users.GET("/period/:period", controller.GetUsageTrackingByPeriod) // Get usage for specific period
+		// User-specific usage tracking routes under /usage
+		usage.GET("/user/:id/current", controller.GetCurrentUsageMetrics)          // Get current period usage metrics
+		usage.GET("/user/:id/aggregated", controller.GetAggregatedUsageMetrics)    // Get all-time aggregated usage metrics
+		usage.GET("/user/:id/history", controller.GetAllUserUsageHistory)          // Get all usage history for user
+		usage.GET("/user/:id/period/:period", controller.GetUsageTrackingByPeriod) // Get usage for specific period
 
 		// Reset usage (admin function)
-		users.POST("/reset", controller.ResetUserUsage) // Reset usage counters for current period
+		usage.POST("/user/:id/reset", controller.ResetUserUsage) // Reset usage counters for current period
 
 		// Track usage with JSON payload (detailed tracking)
-		users.POST("/track/question-banks", controller.TrackQuestionBankUsage)         // Track question bank usage
-		users.POST("/track/questions", controller.TrackQuestionUsage)                  // Track question usage
-		users.POST("/track/ia-agent", controller.TrackIAUsage)                         // Track IA usage
-		users.POST("/track/lumen-agent", controller.TrackLumenAgentUsage)              // Track Lumen Agent usage
-		users.POST("/track/ra-agent", controller.TrackRAAgentUsage)                    // Track RA Agent usage
-		users.POST("/track/recap-classes", controller.TrackRecapClassUsage)            // Track recap classes usage
-		users.POST("/track/assignment-exports", controller.TrackAssignmentExportUsage) // Track assignment exports usage
-		users.POST("/track/bulk", controller.TrackBulkUsage)                           // Track multiple usage types at once
+		usage.POST("/user/:id/track/question-banks", controller.TrackQuestionBankUsage)         // Track question bank usage
+		usage.POST("/user/:id/track/questions", controller.TrackQuestionUsage)                  // Track question usage
+		usage.POST("/user/:id/track/ia-agent", controller.TrackIAUsage)                         // Track IA usage
+		usage.POST("/user/:id/track/lumen-agent", controller.TrackLumenAgentUsage)              // Track Lumen Agent usage
+		usage.POST("/user/:id/track/ra-agent", controller.TrackRAAgentUsage)                    // Track RA Agent usage
+		usage.POST("/user/:id/track/recap-classes", controller.TrackRecapClassUsage)            // Track recap classes usage
+		usage.POST("/user/:id/track/assignment-exports", controller.TrackAssignmentExportUsage) // Track assignment exports usage
+		usage.POST("/user/:id/track/bulk", controller.TrackBulkUsage)                           // Track multiple usage types at once
 
-		// Simple increment endpoints (GET requests for easy integration)
-		users.POST("/increment/question-banks", controller.IncrementQuestionBankUsage)         // Increment question bank usage
-		users.POST("/increment/questions", controller.IncrementQuestionUsage)                  // Increment question usage
-		users.POST("/increment/ia-agent", controller.IncrementIAUsage)                         // Increment IA usage
-		users.POST("/increment/lumen-agent", controller.IncrementLumenAgentUsage)              // Increment Lumen Agent usage
-		users.POST("/increment/ra-agent", controller.IncrementRAAgentUsage)                    // Increment RA Agent usage
-		users.POST("/increment/recap-classes", controller.IncrementRecapClassUsage)            // Increment recap classes usage
-		users.POST("/increment/assignment-exports", controller.IncrementAssignmentExportUsage) // Increment assignment exports usage
+		// Simple increment endpoints
+		usage.POST("/user/:id/increment/question-banks", controller.IncrementQuestionBankUsage)         // Increment question bank usage
+		usage.POST("/user/:id/increment/questions", controller.IncrementQuestionUsage)                  // Increment question usage
+		usage.POST("/user/:id/increment/ia-agent", controller.IncrementIAUsage)                         // Increment IA usage
+		usage.POST("/user/:id/increment/lumen-agent", controller.IncrementLumenAgentUsage)              // Increment Lumen Agent usage
+		usage.POST("/user/:id/increment/ra-agent", controller.IncrementRAAgentUsage)                    // Increment RA Agent usage
+		usage.POST("/user/:id/increment/recap-classes", controller.IncrementRecapClassUsage)            // Increment recap classes usage
+		usage.POST("/user/:id/increment/assignment-exports", controller.IncrementAssignmentExportUsage) // Increment assignment exports usage
 	}
 }

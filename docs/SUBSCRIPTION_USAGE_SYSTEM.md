@@ -112,7 +112,7 @@ db.usage_tracking.createIndex({ "user_id": 1 })
 
 #### Create Subscription
 ```
-POST /subscriptions
+POST /api/v1/subscriptions
 Content-Type: application/json
 
 {
@@ -126,24 +126,24 @@ Content-Type: application/json
 
 #### Get User's Active Subscription
 ```
-GET /users/{userId}/subscription
+GET /api/v1/subscriptions/user/{id}
 ```
 
 #### Cancel Subscription
 ```
-DELETE /subscriptions/{id}
+DELETE /api/v1/subscriptions/{id}
 ```
 
 #### Schedule Cancellation
 ```
-POST /subscriptions/{id}/schedule-cancellation
+POST /api/v1/subscriptions/{id}/schedule-cancellation
 ```
 
 ### Usage Tracking
 
 #### Track Question Bank Usage
 ```
-POST /users/{userId}/usage/track/question-banks
+POST /api/v1/usage/user/{id}/track/question-banks
 Content-Type: application/json
 
 {
@@ -153,12 +153,12 @@ Content-Type: application/json
 
 #### Simple Increment (with query param)
 ```
-POST /users/{userId}/usage/increment/ia-agent?count=1
+POST /api/v1/usage/user/{id}/increment/ia-agent?count=1
 ```
 
 #### Bulk Usage Tracking
 ```
-POST /users/{userId}/usage/track/bulk
+POST /api/v1/usage/user/{id}/track/bulk
 Content-Type: application/json
 
 {
@@ -171,12 +171,12 @@ Content-Type: application/json
 
 #### Get Current Usage Metrics
 ```
-GET /users/{userId}/usage/current
+GET /api/v1/usage/user/{id}/current
 ```
 
 #### Get Usage History
 ```
-GET /users/{userId}/usage/history
+GET /api/v1/usage/user/{id}/history
 ```
 
 ## Usage Examples

@@ -47,7 +47,7 @@ func GetSubscription(c *gin.Context) {
 
 // GetUserSubscription retrieves the active subscription for a user
 func GetUserSubscription(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 	subscription, err := subscriptionService.GetUserSubscription(userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "No active subscription found for user"})
@@ -58,7 +58,7 @@ func GetUserSubscription(c *gin.Context) {
 
 // GetAllUserSubscriptions retrieves all subscriptions for a user
 func GetAllUserSubscriptions(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 	subscriptions, err := subscriptionService.GetAllUserSubscriptions(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user subscriptions"})
@@ -154,7 +154,7 @@ func RenewSubscription(c *gin.Context) {
 
 // CheckUserSubscriptionStatus checks if a user has an active subscription
 func CheckUserSubscriptionStatus(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 	isSubscribed, err := subscriptionService.IsUserSubscribed(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check subscription status"})

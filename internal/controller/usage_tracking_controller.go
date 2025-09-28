@@ -13,7 +13,7 @@ var usageTrackingService = service.NewUsageTrackingService()
 
 // TrackQuestionBankUsage tracks question bank usage for a user
 func TrackQuestionBankUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -34,7 +34,7 @@ func TrackQuestionBankUsage(c *gin.Context) {
 
 // TrackQuestionUsage tracks question usage for a user
 func TrackQuestionUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -55,7 +55,7 @@ func TrackQuestionUsage(c *gin.Context) {
 
 // TrackIAUsage tracks Intelligent Agent usage for a user
 func TrackIAUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -76,7 +76,7 @@ func TrackIAUsage(c *gin.Context) {
 
 // TrackLumenAgentUsage tracks Lumen Agent usage for a user
 func TrackLumenAgentUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -97,7 +97,7 @@ func TrackLumenAgentUsage(c *gin.Context) {
 
 // TrackRAAgentUsage tracks Research Assistant Agent usage for a user
 func TrackRAAgentUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -118,7 +118,7 @@ func TrackRAAgentUsage(c *gin.Context) {
 
 // TrackRecapClassUsage tracks recap class usage for a user
 func TrackRecapClassUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -139,7 +139,7 @@ func TrackRecapClassUsage(c *gin.Context) {
 
 // TrackAssignmentExportUsage tracks assignment export usage for a user
 func TrackAssignmentExportUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req struct {
 		Count int64 `json:"count"`
@@ -160,7 +160,7 @@ func TrackAssignmentExportUsage(c *gin.Context) {
 
 // TrackBulkUsage tracks multiple usage types for a user in a single request
 func TrackBulkUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	var req service.BulkUsageTrackingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -185,7 +185,7 @@ func TrackBulkUsage(c *gin.Context) {
 
 // GetCurrentUsageMetrics retrieves current usage metrics for a user
 func GetCurrentUsageMetrics(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	metrics, err := usageTrackingService.GetCurrentUsageMetrics(userID)
 	if err != nil {
@@ -198,7 +198,7 @@ func GetCurrentUsageMetrics(c *gin.Context) {
 
 // GetAggregatedUsageMetrics retrieves aggregated usage metrics for a user
 func GetAggregatedUsageMetrics(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	metrics, err := usageTrackingService.GetAggregatedUserUsage(userID)
 	if err != nil {
@@ -211,7 +211,7 @@ func GetAggregatedUsageMetrics(c *gin.Context) {
 
 // GetUsageTrackingByPeriod retrieves usage tracking for a specific user and period
 func GetUsageTrackingByPeriod(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 	period := c.Param("period")
 
 	usage, err := usageTrackingService.GetUsageTrackingByPeriod(userID, period)
@@ -225,7 +225,7 @@ func GetUsageTrackingByPeriod(c *gin.Context) {
 
 // GetAllUserUsageHistory retrieves all usage tracking records for a user
 func GetAllUserUsageHistory(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	usageHistory, err := usageTrackingService.GetAllUserUsageHistory(userID)
 	if err != nil {
@@ -269,7 +269,7 @@ func GetUsageSummaryByPeriod(c *gin.Context) {
 
 // ResetUserUsage resets usage counters for a user (creates new tracking record for current period)
 func ResetUserUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	newUsage, err := usageTrackingService.ResetUserUsage(userID)
 	if err != nil {
@@ -287,7 +287,7 @@ func ResetUserUsage(c *gin.Context) {
 
 // IncrementQuestionBankUsage increments question bank usage by 1
 func IncrementQuestionBankUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -310,7 +310,7 @@ func IncrementQuestionBankUsage(c *gin.Context) {
 
 // IncrementQuestionUsage increments question usage by 1
 func IncrementQuestionUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -333,7 +333,7 @@ func IncrementQuestionUsage(c *gin.Context) {
 
 // IncrementIAUsage increments IA usage by 1
 func IncrementIAUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -356,7 +356,7 @@ func IncrementIAUsage(c *gin.Context) {
 
 // IncrementLumenAgentUsage increments Lumen Agent usage by 1
 func IncrementLumenAgentUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -379,7 +379,7 @@ func IncrementLumenAgentUsage(c *gin.Context) {
 
 // IncrementRAAgentUsage increments RA Agent usage by 1
 func IncrementRAAgentUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -402,7 +402,7 @@ func IncrementRAAgentUsage(c *gin.Context) {
 
 // IncrementRecapClassUsage increments recap class usage by 1
 func IncrementRecapClassUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
@@ -425,7 +425,7 @@ func IncrementRecapClassUsage(c *gin.Context) {
 
 // IncrementAssignmentExportUsage increments assignment export usage by 1
 func IncrementAssignmentExportUsage(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.Param("id")
 
 	// Get count from query parameter, default to 1
 	count := int64(1)
