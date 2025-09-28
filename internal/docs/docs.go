@@ -15,6 +15,91 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/ai/agent": {
+            "post": {
+                "description": "Process requests using the AI Agent gRPC service with support for file uploads. Handles text processing, analysis, and generation tasks for educational content.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Agent"
+                ],
+                "summary": "Process Request with AI Agent",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teacher ID for context and personalization",
+                        "name": "teacherId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Role/context for the AI agent processing",
+                        "name": "role",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message or prompt for the AI agent",
+                        "name": "message",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Optional file upload for processing",
+                        "name": "file",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type of the uploaded file (if file is provided)",
+                        "name": "fileType",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Creation timestamp (ISO format)",
+                        "name": "createdAt",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Update timestamp (ISO format)",
+                        "name": "updatedAt",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "AI agent response with processed data and metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body, missing required fields, or file processing error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during AI processing",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/ai/detect-variables": {
             "post": {
                 "description": "Detects variables in the provided question using AI",
@@ -35,7 +120,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.DetectVariablesRequest"
+                            "$ref": "#/definitions/ai.DetectVariablesRequest"
                         }
                     }
                 ],
@@ -64,6 +149,114 @@ const docTemplate = `{
                 }
             }
         },
+        "/ai/documents/view/{id}": {
+            "get": {
+                "description": "Generate a time-limited pre-signed URL to securely view a document stored in Google Cloud Storage. The URL expires after 30 minutes for security purposes.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Generate Pre-signed URL for Document Viewing",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID (unique identifier for the document)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pre-signed URL generated successfully with document metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing document ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found in database or storage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during URL generation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/documents/{id}": {
+            "delete": {
+                "description": "Delete a document from RAG corpus, Google Cloud Storage, and database using its unique document ID. This is a comprehensive deletion that removes all traces of the document from the system.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Delete Document by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID (unique identifier for the document to delete)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document deleted successfully from all systems",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing document ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during deletion process",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/ai/filter-randomize": {
             "post": {
                 "description": "Filters and randomizes variables in a question using AI",
@@ -84,7 +277,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.FilterAndRandomizeRequest"
+                            "$ref": "#/definitions/ai.FilterAndRandomizeRequest"
                         }
                     }
                 ],
@@ -133,7 +326,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.GenerateContextRequest"
+                            "$ref": "#/definitions/ai.GenerateContextRequest"
                         }
                     }
                 ],
@@ -182,7 +375,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.GenerateMCQVariationsRequest"
+                            "$ref": "#/definitions/ai.GenerateMCQVariationsRequest"
                         }
                     }
                 ],
@@ -231,7 +424,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.GenerateMSQVariationsRequest"
+                            "$ref": "#/definitions/ai.GenerateMSQVariationsRequest"
                         }
                     }
                 ],
@@ -252,6 +445,489 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/operations/status": {
+            "post": {
+                "description": "Check the status of a Vertex AI operation (like RAG file import)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Operations"
+                ],
+                "summary": "Check Vertex AI Operation Status",
+                "parameters": [
+                    {
+                        "description": "Operation status request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.CheckOperationStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Operation status retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent": {
+            "post": {
+                "description": "Process text input using Retrieval-Augmented Generation (RAG) agent for intelligent knowledge retrieval and response generation. Creates/verifies teacher-specific corpus automatically.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI RAG Agent"
+                ],
+                "summary": "Process Text with RAG Agent",
+                "parameters": [
+                    {
+                        "description": "RAG agent request with teacher ID, role, and message",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.RAGAgentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "RAG agent response with message, data, and metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or missing required fields",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during RAG processing",
+                        "schema": {
+                            "$ref": "#/definitions/gin.H"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/add-corpus-document": {
+            "post": {
+                "description": "Upload a document file to Google Cloud Storage and enqueue it for asynchronous processing with Vertex AI RAG corpus. Returns immediately with pending status. Supports PDF, TXT, DOCX, DOC, HTML, and MD file formats.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Upload Document to RAG Corpus (Async)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name of the RAG corpus to add the document to",
+                        "name": "corpusName",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Document file to upload (supported formats: PDF, TXT, DOCX, DOC, HTML, MD)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document uploaded successfully and queued for processing with pending status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, unsupported file type, or missing required fields",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during upload or task enqueue process",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/corpus/{corpusName}/documents": {
+            "get": {
+                "description": "List all documents in a specific RAG corpus with cross-verification between database and RAG engine. Returns unified document information including storage status.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI RAG Management"
+                ],
+                "summary": "List Documents in RAG Corpus",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name of the corpus to list documents for",
+                        "name": "corpusName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of documents with unified information from database and RAG engine",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing corpus name",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during document retrieval",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/create-corpus": {
+            "post": {
+                "description": "Create a new RAG corpus in Vertex AI for document storage and retrieval. If the corpus already exists, returns the existing corpus information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI RAG Management"
+                ],
+                "summary": "Create RAG Corpus",
+                "parameters": [
+                    {
+                        "description": "Corpus creation request containing the corpus name",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.CreateCorpusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Corpus created or retrieved successfully with corpus details",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or missing corpus name",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during corpus creation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/delete-corpus-document": {
+            "post": {
+                "description": "Delete a specific document from a RAG corpus using its file identifier (fileId, RAG file ID, or display name). This operation removes the document from the RAG corpus, Google Cloud Storage, and local database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Delete Document from RAG Corpus",
+                "parameters": [
+                    {
+                        "description": "Delete corpus document request containing corpus name and file identifier",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.DeleteCorpusDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document deleted successfully with deletion status for each component",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or missing required fields",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Document or corpus not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during deletion process",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/document-status/{fileId}": {
+            "get": {
+                "description": "Retrieve the current processing status of a document by its file ID. Returns status information including processing state, error messages (if any), and last update timestamp.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Get Document Processing Status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document file ID (unique identifier for the document)",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document status retrieved successfully with fileId, status, errorMsg, and updatedAt",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or missing file ID parameter",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during status retrieval",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/list-all-corpora": {
+            "post": {
+                "description": "Retrieve a comprehensive list of all RAG corpora available in the Vertex AI project, including their display names, creation times, and update times.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI RAG Management"
+                ],
+                "summary": "List All RAG Corpora",
+                "responses": {
+                    "200": {
+                        "description": "List of all corpora with their metadata and count",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during corpora retrieval from Vertex AI",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/list-corpus-content": {
+            "post": {
+                "description": "List all documents/files inside a RAG corpus",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI RAG Management"
+                ],
+                "summary": "List RAG Corpus Content",
+                "parameters": [
+                    {
+                        "description": "Request body with corpus name to list content for",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ai.CreateCorpusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of documents in the corpus with metadata",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or missing corpus name",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during content retrieval",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/rag-agent/sync-file-ids": {
+            "post": {
+                "description": "Find and update missing RAG file IDs in the database by matching with actual RAG engine files",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI Document Management"
+                ],
+                "summary": "Sync RAG File IDs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name of the RAG corpus to sync",
+                        "name": "corpusName",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync completed successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -280,7 +956,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.SegmentQuestionRequest"
+                            "$ref": "#/definitions/ai.SegmentQuestionRequest"
                         }
                     }
                 ],
@@ -309,6 +985,1868 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/assignment-results": {
+            "get": {
+                "description": "Retrieves all assignment results with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assignment-results"
+                ],
+                "summary": "Get all assignment results",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by student ID",
+                        "name": "studentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by assignment ID",
+                        "name": "assignmentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Limit number of results (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Offset for pagination (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new assignment result",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assignment-results"
+                ],
+                "summary": "Create assignment result",
+                "parameters": [
+                    {
+                        "description": "Assignment result data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AssignmentResult"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/assignment-results/{id}": {
+            "get": {
+                "description": "Retrieves a specific assignment result by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assignment-results"
+                ],
+                "summary": "Get assignment result by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Assignment Result ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates a specific assignment result by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assignment-results"
+                ],
+                "summary": "Update assignment result",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Assignment Result ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a specific assignment result by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assignment-results"
+                ],
+                "summary": "Delete assignment result",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Assignment Result ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/report-cards": {
+            "get": {
+                "description": "Retrieves all report cards with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "report-cards"
+                ],
+                "summary": "Get all report cards",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by student ID",
+                        "name": "studentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by academic term",
+                        "name": "academicTerm",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Limit number of results (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Offset for pagination (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/report-cards/{id}": {
+            "get": {
+                "description": "Retrieves a specific report card by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "report-cards"
+                ],
+                "summary": "Get report card by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report Card ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates a specific report card by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "report-cards"
+                ],
+                "summary": "Update report card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report Card ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a specific report card by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "report-cards"
+                ],
+                "summary": "Delete report card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report Card ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students/{studentId}/subject-reports": {
+            "get": {
+                "description": "Retrieves all subject reports for a specific student",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subject-reports"
+                ],
+                "summary": "Get subject reports by student ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student ID",
+                        "name": "studentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/subject-reports": {
+            "get": {
+                "description": "Retrieves all subject reports with optional filtering",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subject-reports"
+                ],
+                "summary": "Get all subject reports",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by student ID",
+                        "name": "studentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by subject",
+                        "name": "subject",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Limit number of results (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Offset for pagination (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/subject-reports/{id}": {
+            "get": {
+                "description": "Retrieves a specific subject report by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subject-reports"
+                ],
+                "summary": "Get subject report by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subject Report ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates a specific subject report by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subject-reports"
+                ],
+                "summary": "Update subject report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subject Report ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a specific subject report by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subject-reports"
+                ],
+                "summary": "Delete subject report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subject Report ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/subscriptions/process-expired": {
+            "post": {
+                "description": "Processes subscriptions that have expired and should be cancelled (admin endpoint)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Process expired subscriptions",
+                "responses": {
+                    "200": {
+                        "description": "Processing results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to process expired subscriptions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions": {
+            "get": {
+                "description": "Retrieves subscriptions filtered by their status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscriptions by status",
+                "parameters": [
+                    {
+                        "enum": [
+                            "active",
+                            "scheduled_to_cancel",
+                            "cancelled",
+                            "inactive"
+                        ],
+                        "type": "string",
+                        "description": "Subscription status",
+                        "name": "status",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved subscriptions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Subscription"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch subscriptions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a new subscription for a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Create a new subscription",
+                "parameters": [
+                    {
+                        "description": "Subscription data",
+                        "name": "subscription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CreateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successfully created subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/stats": {
+            "get": {
+                "description": "Returns statistical information about subscriptions",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription statistics",
+                "responses": {
+                    "200": {
+                        "description": "Subscription statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch subscription statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/user/{id}": {
+            "get": {
+                "description": "Retrieves the active subscription for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get active subscription for user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved user subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "404": {
+                        "description": "No active subscription found for user",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/user/{id}/all": {
+            "get": {
+                "description": "Retrieves all subscriptions (active and inactive) for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get all subscriptions for user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved user subscriptions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Subscription"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch user subscriptions",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/user/{id}/status": {
+            "get": {
+                "description": "Checks if a user has an active subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Check user subscription status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User subscription status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to check subscription status",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/{id}": {
+            "get": {
+                "description": "Retrieves a specific subscription by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "404": {
+                        "description": "Subscription not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates an existing subscription",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Update subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated subscription data",
+                        "name": "subscription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UpdateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully updated subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Immediately cancels an active subscription",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Cancel subscription immediately",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully cancelled subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/{id}/reactivate": {
+            "post": {
+                "description": "Reactivates a subscription that was scheduled for cancellation",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Reactivate subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully reactivated subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/{id}/renew": {
+            "post": {
+                "description": "Renews a subscription for the next billing period",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Renew subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Renewal data with new_period_end",
+                        "name": "renewal",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully renewed subscription",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/{id}/schedule-cancellation": {
+            "post": {
+                "description": "Schedules a subscription for cancellation at the end of the current billing period",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Schedule subscription cancellation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully scheduled cancellation",
+                        "schema": {
+                            "$ref": "#/definitions/model.Subscription"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage": {
+            "get": {
+                "description": "Retrieves all usage tracking records with optional filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get all usage tracking records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by period",
+                        "name": "period",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination limit (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracking records",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.UsageTracking"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch usage tracking records",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/summary/{period}": {
+            "get": {
+                "description": "Retrieves aggregated usage summary for a specific period",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get usage summary by period",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Period (e.g., 2023-12)",
+                        "name": "period",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage summary for period",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch usage summary",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/aggregated": {
+            "get": {
+                "description": "Retrieves all-time aggregated usage metrics for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get aggregated usage metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Aggregated usage metrics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch aggregated usage metrics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/current": {
+            "get": {
+                "description": "Retrieves current period usage metrics for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get current usage metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current usage metrics",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageTracking"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch usage metrics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/history": {
+            "get": {
+                "description": "Retrieves all usage tracking records for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get user usage history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User usage history",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.UsageTracking"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch usage history",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/increment/question-banks": {
+            "post": {
+                "description": "Increments question bank usage by 1 or specified count",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Increment question bank usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Usage count to increment (default 1)",
+                        "name": "count",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage incremented successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/increment/questions": {
+            "post": {
+                "description": "Increments question usage by 1 or specified count",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Increment question usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Usage count to increment (default 1)",
+                        "name": "count",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage incremented successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/period/{period}": {
+            "get": {
+                "description": "Retrieves usage tracking for a specific user and period",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get usage by period",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Period (e.g., 2023-12)",
+                        "name": "period",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracking for period",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageTracking"
+                        }
+                    },
+                    "404": {
+                        "description": "Usage tracking not found for the specified period",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/reset": {
+            "post": {
+                "description": "Resets usage counters for a user (creates new tracking record for current period)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Reset user usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage reset successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to reset usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/track/bulk": {
+            "post": {
+                "description": "Tracks multiple usage types for a user in a single request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Track bulk usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Bulk usage data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.BulkUsageTrackingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Bulk usage tracked successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/track/ia-agent": {
+            "post": {
+                "description": "Tracks Intelligent Agent usage for a specific user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Track IA usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Usage count",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracked successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/track/question-banks": {
+            "post": {
+                "description": "Tracks question bank usage for a specific user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Track question bank usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Usage count",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracked successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/track/questions": {
+            "post": {
+                "description": "Tracks question usage for a specific user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Track question usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Usage count",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracked successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/assignments": {
             "get": {
                 "produces": [
@@ -329,6 +2867,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by due date",
                         "name": "dueDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in title or body (partial match)",
+                        "name": "q",
                         "in": "query"
                     },
                     {
@@ -404,13 +2948,19 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Extended view with populated relations",
+                        "name": "extended",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Assignment"
+                            "$ref": "#/definitions/serializer.AssignmentExtended"
                         }
                     }
                 }
@@ -558,6 +3108,30 @@ const docTemplate = `{
                         "description": "Offset",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by teacher ID",
+                        "name": "teacherId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by tags",
+                        "name": "tags",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in name (partial match)",
+                        "name": "q",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -568,37 +3142,6 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/model.Classroom"
                             }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Classrooms"
-                ],
-                "summary": "Create Classroom",
-                "parameters": [
-                    {
-                        "description": "Classroom JSON",
-                        "name": "classroom",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Classroom"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/model.Classroom"
                         }
                     }
                 }
@@ -932,6 +3475,173 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns basic health status of the application",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Basic Health Check",
+                "responses": {
+                    "200": {
+                        "description": "Application is healthy",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health/background-processing": {
+            "get": {
+                "description": "Returns detailed health status of the background processing system including metrics and alerts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Background Processing Health Check",
+                "responses": {
+                    "200": {
+                        "description": "Background processing system health status",
+                        "schema": {
+                            "$ref": "#/definitions/service.HealthStatus"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health/live": {
+            "get": {
+                "description": "Returns liveness status indicating if the application is alive and should not be restarted",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Liveness Check",
+                "responses": {
+                    "200": {
+                        "description": "Application is alive",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health/metrics": {
+            "get": {
+                "description": "Returns detailed system metrics for monitoring and observability",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "System Metrics",
+                "responses": {
+                    "200": {
+                        "description": "System metrics",
+                        "schema": {
+                            "$ref": "#/definitions/service.SystemMetrics"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health/metrics/task/{taskType}": {
+            "get": {
+                "description": "Returns metrics for a specific task type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Task-specific Metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task type to get metrics for",
+                        "name": "taskType",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task metrics",
+                        "schema": {
+                            "$ref": "#/definitions/service.TaskMetrics"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid task type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Task type not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health/ready": {
+            "get": {
+                "description": "Returns readiness status indicating if the application is ready to serve requests",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Readiness Check",
+                "responses": {
+                    "200": {
+                        "description": "Application is ready",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Application is not ready",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1711,6 +4421,12 @@ const docTemplate = `{
                         "description": "Offset",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in name (partial match)",
+                        "name": "q",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1920,6 +4636,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter by roll number",
                         "name": "rollNo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by class IDs (comma-separated)",
+                        "name": "classIds",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in name or email (partial match, name gets priority)",
+                        "name": "q",
                         "in": "query"
                     }
                 ],
@@ -3220,7 +5948,45 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "controller.DetectVariablesRequest": {
+        "ai.CheckOperationStatusRequest": {
+            "type": "object",
+            "required": [
+                "operation_name"
+            ],
+            "properties": {
+                "operation_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.CreateCorpusRequest": {
+            "type": "object",
+            "required": [
+                "corpusName"
+            ],
+            "properties": {
+                "corpusName": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.DeleteCorpusDocumentRequest": {
+            "type": "object",
+            "required": [
+                "corpusName",
+                "fileId"
+            ],
+            "properties": {
+                "corpusName": {
+                    "type": "string"
+                },
+                "fileId": {
+                    "description": "Can be fileId, RAG file ID, or display name",
+                    "type": "string"
+                }
+            }
+        },
+        "ai.DetectVariablesRequest": {
             "type": "object",
             "properties": {
                 "question": {
@@ -3228,7 +5994,7 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.FilterAndRandomizeRequest": {
+        "ai.FilterAndRandomizeRequest": {
             "type": "object",
             "properties": {
                 "question": {
@@ -3239,7 +6005,7 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.GenerateContextRequest": {
+        "ai.GenerateContextRequest": {
             "type": "object",
             "properties": {
                 "keywords": {
@@ -3256,7 +6022,7 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.GenerateMCQVariationsRequest": {
+        "ai.GenerateMCQVariationsRequest": {
             "type": "object",
             "properties": {
                 "answerIndex": {
@@ -3273,7 +6039,7 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.GenerateMSQVariationsRequest": {
+        "ai.GenerateMSQVariationsRequest": {
             "type": "object",
             "properties": {
                 "answerIndices": {
@@ -3293,13 +6059,45 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.SegmentQuestionRequest": {
+        "ai.RAGAgentRequest": {
+            "type": "object",
+            "required": [
+                "corpusName",
+                "message",
+                "role"
+            ],
+            "properties": {
+                "corpusName": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "file": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "ai.SegmentQuestionRequest": {
             "type": "object",
             "properties": {
                 "question": {
                     "type": "string"
                 }
             }
+        },
+        "gin.H": {
+            "type": "object",
+            "additionalProperties": {}
         },
         "model.Assignment": {
             "type": "object",
@@ -3367,11 +6165,63 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AssignmentResult": {
+            "type": "object",
+            "properties": {
+                "assignment_id": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mcq_results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MCQResult"
+                    }
+                },
+                "msq_results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MSQResult"
+                    }
+                },
+                "nat_results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.NATResult"
+                    }
+                },
+                "percentage_score": {
+                    "type": "number"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "subjective_results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.SubjectiveResult"
+                    }
+                },
+                "total_max_points": {
+                    "type": "integer"
+                },
+                "total_points_awarded": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Classroom": {
             "type": "object",
             "required": [
-                "credits",
-                "subject",
+                "name",
                 "teacherIds"
             ],
             "properties": {
@@ -3381,12 +6231,17 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "classroomCode": {
+                    "type": "string"
+                },
+                "classroomSubject": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
                 "credits": {
-                    "type": "integer",
-                    "minimum": 0
+                    "type": "integer"
                 },
                 "id": {
                     "type": "string"
@@ -3394,7 +6249,7 @@ const docTemplate = `{
                 "isActive": {
                     "type": "boolean"
                 },
-                "subject": {
+                "name": {
                     "type": "string"
                 },
                 "tags": {
@@ -3434,6 +6289,81 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "model.MCQResult": {
+            "type": "object",
+            "properties": {
+                "correct_answer": {
+                    "type": "integer"
+                },
+                "is_correct": {
+                    "type": "boolean"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "student_answer": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.MSQResult": {
+            "type": "object",
+            "properties": {
+                "correct_answers": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "is_correct": {
+                    "type": "boolean"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "student_answers": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.NATResult": {
+            "type": "object",
+            "properties": {
+                "correct_answer": {
+                    "description": "can be int or float"
+                },
+                "is_correct": {
+                    "type": "boolean"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "student_answer": {
+                    "description": "can be int or float"
                 }
             }
         },
@@ -3486,8 +6416,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "name",
-                "rollNo"
+                "name"
             ],
             "properties": {
                 "classIds": {
@@ -3515,6 +6444,47 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SubjectiveResult": {
+            "type": "object",
+            "properties": {
+                "assessment_feedback": {
+                    "type": "string"
+                },
+                "criteria_met": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "criteria_missed": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "grading_criteria": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ideal_answer": {
+                    "type": "string"
+                },
+                "max_points": {
+                    "type": "integer"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "question_id": {
+                    "type": "string"
+                },
+                "student_answer": {
                     "type": "string"
                 }
             }
@@ -3572,6 +6542,68 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.Subscription": {
+            "type": "object",
+            "required": [
+                "currency",
+                "lookup_key",
+                "status",
+                "user_id"
+            ],
+            "properties": {
+                "cancel_at": {
+                    "type": "string"
+                },
+                "cancel_at_period_end": {
+                    "type": "boolean"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "current_period_end": {
+                    "type": "string"
+                },
+                "current_period_start": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lookup_key": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.SubscriptionStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SubscriptionStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "scheduled_to_cancel",
+                "cancelled",
+                "inactive"
+            ],
+            "x-enum-varnames": [
+                "StatusActive",
+                "StatusScheduledToCancel",
+                "StatusCancelled",
+                "StatusInactive"
+            ]
         },
         "model.Teacher": {
             "type": "object",
@@ -3648,6 +6680,63 @@ const docTemplate = `{
                 }
             }
         },
+        "model.UsageTracking": {
+            "type": "object",
+            "required": [
+                "user_id"
+            ],
+            "properties": {
+                "created_at": {
+                    "description": "Additional tracking fields",
+                    "type": "string"
+                },
+                "daily_breakdown": {
+                    "description": "Daily breakdown (optional for detailed tracking)",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "period": {
+                    "description": "Format: YYYY-MM for monthly tracking",
+                    "type": "string"
+                },
+                "total_assignment_exports": {
+                    "type": "integer"
+                },
+                "total_ia_uses": {
+                    "description": "AI Agent Usage",
+                    "type": "integer"
+                },
+                "total_lumen_agent_uses": {
+                    "type": "integer"
+                },
+                "total_question_banks": {
+                    "description": "Question Bank and Question Usage",
+                    "type": "integer"
+                },
+                "total_questions": {
+                    "type": "integer"
+                },
+                "total_ra_agent_uses": {
+                    "description": "Research Assistant Agent Uses",
+                    "type": "integer"
+                },
+                "total_recap_classes": {
+                    "description": "Class and Assignment Usage",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Variable": {
             "type": "object",
             "required": [
@@ -3696,11 +6785,12 @@ const docTemplate = `{
         "questions.MCQ": {
             "type": "object",
             "required": [
-                "answerIndex",
                 "bankId",
+                "difficulty",
                 "options",
                 "points",
-                "question"
+                "question",
+                "subject"
             ],
             "properties": {
                 "answerIndex": {
@@ -3711,6 +6801,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "difficulty": {
                     "type": "string"
                 },
                 "id": {
@@ -3733,6 +6826,9 @@ const docTemplate = `{
                 "question": {
                     "type": "string",
                     "minLength": 3
+                },
+                "subject": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -3750,9 +6846,11 @@ const docTemplate = `{
             "required": [
                 "answerIndices",
                 "bankId",
+                "difficulty",
                 "options",
                 "points",
-                "question"
+                "question",
+                "subject"
             ],
             "properties": {
                 "answerIndices": {
@@ -3766,6 +6864,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "difficulty": {
                     "type": "string"
                 },
                 "id": {
@@ -3789,6 +6890,9 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 3
                 },
+                "subject": {
+                    "type": "string"
+                },
                 "updatedAt": {
                     "type": "string"
                 },
@@ -3803,10 +6907,11 @@ const docTemplate = `{
         "questions.NAT": {
             "type": "object",
             "required": [
-                "answer",
                 "bankId",
+                "difficulty",
                 "points",
-                "question"
+                "question",
+                "subject"
             ],
             "properties": {
                 "answer": {
@@ -3816,6 +6921,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "difficulty": {
                     "type": "string"
                 },
                 "id": {
@@ -3832,6 +6940,9 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 3
                 },
+                "subject": {
+                    "type": "string"
+                },
                 "updatedAt": {
                     "type": "string"
                 },
@@ -3847,14 +6958,19 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "bankId",
+                "difficulty",
                 "points",
-                "question"
+                "question",
+                "subject"
             ],
             "properties": {
                 "bankId": {
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "difficulty": {
                     "type": "string"
                 },
                 "gradingCriteria": {
@@ -3879,6 +6995,9 @@ const docTemplate = `{
                 "question": {
                     "type": "string"
                 },
+                "subject": {
+                    "type": "string"
+                },
                 "updatedAt": {
                     "type": "string"
                 },
@@ -3889,6 +7008,274 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "serializer.AssignmentExtended": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Comment"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "dueDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mcqs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/questions.MCQ"
+                    }
+                },
+                "msqs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/questions.MSQ"
+                    }
+                },
+                "nats": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/questions.NAT"
+                    }
+                },
+                "points": {
+                    "type": "integer"
+                },
+                "subjectives": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/questions.Subjective"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.Alert": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "description": "\"warning\", \"error\", \"critical\"",
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"high_error_rate\", \"queue_backup\", \"processing_lag\"",
+                    "type": "string"
+                }
+            }
+        },
+        "service.BulkUsageTrackingRequest": {
+            "type": "object",
+            "required": [
+                "user_id"
+            ],
+            "properties": {
+                "assignment_exports": {
+                    "type": "integer"
+                },
+                "ia_uses": {
+                    "type": "integer"
+                },
+                "lumen_agent_uses": {
+                    "type": "integer"
+                },
+                "question_banks": {
+                    "type": "integer"
+                },
+                "questions": {
+                    "type": "integer"
+                },
+                "ra_agent_uses": {
+                    "type": "integer"
+                },
+                "recap_classes": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.CreateSubscriptionRequest": {
+            "type": "object",
+            "required": [
+                "currency",
+                "lookup_key",
+                "user_id"
+            ],
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "current_period_end": {
+                    "type": "string"
+                },
+                "current_period_start": {
+                    "type": "string"
+                },
+                "lookup_key": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.HealthStatus": {
+            "type": "object",
+            "properties": {
+                "alerts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.Alert"
+                    }
+                },
+                "healthy": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "system_metrics": {
+                    "$ref": "#/definitions/service.SystemMetrics"
+                },
+                "task_metrics": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/service.TaskMetrics"
+                    }
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "uptime": {
+                    "$ref": "#/definitions/time.Duration"
+                }
+            }
+        },
+        "service.SystemMetrics": {
+            "type": "object",
+            "properties": {
+                "active_workers": {
+                    "type": "integer"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "overall_success_rate": {
+                    "type": "number"
+                },
+                "processing_lag": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "queue_depth": {
+                    "type": "integer"
+                },
+                "total_failed": {
+                    "type": "integer"
+                },
+                "total_processed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.TaskMetrics": {
+            "type": "object",
+            "properties": {
+                "average_duration": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "failure_count": {
+                    "type": "integer"
+                },
+                "last_updated": {
+                    "type": "string"
+                },
+                "max_duration": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "min_duration": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "success_count": {
+                    "type": "integer"
+                },
+                "success_rate": {
+                    "type": "number"
+                },
+                "task_type": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.UpdateSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "current_period_end": {
+                    "type": "string"
+                },
+                "current_period_start": {
+                    "type": "string"
+                },
+                "lookup_key": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.SubscriptionStatus"
+                }
+            }
+        },
+        "time.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
         }
     }
 }`

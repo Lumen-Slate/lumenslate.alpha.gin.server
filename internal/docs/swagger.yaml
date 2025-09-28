@@ -1,18 +1,43 @@
 basePath: /
 definitions:
-  controller.DetectVariablesRequest:
+  ai.CheckOperationStatusRequest:
+    properties:
+      operation_name:
+        type: string
+    required:
+    - operation_name
+    type: object
+  ai.CreateCorpusRequest:
+    properties:
+      corpusName:
+        type: string
+    required:
+    - corpusName
+    type: object
+  ai.DeleteCorpusDocumentRequest:
+    properties:
+      corpusName:
+        type: string
+      fileId:
+        description: Can be fileId, RAG file ID, or display name
+        type: string
+    required:
+    - corpusName
+    - fileId
+    type: object
+  ai.DetectVariablesRequest:
     properties:
       question:
         type: string
     type: object
-  controller.FilterAndRandomizeRequest:
+  ai.FilterAndRandomizeRequest:
     properties:
       question:
         type: string
       userPrompt:
         type: string
     type: object
-  controller.GenerateContextRequest:
+  ai.GenerateContextRequest:
     properties:
       keywords:
         items:
@@ -23,7 +48,7 @@ definitions:
       question:
         type: string
     type: object
-  controller.GenerateMCQVariationsRequest:
+  ai.GenerateMCQVariationsRequest:
     properties:
       answerIndex:
         type: integer
@@ -34,7 +59,7 @@ definitions:
       question:
         type: string
     type: object
-  controller.GenerateMSQVariationsRequest:
+  ai.GenerateMSQVariationsRequest:
     properties:
       answerIndices:
         items:
@@ -47,10 +72,32 @@ definitions:
       question:
         type: string
     type: object
-  controller.SegmentQuestionRequest:
+  ai.RAGAgentRequest:
+    properties:
+      corpusName:
+        type: string
+      createdAt:
+        type: string
+      file:
+        type: string
+      message:
+        type: string
+      role:
+        type: string
+      updatedAt:
+        type: string
+    required:
+    - corpusName
+    - message
+    - role
+    type: object
+  ai.SegmentQuestionRequest:
     properties:
       question:
         type: string
+    type: object
+  gin.H:
+    additionalProperties: {}
     type: object
   model.Assignment:
     properties:
@@ -97,16 +144,54 @@ definitions:
     - points
     - title
     type: object
+  model.AssignmentResult:
+    properties:
+      assignment_id:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      mcq_results:
+        items:
+          $ref: '#/definitions/model.MCQResult'
+        type: array
+      msq_results:
+        items:
+          $ref: '#/definitions/model.MSQResult'
+        type: array
+      nat_results:
+        items:
+          $ref: '#/definitions/model.NATResult'
+        type: array
+      percentage_score:
+        type: number
+      student_id:
+        type: string
+      subjective_results:
+        items:
+          $ref: '#/definitions/model.SubjectiveResult'
+        type: array
+      total_max_points:
+        type: integer
+      total_points_awarded:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
   model.Classroom:
     properties:
       assignmentIds:
         items:
           type: string
         type: array
+      classroomCode:
+        type: string
+      classroomSubject:
+        type: string
       createdAt:
         type: string
       credits:
-        minimum: 0
         type: integer
       id:
         type: string
@@ -125,7 +210,6 @@ definitions:
       updatedAt:
         type: string
     required:
-    - credits
     - name
     - teacherIds
     type: object
@@ -143,6 +227,55 @@ definitions:
         type: string
     required:
     - commentBody
+    type: object
+  model.MCQResult:
+    properties:
+      correct_answer:
+        type: integer
+      is_correct:
+        type: boolean
+      max_points:
+        type: integer
+      points_awarded:
+        type: integer
+      question_id:
+        type: string
+      student_answer:
+        type: integer
+    type: object
+  model.MSQResult:
+    properties:
+      correct_answers:
+        items:
+          type: integer
+        type: array
+      is_correct:
+        type: boolean
+      max_points:
+        type: integer
+      points_awarded:
+        type: integer
+      question_id:
+        type: string
+      student_answers:
+        items:
+          type: integer
+        type: array
+    type: object
+  model.NATResult:
+    properties:
+      correct_answer:
+        description: can be int or float
+      is_correct:
+        type: boolean
+      max_points:
+        type: integer
+      points_awarded:
+        type: integer
+      question_id:
+        type: string
+      student_answer:
+        description: can be int or float
     type: object
   model.QuestionBank:
     properties:
@@ -199,7 +332,33 @@ definitions:
     required:
     - email
     - name
-    - rollNo
+    type: object
+  model.SubjectiveResult:
+    properties:
+      assessment_feedback:
+        type: string
+      criteria_met:
+        items:
+          type: string
+        type: array
+      criteria_missed:
+        items:
+          type: string
+        type: array
+      grading_criteria:
+        items:
+          type: string
+        type: array
+      ideal_answer:
+        type: string
+      max_points:
+        type: integer
+      points_awarded:
+        type: integer
+      question_id:
+        type: string
+      student_answer:
+        type: string
     type: object
   model.Submission:
     properties:
@@ -237,6 +396,50 @@ definitions:
     - assignmentId
     - studentId
     type: object
+  model.Subscription:
+    properties:
+      cancel_at:
+        type: string
+      cancel_at_period_end:
+        type: boolean
+      cancelled_at:
+        type: string
+      created_at:
+        type: string
+      currency:
+        type: string
+      current_period_end:
+        type: string
+      current_period_start:
+        type: string
+      id:
+        type: string
+      lookup_key:
+        type: string
+      status:
+        $ref: '#/definitions/model.SubscriptionStatus'
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    required:
+    - currency
+    - lookup_key
+    - status
+    - user_id
+    type: object
+  model.SubscriptionStatus:
+    enum:
+    - active
+    - scheduled_to_cancel
+    - cancelled
+    - inactive
+    type: string
+    x-enum-varnames:
+    - StatusActive
+    - StatusScheduledToCancel
+    - StatusCancelled
+    - StatusInactive
   model.Teacher:
     properties:
       createdAt:
@@ -288,6 +491,46 @@ definitions:
     - title
     - userId
     type: object
+  model.UsageTracking:
+    properties:
+      created_at:
+        description: Additional tracking fields
+        type: string
+      daily_breakdown:
+        additionalProperties:
+          type: integer
+        description: Daily breakdown (optional for detailed tracking)
+        type: object
+      id:
+        type: string
+      period:
+        description: 'Format: YYYY-MM for monthly tracking'
+        type: string
+      total_assignment_exports:
+        type: integer
+      total_ia_uses:
+        description: AI Agent Usage
+        type: integer
+      total_lumen_agent_uses:
+        type: integer
+      total_question_banks:
+        description: Question Bank and Question Usage
+        type: integer
+      total_questions:
+        type: integer
+      total_ra_agent_uses:
+        description: Research Assistant Agent Uses
+        type: integer
+      total_recap_classes:
+        description: Class and Assignment Usage
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    required:
+    - user_id
+    type: object
   model.Variable:
     properties:
       createdAt:
@@ -328,6 +571,8 @@ definitions:
         type: string
       createdAt:
         type: string
+      difficulty:
+        type: string
       id:
         type: string
       isActive:
@@ -343,6 +588,8 @@ definitions:
       question:
         minLength: 3
         type: string
+      subject:
+        type: string
       updatedAt:
         type: string
       variableIds:
@@ -350,11 +597,12 @@ definitions:
           type: string
         type: array
     required:
-    - answerIndex
     - bankId
+    - difficulty
     - options
     - points
     - question
+    - subject
     type: object
   questions.MSQ:
     properties:
@@ -367,6 +615,8 @@ definitions:
         type: string
       createdAt:
         type: string
+      difficulty:
+        type: string
       id:
         type: string
       isActive:
@@ -382,6 +632,8 @@ definitions:
       question:
         minLength: 3
         type: string
+      subject:
+        type: string
       updatedAt:
         type: string
       variableIds:
@@ -391,9 +643,11 @@ definitions:
     required:
     - answerIndices
     - bankId
+    - difficulty
     - options
     - points
     - question
+    - subject
     type: object
   questions.NAT:
     properties:
@@ -402,6 +656,8 @@ definitions:
       bankId:
         type: string
       createdAt:
+        type: string
+      difficulty:
         type: string
       id:
         type: string
@@ -413,6 +669,8 @@ definitions:
       question:
         minLength: 3
         type: string
+      subject:
+        type: string
       updatedAt:
         type: string
       variableIds:
@@ -420,16 +678,19 @@ definitions:
           type: string
         type: array
     required:
-    - answer
     - bankId
+    - difficulty
     - points
     - question
+    - subject
     type: object
   questions.Subjective:
     properties:
       bankId:
         type: string
       createdAt:
+        type: string
+      difficulty:
         type: string
       gradingCriteria:
         items:
@@ -446,6 +707,8 @@ definitions:
         type: integer
       question:
         type: string
+      subject:
+        type: string
       updatedAt:
         type: string
       variableIds:
@@ -454,9 +717,193 @@ definitions:
         type: array
     required:
     - bankId
+    - difficulty
     - points
     - question
+    - subject
     type: object
+  serializer.AssignmentExtended:
+    properties:
+      body:
+        type: string
+      comments:
+        items:
+          $ref: '#/definitions/model.Comment'
+        type: array
+      createdAt:
+        type: string
+      dueDate:
+        type: string
+      id:
+        type: string
+      mcqs:
+        items:
+          $ref: '#/definitions/questions.MCQ'
+        type: array
+      msqs:
+        items:
+          $ref: '#/definitions/questions.MSQ'
+        type: array
+      nats:
+        items:
+          $ref: '#/definitions/questions.NAT'
+        type: array
+      points:
+        type: integer
+      subjectives:
+        items:
+          $ref: '#/definitions/questions.Subjective'
+        type: array
+      title:
+        type: string
+    type: object
+  service.Alert:
+    properties:
+      level:
+        description: '"warning", "error", "critical"'
+        type: string
+      message:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      timestamp:
+        type: string
+      type:
+        description: '"high_error_rate", "queue_backup", "processing_lag"'
+        type: string
+    type: object
+  service.BulkUsageTrackingRequest:
+    properties:
+      assignment_exports:
+        type: integer
+      ia_uses:
+        type: integer
+      lumen_agent_uses:
+        type: integer
+      question_banks:
+        type: integer
+      questions:
+        type: integer
+      ra_agent_uses:
+        type: integer
+      recap_classes:
+        type: integer
+      user_id:
+        type: string
+    required:
+    - user_id
+    type: object
+  service.CreateSubscriptionRequest:
+    properties:
+      currency:
+        type: string
+      current_period_end:
+        type: string
+      current_period_start:
+        type: string
+      lookup_key:
+        type: string
+      user_id:
+        type: string
+    required:
+    - currency
+    - lookup_key
+    - user_id
+    type: object
+  service.HealthStatus:
+    properties:
+      alerts:
+        items:
+          $ref: '#/definitions/service.Alert'
+        type: array
+      healthy:
+        type: boolean
+      status:
+        type: string
+      system_metrics:
+        $ref: '#/definitions/service.SystemMetrics'
+      task_metrics:
+        additionalProperties:
+          $ref: '#/definitions/service.TaskMetrics'
+        type: object
+      timestamp:
+        type: string
+      uptime:
+        $ref: '#/definitions/time.Duration'
+    type: object
+  service.SystemMetrics:
+    properties:
+      active_workers:
+        type: integer
+      last_updated:
+        type: string
+      overall_success_rate:
+        type: number
+      processing_lag:
+        $ref: '#/definitions/time.Duration'
+      queue_depth:
+        type: integer
+      total_failed:
+        type: integer
+      total_processed:
+        type: integer
+    type: object
+  service.TaskMetrics:
+    properties:
+      average_duration:
+        $ref: '#/definitions/time.Duration'
+      failure_count:
+        type: integer
+      last_updated:
+        type: string
+      max_duration:
+        $ref: '#/definitions/time.Duration'
+      min_duration:
+        $ref: '#/definitions/time.Duration'
+      success_count:
+        type: integer
+      success_rate:
+        type: number
+      task_type:
+        type: string
+      total_count:
+        type: integer
+    type: object
+  service.UpdateSubscriptionRequest:
+    properties:
+      currency:
+        type: string
+      current_period_end:
+        type: string
+      current_period_start:
+        type: string
+      lookup_key:
+        type: string
+      status:
+        $ref: '#/definitions/model.SubscriptionStatus'
+    type: object
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
 host: localhost:8080
 info:
   contact: {}
@@ -464,6 +911,67 @@ info:
   title: Lumen Slate API
   version: "1.0"
 paths:
+  /ai/agent:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Process requests using the AI Agent gRPC service with support for
+        file uploads. Handles text processing, analysis, and generation tasks for
+        educational content.
+      parameters:
+      - description: Teacher ID for context and personalization
+        in: formData
+        name: teacherId
+        required: true
+        type: string
+      - description: Role/context for the AI agent processing
+        in: formData
+        name: role
+        required: true
+        type: string
+      - description: Message or prompt for the AI agent
+        in: formData
+        name: message
+        required: true
+        type: string
+      - description: Optional file upload for processing
+        in: formData
+        name: file
+        type: file
+      - description: Type of the uploaded file (if file is provided)
+        in: formData
+        name: fileType
+        type: string
+      - description: Creation timestamp (ISO format)
+        in: formData
+        name: createdAt
+        type: string
+      - description: Update timestamp (ISO format)
+        in: formData
+        name: updatedAt
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: AI agent response with processed data and metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body, missing required fields, or file processing
+            error
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during AI processing
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Process Request with AI Agent
+      tags:
+      - AI Agent
   /ai/detect-variables:
     post:
       consumes:
@@ -475,7 +983,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.DetectVariablesRequest'
+          $ref: '#/definitions/ai.DetectVariablesRequest'
       produces:
       - application/json
       responses:
@@ -497,6 +1005,84 @@ paths:
       summary: Detect variables in a question
       tags:
       - ai
+  /ai/documents/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a document from RAG corpus, Google Cloud Storage, and database
+        using its unique document ID. This is a comprehensive deletion that removes
+        all traces of the document from the system.
+      parameters:
+      - description: Document ID (unique identifier for the document to delete)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document deleted successfully from all systems
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing document ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Document not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during deletion process
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete Document by ID
+      tags:
+      - AI Document Management
+  /ai/documents/view/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Generate a time-limited pre-signed URL to securely view a document
+        stored in Google Cloud Storage. The URL expires after 30 minutes for security
+        purposes.
+      parameters:
+      - description: Document ID (unique identifier for the document)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pre-signed URL generated successfully with document metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing document ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Document not found in database or storage
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during URL generation
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Generate Pre-signed URL for Document Viewing
+      tags:
+      - AI Document Management
   /ai/filter-randomize:
     post:
       consumes:
@@ -508,7 +1094,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.FilterAndRandomizeRequest'
+          $ref: '#/definitions/ai.FilterAndRandomizeRequest'
       produces:
       - application/json
       responses:
@@ -542,7 +1128,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.GenerateContextRequest'
+          $ref: '#/definitions/ai.GenerateContextRequest'
       produces:
       - application/json
       responses:
@@ -575,7 +1161,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.GenerateMCQVariationsRequest'
+          $ref: '#/definitions/ai.GenerateMCQVariationsRequest'
       produces:
       - application/json
       responses:
@@ -608,7 +1194,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.GenerateMSQVariationsRequest'
+          $ref: '#/definitions/ai.GenerateMSQVariationsRequest'
       produces:
       - application/json
       responses:
@@ -630,6 +1216,355 @@ paths:
       summary: Generate MSQ variations
       tags:
       - ai
+  /ai/operations/status:
+    post:
+      consumes:
+      - application/json
+      description: Check the status of a Vertex AI operation (like RAG file import)
+      parameters:
+      - description: Operation status request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.CheckOperationStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operation status retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check Vertex AI Operation Status
+      tags:
+      - AI Operations
+  /ai/rag-agent:
+    post:
+      consumes:
+      - application/json
+      description: Process text input using Retrieval-Augmented Generation (RAG) agent
+        for intelligent knowledge retrieval and response generation. Creates/verifies
+        teacher-specific corpus automatically.
+      parameters:
+      - description: RAG agent request with teacher ID, role, and message
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.RAGAgentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: RAG agent response with message, data, and metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or missing required fields
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal server error during RAG processing
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Process Text with RAG Agent
+      tags:
+      - AI RAG Agent
+  /ai/rag-agent/add-corpus-document:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a document file to Google Cloud Storage and enqueue it for
+        asynchronous processing with Vertex AI RAG corpus. Returns immediately with
+        pending status. Supports PDF, TXT, DOCX, DOC, HTML, and MD file formats.
+      parameters:
+      - description: Name of the RAG corpus to add the document to
+        in: formData
+        name: corpusName
+        required: true
+        type: string
+      - description: 'Document file to upload (supported formats: PDF, TXT, DOCX,
+          DOC, HTML, MD)'
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document uploaded successfully and queued for processing with
+            pending status
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request, unsupported file type, or missing required
+            fields
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during upload or task enqueue process
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Upload Document to RAG Corpus (Async)
+      tags:
+      - AI Document Management
+  /ai/rag-agent/corpus/{corpusName}/documents:
+    get:
+      consumes:
+      - application/json
+      description: List all documents in a specific RAG corpus with cross-verification
+        between database and RAG engine. Returns unified document information including
+        storage status.
+      parameters:
+      - description: Name of the corpus to list documents for
+        in: path
+        name: corpusName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of documents with unified information from database and
+            RAG engine
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing corpus name
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during document retrieval
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List Documents in RAG Corpus
+      tags:
+      - AI RAG Management
+  /ai/rag-agent/create-corpus:
+    post:
+      consumes:
+      - application/json
+      description: Create a new RAG corpus in Vertex AI for document storage and retrieval.
+        If the corpus already exists, returns the existing corpus information.
+      parameters:
+      - description: Corpus creation request containing the corpus name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.CreateCorpusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Corpus created or retrieved successfully with corpus details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or missing corpus name
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during corpus creation
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create RAG Corpus
+      tags:
+      - AI RAG Management
+  /ai/rag-agent/delete-corpus-document:
+    post:
+      consumes:
+      - application/json
+      description: Delete a specific document from a RAG corpus using its file identifier
+        (fileId, RAG file ID, or display name). This operation removes the document
+        from the RAG corpus, Google Cloud Storage, and local database.
+      parameters:
+      - description: Delete corpus document request containing corpus name and file
+          identifier
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.DeleteCorpusDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document deleted successfully with deletion status for each
+            component
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or missing required fields
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Document or corpus not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during deletion process
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete Document from RAG Corpus
+      tags:
+      - AI Document Management
+  /ai/rag-agent/document-status/{fileId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the current processing status of a document by its file
+        ID. Returns status information including processing state, error messages
+        (if any), and last update timestamp.
+      parameters:
+      - description: Document file ID (unique identifier for the document)
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document status retrieved successfully with fileId, status,
+            errorMsg, and updatedAt
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or missing file ID parameter
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Document not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during status retrieval
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Document Processing Status
+      tags:
+      - AI Document Management
+  /ai/rag-agent/list-all-corpora:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve a comprehensive list of all RAG corpora available in the
+        Vertex AI project, including their display names, creation times, and update
+        times.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of all corpora with their metadata and count
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during corpora retrieval from Vertex
+            AI
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List All RAG Corpora
+      tags:
+      - AI RAG Management
+  /ai/rag-agent/list-corpus-content:
+    post:
+      consumes:
+      - application/json
+      description: List all documents/files inside a RAG corpus
+      parameters:
+      - description: Request body with corpus name to list content for
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ai.CreateCorpusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of documents in the corpus with metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body or missing corpus name
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error during content retrieval
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List RAG Corpus Content
+      tags:
+      - AI RAG Management
+  /ai/rag-agent/sync-file-ids:
+    post:
+      consumes:
+      - application/json
+      description: Find and update missing RAG file IDs in the database by matching
+        with actual RAG engine files
+      parameters:
+      - description: Name of the RAG corpus to sync
+        in: query
+        name: corpusName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sync completed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Sync RAG File IDs
+      tags:
+      - AI Document Management
   /ai/segment-question:
     post:
       consumes:
@@ -641,7 +1576,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/controller.SegmentQuestionRequest'
+          $ref: '#/definitions/ai.SegmentQuestionRequest'
       produces:
       - application/json
       responses:
@@ -663,6 +1598,1271 @@ paths:
       summary: Segment a question
       tags:
       - ai
+  /api/assignment-results:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all assignment results with optional filtering
+      parameters:
+      - description: Filter by student ID
+        in: query
+        name: studentId
+        type: string
+      - description: Filter by assignment ID
+        in: query
+        name: assignmentId
+        type: string
+      - description: Limit number of results (default 10)
+        in: query
+        name: limit
+        type: string
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all assignment results
+      tags:
+      - assignment-results
+    post:
+      consumes:
+      - application/json
+      description: Creates a new assignment result
+      parameters:
+      - description: Assignment result data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AssignmentResult'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create assignment result
+      tags:
+      - assignment-results
+  /api/assignment-results/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific assignment result by its ID
+      parameters:
+      - description: Assignment Result ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete assignment result
+      tags:
+      - assignment-results
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific assignment result by its ID
+      parameters:
+      - description: Assignment Result ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get assignment result by ID
+      tags:
+      - assignment-results
+    put:
+      consumes:
+      - application/json
+      description: Updates a specific assignment result by its ID
+      parameters:
+      - description: Assignment Result ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update assignment result
+      tags:
+      - assignment-results
+  /api/report-cards:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all report cards with optional filtering
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: userId
+        type: string
+      - description: Filter by student ID
+        in: query
+        name: studentId
+        type: string
+      - description: Filter by academic term
+        in: query
+        name: academicTerm
+        type: string
+      - description: Limit number of results (default 10)
+        in: query
+        name: limit
+        type: string
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all report cards
+      tags:
+      - report-cards
+  /api/report-cards/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific report card by its ID
+      parameters:
+      - description: Report Card ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete report card
+      tags:
+      - report-cards
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific report card by its ID
+      parameters:
+      - description: Report Card ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get report card by ID
+      tags:
+      - report-cards
+    put:
+      consumes:
+      - application/json
+      description: Updates a specific report card by its ID
+      parameters:
+      - description: Report Card ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update report card
+      tags:
+      - report-cards
+  /api/students/{studentId}/subject-reports:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all subject reports for a specific student
+      parameters:
+      - description: Student ID
+        in: path
+        name: studentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get subject reports by student ID
+      tags:
+      - subject-reports
+  /api/subject-reports:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all subject reports with optional filtering
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: userId
+        type: string
+      - description: Filter by student ID
+        in: query
+        name: studentId
+        type: string
+      - description: Filter by subject
+        in: query
+        name: subject
+        type: string
+      - description: Limit number of results (default 10)
+        in: query
+        name: limit
+        type: string
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all subject reports
+      tags:
+      - subject-reports
+  /api/subject-reports/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific subject report by its ID
+      parameters:
+      - description: Subject Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete subject report
+      tags:
+      - subject-reports
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a specific subject report by its ID
+      parameters:
+      - description: Subject Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get subject report by ID
+      tags:
+      - subject-reports
+    put:
+      consumes:
+      - application/json
+      description: Updates a specific subject report by its ID
+      parameters:
+      - description: Subject Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update data
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update subject report
+      tags:
+      - subject-reports
+  /api/v1/admin/subscriptions/process-expired:
+    post:
+      description: Processes subscriptions that have expired and should be cancelled
+        (admin endpoint)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Processing results
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to process expired subscriptions
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Process expired subscriptions
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions:
+    get:
+      description: Retrieves subscriptions filtered by their status
+      parameters:
+      - description: Subscription status
+        enum:
+        - active
+        - scheduled_to_cancel
+        - cancelled
+        - inactive
+        in: query
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved subscriptions
+          schema:
+            items:
+              $ref: '#/definitions/model.Subscription'
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch subscriptions
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get subscriptions by status
+      tags:
+      - Subscriptions
+    post:
+      consumes:
+      - application/json
+      description: Creates a new subscription for a user
+      parameters:
+      - description: Subscription data
+        in: body
+        name: subscription
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new subscription
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/{id}:
+    delete:
+      description: Immediately cancels an active subscription
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully cancelled subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Cancel subscription immediately
+      tags:
+      - Subscriptions
+    get:
+      description: Retrieves a specific subscription by its ID
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "404":
+          description: Subscription not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get subscription by ID
+      tags:
+      - Subscriptions
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing subscription
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated subscription data
+        in: body
+        name: subscription
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update subscription
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/{id}/reactivate:
+    post:
+      description: Reactivates a subscription that was scheduled for cancellation
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully reactivated subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reactivate subscription
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/{id}/renew:
+    post:
+      consumes:
+      - application/json
+      description: Renews a subscription for the next billing period
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Renewal data with new_period_end
+        in: body
+        name: renewal
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully renewed subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Renew subscription
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/{id}/schedule-cancellation:
+    post:
+      description: Schedules a subscription for cancellation at the end of the current
+        billing period
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully scheduled cancellation
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Schedule subscription cancellation
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/stats:
+    get:
+      description: Returns statistical information about subscriptions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Subscription statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch subscription statistics
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get subscription statistics
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/user/{id}:
+    get:
+      description: Retrieves the active subscription for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved user subscription
+          schema:
+            $ref: '#/definitions/model.Subscription'
+        "404":
+          description: No active subscription found for user
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get active subscription for user
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/user/{id}/all:
+    get:
+      description: Retrieves all subscriptions (active and inactive) for a specific
+        user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved user subscriptions
+          schema:
+            items:
+              $ref: '#/definitions/model.Subscription'
+            type: array
+        "500":
+          description: Failed to fetch user subscriptions
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all subscriptions for user
+      tags:
+      - Subscriptions
+  /api/v1/subscriptions/user/{id}/status:
+    get:
+      description: Checks if a user has an active subscription
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User subscription status
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to check subscription status
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check user subscription status
+      tags:
+      - Subscriptions
+  /api/v1/usage:
+    get:
+      description: Retrieves all usage tracking records with optional filters
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by period
+        in: query
+        name: period
+        type: string
+      - description: Pagination limit (default 10)
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage tracking records
+          schema:
+            items:
+              $ref: '#/definitions/model.UsageTracking'
+            type: array
+        "500":
+          description: Failed to fetch usage tracking records
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all usage tracking records
+      tags:
+      - Usage Tracking
+  /api/v1/usage/summary/{period}:
+    get:
+      description: Retrieves aggregated usage summary for a specific period
+      parameters:
+      - description: Period (e.g., 2023-12)
+        in: path
+        name: period
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage summary for period
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch usage summary
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get usage summary by period
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/aggregated:
+    get:
+      description: Retrieves all-time aggregated usage metrics for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aggregated usage metrics
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch aggregated usage metrics
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get aggregated usage metrics
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/current:
+    get:
+      description: Retrieves current period usage metrics for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Current usage metrics
+          schema:
+            $ref: '#/definitions/model.UsageTracking'
+        "500":
+          description: Failed to fetch usage metrics
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get current usage metrics
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/history:
+    get:
+      description: Retrieves all usage tracking records for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User usage history
+          schema:
+            items:
+              $ref: '#/definitions/model.UsageTracking'
+            type: array
+        "500":
+          description: Failed to fetch usage history
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user usage history
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/increment/question-banks:
+    post:
+      description: Increments question bank usage by 1 or specified count
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Usage count to increment (default 1)
+        in: query
+        name: count
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage incremented successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Increment question bank usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/increment/questions:
+    post:
+      description: Increments question usage by 1 or specified count
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Usage count to increment (default 1)
+        in: query
+        name: count
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage incremented successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Increment question usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/period/{period}:
+    get:
+      description: Retrieves usage tracking for a specific user and period
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Period (e.g., 2023-12)
+        in: path
+        name: period
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage tracking for period
+          schema:
+            $ref: '#/definitions/model.UsageTracking'
+        "404":
+          description: Usage tracking not found for the specified period
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get usage by period
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/reset:
+    post:
+      description: Resets usage counters for a user (creates new tracking record for
+        current period)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage reset successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to reset usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reset user usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/track/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Tracks multiple usage types for a user in a single request
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bulk usage data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/service.BulkUsageTrackingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bulk usage tracked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track bulk usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/track/ia-agent:
+    post:
+      consumes:
+      - application/json
+      description: Tracks Intelligent Agent usage for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Usage count
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage tracked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track IA usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/track/question-banks:
+    post:
+      consumes:
+      - application/json
+      description: Tracks question bank usage for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Usage count
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage tracked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track question bank usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/track/questions:
+    post:
+      consumes:
+      - application/json
+      description: Tracks question usage for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Usage count
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage tracked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track question usage
+      tags:
+      - Usage Tracking
   /assignments:
     get:
       parameters:
@@ -673,6 +2873,10 @@ paths:
       - description: Filter by due date
         in: query
         name: dueDate
+        type: string
+      - description: Search in title or body (partial match)
+        in: query
+        name: q
         type: string
       - description: Pagination limit
         in: query
@@ -739,13 +2943,17 @@ paths:
         name: id
         required: true
         type: string
+      - description: Extended view with populated relations
+        in: query
+        name: extended
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Assignment'
+            $ref: '#/definitions/serializer.AssignmentExtended'
       summary: Get Assignment by ID
       tags:
       - Assignments
@@ -823,6 +3031,22 @@ paths:
         in: query
         name: offset
         type: string
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Filter by teacher ID
+        in: query
+        name: teacherId
+        type: string
+      - description: Filter by tags
+        in: query
+        name: tags
+        type: string
+      - description: Search in name (partial match)
+        in: query
+        name: q
+        type: string
       produces:
       - application/json
       responses:
@@ -833,26 +3057,6 @@ paths:
               $ref: '#/definitions/model.Classroom'
             type: array
       summary: Get All Classrooms
-      tags:
-      - Classrooms
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Classroom JSON
-        in: body
-        name: classroom
-        required: true
-        schema:
-          $ref: '#/definitions/model.Classroom'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/model.Classroom'
-      summary: Create Classroom
       tags:
       - Classrooms
   /classrooms/{id}:
@@ -1073,6 +3277,121 @@ paths:
       summary: Update Comment
       tags:
       - Comments
+  /health:
+    get:
+      description: Returns basic health status of the application
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application is healthy
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Basic Health Check
+      tags:
+      - Health
+  /health/background-processing:
+    get:
+      description: Returns detailed health status of the background processing system
+        including metrics and alerts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Background processing system health status
+          schema:
+            $ref: '#/definitions/service.HealthStatus'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Background Processing Health Check
+      tags:
+      - Health
+  /health/live:
+    get:
+      description: Returns liveness status indicating if the application is alive
+        and should not be restarted
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application is alive
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Liveness Check
+      tags:
+      - Health
+  /health/metrics:
+    get:
+      description: Returns detailed system metrics for monitoring and observability
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: System metrics
+          schema:
+            $ref: '#/definitions/service.SystemMetrics'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: System Metrics
+      tags:
+      - Health
+  /health/metrics/task/{taskType}:
+    get:
+      description: Returns metrics for a specific task type
+      parameters:
+      - description: Task type to get metrics for
+        in: path
+        name: taskType
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Task metrics
+          schema:
+            $ref: '#/definitions/service.TaskMetrics'
+        "400":
+          description: Invalid task type
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Task type not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Task-specific Metrics
+      tags:
+      - Health
+  /health/ready:
+    get:
+      description: Returns readiness status indicating if the application is ready
+        to serve requests
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application is ready
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Application is not ready
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Readiness Check
+      tags:
+      - Health
   /mcqs:
     get:
       parameters:
@@ -1574,6 +3893,10 @@ paths:
         in: query
         name: offset
         type: string
+      - description: Search in name (partial match)
+        in: query
+        name: q
+        type: string
       produces:
       - application/json
       responses:
@@ -1710,6 +4033,14 @@ paths:
       - description: Filter by roll number
         in: query
         name: rollNo
+        type: string
+      - description: Filter by class IDs (comma-separated)
+        in: query
+        name: classIds
+        type: string
+      - description: Search in name or email (partial match, name gets priority)
+        in: query
+        name: q
         type: string
       produces:
       - application/json

@@ -11,7 +11,18 @@ import (
 
 var usageTrackingService = service.NewUsageTrackingService()
 
-// TrackQuestionBankUsage tracks question bank usage for a user
+// TrackQuestionBankUsage godoc
+// @Summary Track question bank usage
+// @Description Tracks question bank usage for a specific user
+// @Tags Usage Tracking
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body map[string]int64 true "Usage count"
+// @Success 200 {object} map[string]interface{} "Usage tracked successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/track/question-banks [post]
 func TrackQuestionBankUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -32,7 +43,18 @@ func TrackQuestionBankUsage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Usage tracked successfully"})
 }
 
-// TrackQuestionUsage tracks question usage for a user
+// TrackQuestionUsage godoc
+// @Summary Track question usage
+// @Description Tracks question usage for a specific user
+// @Tags Usage Tracking
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body map[string]int64 true "Usage count"
+// @Success 200 {object} map[string]interface{} "Usage tracked successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/track/questions [post]
 func TrackQuestionUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -53,7 +75,18 @@ func TrackQuestionUsage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Usage tracked successfully"})
 }
 
-// TrackIAUsage tracks Intelligent Agent usage for a user
+// TrackIAUsage godoc
+// @Summary Track IA usage
+// @Description Tracks Intelligent Agent usage for a specific user
+// @Tags Usage Tracking
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body map[string]int64 true "Usage count"
+// @Success 200 {object} map[string]interface{} "Usage tracked successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/track/ia-agent [post]
 func TrackIAUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -158,7 +191,18 @@ func TrackAssignmentExportUsage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Usage tracked successfully"})
 }
 
-// TrackBulkUsage tracks multiple usage types for a user in a single request
+// TrackBulkUsage godoc
+// @Summary Track bulk usage
+// @Description Tracks multiple usage types for a user in a single request
+// @Tags Usage Tracking
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body service.BulkUsageTrackingRequest true "Bulk usage data"
+// @Success 200 {object} map[string]interface{} "Bulk usage tracked successfully"
+// @Failure 400 {object} map[string]interface{} "Bad request"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/track/bulk [post]
 func TrackBulkUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -183,7 +227,15 @@ func TrackBulkUsage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Bulk usage tracked successfully"})
 }
 
-// GetCurrentUsageMetrics retrieves current usage metrics for a user
+// GetCurrentUsageMetrics godoc
+// @Summary Get current usage metrics
+// @Description Retrieves current period usage metrics for a specific user
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} model.UsageTracking "Current usage metrics"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch usage metrics"
+// @Router /api/v1/usage/user/{id}/current [get]
 func GetCurrentUsageMetrics(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -196,7 +248,15 @@ func GetCurrentUsageMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-// GetAggregatedUsageMetrics retrieves aggregated usage metrics for a user
+// GetAggregatedUsageMetrics godoc
+// @Summary Get aggregated usage metrics
+// @Description Retrieves all-time aggregated usage metrics for a specific user
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{} "Aggregated usage metrics"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch aggregated usage metrics"
+// @Router /api/v1/usage/user/{id}/aggregated [get]
 func GetAggregatedUsageMetrics(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -209,7 +269,16 @@ func GetAggregatedUsageMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, metrics)
 }
 
-// GetUsageTrackingByPeriod retrieves usage tracking for a specific user and period
+// GetUsageTrackingByPeriod godoc
+// @Summary Get usage by period
+// @Description Retrieves usage tracking for a specific user and period
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Param period path string true "Period (e.g., 2023-12)"
+// @Success 200 {object} model.UsageTracking "Usage tracking for period"
+// @Failure 404 {object} map[string]interface{} "Usage tracking not found for the specified period"
+// @Router /api/v1/usage/user/{id}/period/{period} [get]
 func GetUsageTrackingByPeriod(c *gin.Context) {
 	userID := c.Param("id")
 	period := c.Param("period")
@@ -223,7 +292,15 @@ func GetUsageTrackingByPeriod(c *gin.Context) {
 	c.JSON(http.StatusOK, usage)
 }
 
-// GetAllUserUsageHistory retrieves all usage tracking records for a user
+// GetAllUserUsageHistory godoc
+// @Summary Get user usage history
+// @Description Retrieves all usage tracking records for a specific user
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {array} model.UsageTracking "User usage history"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch usage history"
+// @Router /api/v1/usage/user/{id}/history [get]
 func GetAllUserUsageHistory(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -236,7 +313,18 @@ func GetAllUserUsageHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, usageHistory)
 }
 
-// GetAllUsageTracking retrieves all usage tracking records with optional filters
+// GetAllUsageTracking godoc
+// @Summary Get all usage tracking records
+// @Description Retrieves all usage tracking records with optional filters
+// @Tags Usage Tracking
+// @Produce json
+// @Param user_id query string false "Filter by user ID"
+// @Param period query string false "Filter by period"
+// @Param limit query string false "Pagination limit (default 10)"
+// @Param offset query string false "Pagination offset (default 0)"
+// @Success 200 {array} model.UsageTracking "Usage tracking records"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch usage tracking records"
+// @Router /api/v1/usage [get]
 func GetAllUsageTracking(c *gin.Context) {
 	filters := service.UsageTrackingFilters{
 		UserID: c.Query("user_id"),
@@ -254,7 +342,15 @@ func GetAllUsageTracking(c *gin.Context) {
 	c.JSON(http.StatusOK, usageRecords)
 }
 
-// GetUsageSummaryByPeriod retrieves usage summary for a specific period
+// GetUsageSummaryByPeriod godoc
+// @Summary Get usage summary by period
+// @Description Retrieves aggregated usage summary for a specific period
+// @Tags Usage Tracking
+// @Produce json
+// @Param period path string true "Period (e.g., 2023-12)"
+// @Success 200 {object} map[string]interface{} "Usage summary for period"
+// @Failure 500 {object} map[string]interface{} "Failed to fetch usage summary"
+// @Router /api/v1/usage/summary/{period} [get]
 func GetUsageSummaryByPeriod(c *gin.Context) {
 	period := c.Param("period")
 
@@ -267,7 +363,15 @@ func GetUsageSummaryByPeriod(c *gin.Context) {
 	c.JSON(http.StatusOK, summary)
 }
 
-// ResetUserUsage resets usage counters for a user (creates new tracking record for current period)
+// ResetUserUsage godoc
+// @Summary Reset user usage
+// @Description Resets usage counters for a user (creates new tracking record for current period)
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{} "Usage reset successfully"
+// @Failure 500 {object} map[string]interface{} "Failed to reset usage"
+// @Router /api/v1/usage/user/{id}/reset [post]
 func ResetUserUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -285,7 +389,16 @@ func ResetUserUsage(c *gin.Context) {
 
 // Simple tracking endpoints that don't require a JSON body (useful for quick increments)
 
-// IncrementQuestionBankUsage increments question bank usage by 1
+// IncrementQuestionBankUsage godoc
+// @Summary Increment question bank usage
+// @Description Increments question bank usage by 1 or specified count
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Param count query int false "Usage count to increment (default 1)"
+// @Success 200 {object} map[string]interface{} "Usage incremented successfully"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/increment/question-banks [post]
 func IncrementQuestionBankUsage(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -308,7 +421,16 @@ func IncrementQuestionBankUsage(c *gin.Context) {
 	})
 }
 
-// IncrementQuestionUsage increments question usage by 1
+// IncrementQuestionUsage godoc
+// @Summary Increment question usage
+// @Description Increments question usage by 1 or specified count
+// @Tags Usage Tracking
+// @Produce json
+// @Param id path string true "User ID"
+// @Param count query int false "Usage count to increment (default 1)"
+// @Success 200 {object} map[string]interface{} "Usage incremented successfully"
+// @Failure 500 {object} map[string]interface{} "Failed to track usage"
+// @Router /api/v1/usage/user/{id}/increment/questions [post]
 func IncrementQuestionUsage(c *gin.Context) {
 	userID := c.Param("id")
 
