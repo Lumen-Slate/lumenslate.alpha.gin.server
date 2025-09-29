@@ -20,8 +20,8 @@ func InitializeFirebaseAuth() (*FirebaseAuthClient, error) {
 	ctx := context.Background()
 
 	// Try to get service account key path from environment variable
-	serviceAccountPath := os.Getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
-
+	serviceAccountPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	
 	var app *firebase.App
 	var err error
 
@@ -42,9 +42,7 @@ func InitializeFirebaseAuth() (*FirebaseAuthClient, error) {
 			return nil, err
 		}
 		log.Println("Firebase initialized with Application Default Credentials")
-	}
-
-	// Get Auth client
+	}	// Get Auth client
 	authClient, err := app.Auth(ctx)
 	if err != nil {
 		log.Printf("Error getting Firebase Auth client: %v", err)
