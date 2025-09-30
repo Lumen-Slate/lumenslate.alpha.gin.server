@@ -1754,7 +1754,7 @@ const docTemplate = `{
         },
         "/api/v1/admin/usage-limits/initialize-defaults": {
             "post": {
-                "description": "Creates default usage limits for common plans (basic, premium, enterprise). Admin endpoint.",
+                "description": "Creates default usage limits for common plans (free, private_tutor, multi_classroom, enterprise_b2b). Admin endpoint.",
                 "produces": [
                     "application/json"
                 ],
@@ -2340,7 +2340,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "premium",
+                        "example": "private_tutor",
                         "description": "Filter by plan name",
                         "name": "plan_name",
                         "in": "query"
@@ -2454,7 +2454,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "example": "premium",
+                        "example": "private_tutor",
                         "description": "Plan Name",
                         "name": "planName",
                         "in": "query",
@@ -2488,7 +2488,7 @@ const docTemplate = `{
         },
         "/api/v1/usage-limits/plan/{planName}": {
             "get": {
-                "description": "Retrieves usage limits by plan name (basic, premium, enterprise, etc.)",
+                "description": "Retrieves usage limits by plan name (free, private_tutor, multi_classroom, enterprise_b2b)",
                 "produces": [
                     "application/json"
                 ],
@@ -2499,7 +2499,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "premium",
+                        "example": "private_tutor",
                         "description": "Plan Name",
                         "name": "planName",
                         "in": "path",

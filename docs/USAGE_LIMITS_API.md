@@ -36,18 +36,18 @@ Creates new usage limits for a subscription plan.
 **Request Body:**
 ```json
 {
-  "plan_name": "premium",
-  "teachers": 25,
-  "classrooms": "unlimited",
-  "students_per_classroom": 50,
-  "question_banks": "unlimited",
-  "questions": "unlimited",
+  "plan_name": "private_tutor",
+  "teachers": 5,
+  "classrooms": 2,
+  "students_per_classroom": 40,
+  "question_banks": 10,
+  "questions": 500,
   "assignment_exports_per_day": "unlimited",
   "ai": {
-    "independent_agent": 500,
-    "lumen_agent": 300,
-    "rag_agent": 150,
-    "rag_document_uploads": 100
+    "independent_agent": 100,
+    "lumen_agent": 100,
+    "rag_agent": 100,
+    "rag_document_uploads": 15
   }
 }
 ```
@@ -56,18 +56,18 @@ Creates new usage limits for a subscription plan.
 ```json
 {
   "id": "507f1f77bcf86cd799439011",
-  "plan_name": "premium",
-  "teachers": 25,
-  "classrooms": "unlimited",
-  "students_per_classroom": 50,
-  "question_banks": "unlimited",
-  "questions": "unlimited",
+  "plan_name": "private_tutor",
+  "teachers": 5,
+  "classrooms": 2,
+  "students_per_classroom": 40,
+  "question_banks": 10,
+  "questions": 500,
   "assignment_exports_per_day": "unlimited",
   "ai": {
-    "independent_agent": 500,
-    "lumen_agent": 300,
-    "rag_agent": 150,
-    "rag_document_uploads": 100
+    "independent_agent": 100,
+    "lumen_agent": 100,
+    "rag_agent": 100,
+    "rag_document_uploads": 15
   },
   "created_at": "2023-01-01T00:00:00Z",
   "updated_at": "2023-01-01T00:00:00Z",
@@ -85,9 +85,9 @@ Retrieves usage limits by their ID.
 ```json
 {
   "id": "507f1f77bcf86cd799439011",
-  "plan_name": "premium",
-  "teachers": 25,
-  "classrooms": "unlimited",
+  "plan_name": "private_tutor",
+  "teachers": 5,
+  "classrooms": 2,
   // ... other fields
 }
 ```
@@ -98,7 +98,7 @@ Retrieves usage limits by their ID.
 
 Retrieves usage limits by plan name.
 
-**Example:** `GET /api/v1/usage-limits/plan/premium`
+**Example:** `GET /api/v1/usage-limits/plan/private_tutor`
 
 ### 4. Get All Usage Limits
 
@@ -123,18 +123,18 @@ Updates existing usage limits completely.
 **Request Body:**
 ```json
 {
-  "plan_name": "premium-updated",
-  "teachers": 30,
-  "classrooms": "unlimited",
-  "students_per_classroom": 60,
-  "question_banks": "unlimited",
-  "questions": "unlimited",
+  "plan_name": "private_tutor-updated",
+  "teachers": 8,
+  "classrooms": 3,
+  "students_per_classroom": 50,
+  "question_banks": 15,
+  "questions": 750,
   "assignment_exports_per_day": "unlimited",
   "ai": {
-    "independent_agent": 600,
-    "lumen_agent": 400,
-    "rag_agent": 200,
-    "rag_document_uploads": 150
+    "independent_agent": 150,
+    "lumen_agent": 120,
+    "rag_agent": 120,
+    "rag_document_uploads": 20
   }
 }
 ```
@@ -148,9 +148,9 @@ Performs partial updates on usage limits.
 **Request Body:**
 ```json
 {
-  "teachers": 35,
+  "teachers": 6,
   "ai": {
-    "independent_agent": 700
+    "independent_agent": 120
   }
 }
 ```
@@ -198,22 +198,31 @@ Checks if a user's current usage exceeds their plan limits.
 **Response (200 OK):**
 ```json
 {
-  "plan_name": "premium",
+  "plan_name": "private_tutor",
   "limits": {
-    "teachers": 25,
-    "classrooms": "unlimited",
-    // ... all limits
+    "teachers": 5,
+    "classrooms": 2,
+    "students_per_classroom": 40,
+    "question_banks": 10,
+    "questions": 500,
+    "assignment_exports_per_day": "unlimited",
+    "ai": {
+      "independent_agent": 100,
+      "lumen_agent": 100,
+      "rag_agent": 100,
+      "rag_document_uploads": 15
+    }
   },
   "usage": {
-    "teachers_used": 15,
-    "classrooms_used": 45,
-    "question_banks_used": 120,
-    "questions_used": 5000,
+    "teachers_used": 3,
+    "classrooms_used": 2,
+    "question_banks_used": 8,
+    "questions_used": 350,
     "assignment_exports_today": 25,
-    "ai_independent_agent_used": 350,
-    "ai_lumen_agent_used": 200,
-    "ai_rag_agent_used": 100,
-    "ai_rag_documents_uploaded": 75
+    "ai_independent_agent_used": 75,
+    "ai_lumen_agent_used": 80,
+    "ai_rag_agent_used": 60,
+    "ai_rag_documents_uploaded": 12
   },
   "within_limits": true,
   "exceeded_limits": []
@@ -226,7 +235,7 @@ Checks if a user's current usage exceeds their plan limits.
 
 **POST** `/api/v1/admin/usage-limits/initialize-defaults`
 
-Creates default usage limits for common plans (basic, premium, enterprise).
+Creates default usage limits for common plans (free, private_tutor, multi_classroom, enterprise_b2b).
 
 **Response (200 OK):**
 ```json
@@ -237,42 +246,54 @@ Creates default usage limits for common plans (basic, premium, enterprise).
 
 ## Default Plans
 
-The system comes with three pre-configured plans:
+The system comes with four pre-configured plans:
 
-### Basic Plan
+### Free Plan
+- **Teachers:** 1
+- **Classrooms:** 0
+- **Students per Classroom:** 0
+- **Question Banks:** 1
+- **Questions:** 30
+- **Assignment Exports per Day:** 5
+- **AI Independent Agent:** 10 calls
+- **AI Lumen Agent:** 10 calls
+- **AI RAG Agent:** 5 calls
+- **AI RAG Document Uploads:** 1
+
+### Private Tutor Plan
 - **Teachers:** 5
-- **Classrooms:** 10
-- **Students per Classroom:** 30
-- **Question Banks:** 50
-- **Questions:** 1000
-- **Assignment Exports per Day:** 10
-- **AI Independent Agent:** 100 calls
-- **AI Lumen Agent:** 50 calls
-- **AI RAG Agent:** 25 calls
-- **AI RAG Document Uploads:** 10
-
-### Premium Plan
-- **Teachers:** 25
-- **Classrooms:** Unlimited
-- **Students per Classroom:** 50
-- **Question Banks:** Unlimited
-- **Questions:** Unlimited
+- **Classrooms:** 2
+- **Students per Classroom:** 40
+- **Question Banks:** 10
+- **Questions:** 500
 - **Assignment Exports per Day:** Unlimited
-- **AI Independent Agent:** 500 calls
-- **AI Lumen Agent:** 300 calls
-- **AI RAG Agent:** 150 calls
-- **AI RAG Document Uploads:** 100
+- **AI Independent Agent:** 100 calls
+- **AI Lumen Agent:** 100 calls
+- **AI RAG Agent:** 100 calls
+- **AI RAG Document Uploads:** 15
 
-### Enterprise Plan
+### Multi-Classroom Plan
+- **Teachers:** 10
+- **Classrooms:** 5
+- **Students per Classroom:** 60
+- **Question Banks:** 25
+- **Questions:** 1500
+- **Assignment Exports per Day:** Unlimited
+- **AI Independent Agent:** 250 calls
+- **AI Lumen Agent:** 250 calls
+- **AI RAG Agent:** 250 calls
+- **AI RAG Document Uploads:** 50
+
+### Enterprise B2B Plan
 - **Teachers:** Custom
 - **Classrooms:** Unlimited
 - **Students per Classroom:** Custom
 - **Question Banks:** Unlimited
 - **Questions:** Unlimited
 - **Assignment Exports per Day:** Unlimited
-- **AI Independent Agent:** Unlimited
-- **AI Lumen Agent:** Unlimited
-- **AI RAG Agent:** Unlimited
+- **AI Independent Agent:** Custom
+- **AI Lumen Agent:** Custom
+- **AI RAG Agent:** Custom
 - **AI RAG Document Uploads:** Unlimited
 
 ## Error Responses
@@ -313,7 +334,7 @@ Usage limits are designed to work with the subscription system:
 
 ```javascript
 // Fetch usage limits for a plan
-const usageLimits = await fetch('/api/v1/usage-limits/plan/premium');
+const usageLimits = await fetch('/api/v1/usage-limits/plan/private_tutor');
 
 // Check if user can create more classrooms
 if (usageLimits.classrooms !== 'unlimited' && 
@@ -322,7 +343,7 @@ if (usageLimits.classrooms !== 'unlimited' &&
 }
 
 // Check current usage vs limits
-const usageCheck = await fetch(`/api/v1/usage-limits/check/${userId}?planName=premium`);
+const usageCheck = await fetch(`/api/v1/usage-limits/check/${userId}?planName=private_tutor`);
 if (!usageCheck.within_limits) {
     console.log('Exceeded limits:', usageCheck.exceeded_limits);
 }
@@ -383,16 +404,17 @@ The usage limits are stored in MongoDB with the following structure:
 
 Use the provided test files in `/examples/` to test the API:
 
-- `usage_limits_basic.json` - Basic plan example
-- `usage_limits_premium.json` - Premium plan example
-- `usage_limits_enterprise.json` - Enterprise plan example
+- `usage_limits_free.json` - Free plan example
+- `usage_limits_private_tutor.json` - Private tutor plan example
+- `usage_limits_multi_classroom.json` - Multi-classroom plan example
+- `usage_limits_enterprise_b2b.json` - Enterprise B2B plan example
 - `usage_limits_update.json` - Update example
 
 ```bash
 # Create usage limits
 curl -X POST http://localhost:8080/api/v1/usage-limits \
   -H "Content-Type: application/json" \
-  -d @examples/usage_limits_premium.json
+  -d @examples/usage_limits_private_tutor.json
 
 # Get all usage limits
 curl http://localhost:8080/api/v1/usage-limits
