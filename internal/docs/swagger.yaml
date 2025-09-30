@@ -99,6 +99,18 @@ definitions:
   gin.H:
     additionalProperties: {}
     type: object
+  model.AILimits:
+    properties:
+      independent_agent: {}
+      lumen_agent: {}
+      rag_agent: {}
+      rag_document_uploads: {}
+    required:
+    - independent_agent
+    - lumen_agent
+    - rag_agent
+    - rag_document_uploads
+    type: object
   model.Assignment:
     properties:
       body:
@@ -227,6 +239,18 @@ definitions:
         type: string
     required:
     - commentBody
+    type: object
+  model.FeatureUsage:
+    properties:
+      last_reset:
+        type: string
+      limit:
+        description: A value of -1 can represent "unlimited"
+        type: integer
+      unit:
+        $ref: '#/definitions/model.UsageUnit'
+      value:
+        type: integer
     type: object
   model.MCQResult:
     properties:
@@ -491,46 +515,66 @@ definitions:
     - title
     - userId
     type: object
-  model.UsageTracking:
+  model.Usage:
     properties:
       created_at:
-        description: Additional tracking fields
         type: string
-      daily_breakdown:
+      features:
         additionalProperties:
-          type: integer
-        description: Daily breakdown (optional for detailed tracking)
+          $ref: '#/definitions/model.FeatureUsage'
         type: object
       id:
         type: string
-      period:
-        description: 'Format: YYYY-MM for monthly tracking'
+      lookup_key:
         type: string
-      total_assignment_exports:
-        type: integer
-      total_ia_uses:
-        description: AI Agent Usage
-        type: integer
-      total_lumen_agent_uses:
-        type: integer
-      total_question_banks:
-        description: Question Bank and Question Usage
-        type: integer
-      total_questions:
-        type: integer
-      total_ra_agent_uses:
-        description: Research Assistant Agent Uses
-        type: integer
-      total_recap_classes:
-        description: Class and Assignment Usage
-        type: integer
       updated_at:
         type: string
       user_id:
         type: string
     required:
+    - lookup_key
     - user_id
     type: object
+  model.UsageLimits:
+    properties:
+      ai:
+        $ref: '#/definitions/model.AILimits'
+      assignment_exports_per_day: {}
+      classrooms: {}
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      plan_name:
+        type: string
+      question_banks: {}
+      questions: {}
+      students_per_classroom: {}
+      teachers: {}
+      updated_at:
+        type: string
+    required:
+    - ai
+    - assignment_exports_per_day
+    - classrooms
+    - plan_name
+    - question_banks
+    - questions
+    - students_per_classroom
+    - teachers
+    type: object
+  model.UsageUnit:
+    enum:
+    - daily
+    - monthly
+    - absolute
+    type: string
+    x-enum-varnames:
+    - UnitDaily
+    - UnitMonthly
+    - UnitAbsolute
   model.Variable:
     properties:
       createdAt:
@@ -774,21 +818,15 @@ definitions:
         description: '"high_error_rate", "queue_backup", "processing_lag"'
         type: string
     type: object
-  service.BulkUsageTrackingRequest:
+  service.BulkUsageRequest:
     properties:
+      ai_generations:
+        type: integer
       assignment_exports:
-        type: integer
-      ia_uses:
-        type: integer
-      lumen_agent_uses:
         type: integer
       question_banks:
         type: integer
       questions:
-        type: integer
-      ra_agent_uses:
-        type: integer
-      recap_classes:
         type: integer
       user_id:
         type: string
@@ -811,6 +849,28 @@ definitions:
     - currency
     - lookup_key
     - user_id
+    type: object
+  service.CreateUsageLimitsRequest:
+    properties:
+      ai:
+        $ref: '#/definitions/model.AILimits'
+      assignment_exports_per_day: {}
+      classrooms: {}
+      plan_name:
+        type: string
+      question_banks: {}
+      questions: {}
+      students_per_classroom: {}
+      teachers: {}
+    required:
+    - ai
+    - assignment_exports_per_day
+    - classrooms
+    - plan_name
+    - question_banks
+    - questions
+    - students_per_classroom
+    - teachers
     type: object
   service.HealthStatus:
     properties:
@@ -883,6 +943,21 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/model.SubscriptionStatus'
+    type: object
+  service.UpdateUsageLimitsRequest:
+    properties:
+      ai:
+        $ref: '#/definitions/model.AILimits'
+      assignment_exports_per_day: {}
+      classrooms: {}
+      is_active:
+        type: boolean
+      plan_name:
+        type: string
+      question_banks: {}
+      questions: {}
+      students_per_classroom: {}
+      teachers: {}
     type: object
   time.Duration:
     enum:
@@ -2122,6 +2197,26 @@ paths:
       summary: Process expired subscriptions
       tags:
       - Subscriptions
+  /api/v1/admin/usage-limits/initialize-defaults:
+    post:
+      description: Creates default usage limits for common plans (basic, premium,
+        enterprise). Admin endpoint.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Default usage limits initialized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to initialize default usage limits
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Initialize default usage limits
+      tags:
+      - Usage Limits
   /api/v1/subscriptions:
     get:
       description: Retrieves subscriptions filtered by their status
@@ -2457,15 +2552,15 @@ paths:
       - Subscriptions
   /api/v1/usage:
     get:
-      description: Retrieves all usage tracking records with optional filters
+      description: Retrieves all usage records with optional filters
       parameters:
       - description: Filter by user ID
         in: query
         name: user_id
         type: string
-      - description: Filter by period
+      - description: Filter by subscription lookup key
         in: query
-        name: period
+        name: lookup_key
         type: string
       - description: Pagination limit (default 10)
         in: query
@@ -2479,33 +2574,358 @@ paths:
       - application/json
       responses:
         "200":
-          description: Usage tracking records
+          description: Usage records
           schema:
             items:
-              $ref: '#/definitions/model.UsageTracking'
+              $ref: '#/definitions/model.Usage'
             type: array
         "500":
-          description: Failed to fetch usage tracking records
+          description: Failed to fetch usage records
           schema:
             additionalProperties: true
             type: object
-      summary: Get all usage tracking records
+      summary: Get all usage records
       tags:
       - Usage Tracking
-  /api/v1/usage/summary/{period}:
+  /api/v1/usage-limits:
     get:
-      description: Retrieves aggregated usage summary for a specific period
+      description: Retrieves all usage limits with optional filtering by plan name,
+        active status, and pagination
       parameters:
-      - description: Period (e.g., 2023-12)
+      - description: Filter by plan name
+        example: premium
+        in: query
+        name: plan_name
+        type: string
+      - description: Filter by active status
+        example: true
+        in: query
+        name: is_active
+        type: boolean
+      - description: Pagination limit
+        example: "10"
+        in: query
+        name: limit
+        type: string
+      - description: Pagination offset
+        example: "0"
+        in: query
+        name: offset
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved usage limits
+          schema:
+            items:
+              $ref: '#/definitions/model.UsageLimits'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all usage limits
+      tags:
+      - Usage Limits
+    post:
+      consumes:
+      - application/json
+      description: 'Creates new usage limits for a subscription plan. Supports flexible
+        value types: integers, "unlimited", "custom", or -1 for unlimited.'
+      parameters:
+      - description: Usage limits data
+        in: body
+        name: usageLimits
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateUsageLimitsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new usage limits
+      tags:
+      - Usage Limits
+  /api/v1/usage-limits/{id}:
+    delete:
+      description: Deletes usage limits by ID
+      parameters:
+      - description: Usage Limits ID
         in: path
-        name: period
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Successfully deleted usage limits
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete usage limits
+      tags:
+      - Usage Limits
+    get:
+      description: Retrieves usage limits by their ID
+      parameters:
+      - description: Usage Limits ID
+        in: path
+        name: id
         required: true
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Usage summary for period
+          description: Successfully retrieved usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "404":
+          description: Usage limits not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get usage limits by ID
+      tags:
+      - Usage Limits
+    patch:
+      consumes:
+      - application/json
+      description: Performs partial updates on usage limits. Only specified fields
+        will be updated.
+      parameters:
+      - description: Usage Limits ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Patch usage limits
+      tags:
+      - Usage Limits
+    put:
+      consumes:
+      - application/json
+      description: Updates existing usage limits completely. All fields will be replaced
+        with new values.
+      parameters:
+      - description: Usage Limits ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated usage limits data
+        in: body
+        name: usageLimits
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateUsageLimitsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully updated usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update usage limits
+      tags:
+      - Usage Limits
+  /api/v1/usage-limits/{id}/deactivate:
+    post:
+      description: Marks usage limits as inactive instead of deleting
+      parameters:
+      - description: Usage Limits ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Successfully deactivated usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Soft delete usage limits
+      tags:
+      - Usage Limits
+  /api/v1/usage-limits/check/{userId}:
+    get:
+      description: Checks if user's current usage exceeds their plan limits and returns
+        detailed comparison
+      parameters:
+      - description: User ID
+        example: 507f1f77bcf86cd799439013
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Plan Name
+        example: premium
+        in: query
+        name: planName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage comparison results
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check user usage against limits
+      tags:
+      - Usage Limits
+  /api/v1/usage-limits/plan/{planName}:
+    get:
+      description: Retrieves usage limits by plan name (basic, premium, enterprise,
+        etc.)
+      parameters:
+      - description: Plan Name
+        example: premium
+        in: path
+        name: planName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved usage limits
+          schema:
+            $ref: '#/definitions/model.UsageLimits'
+        "404":
+          description: Usage limits not found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get usage limits by plan name
+      tags:
+      - Usage Limits
+  /api/v1/usage-limits/stats:
+    get:
+      description: Returns statistical information about usage limits including total
+        counts and active/inactive breakdown
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage limits statistics
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch statistics
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get usage limits statistics
+      tags:
+      - Usage Limits
+  /api/v1/usage/{id}:
+    delete:
+      description: Deletes a usage record by ID
+      parameters:
+      - description: Usage ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete usage record
+      tags:
+      - Usage Tracking
+  /api/v1/usage/summary:
+    get:
+      description: Retrieves aggregated usage summary for all users
+      parameters:
+      - description: Filter by subscription lookup key
+        in: query
+        name: lookup_key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usage summary
           schema:
             additionalProperties: true
             type: object
@@ -2514,12 +2934,12 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Get usage summary by period
+      summary: Get usage summary
       tags:
       - Usage Tracking
-  /api/v1/usage/user/{id}/aggregated:
+  /api/v1/usage/user/{id}:
     get:
-      description: Retrieves all-time aggregated usage metrics for a specific user
+      description: Retrieves usage tracking for a specific user
       parameters:
       - description: User ID
         in: path
@@ -2530,21 +2950,25 @@ paths:
       - application/json
       responses:
         "200":
-          description: Aggregated usage metrics
+          description: User usage data
+          schema:
+            $ref: '#/definitions/model.Usage'
+        "404":
+          description: Usage not found
           schema:
             additionalProperties: true
             type: object
         "500":
-          description: Failed to fetch aggregated usage metrics
+          description: Failed to fetch usage
           schema:
             additionalProperties: true
             type: object
-      summary: Get aggregated usage metrics
+      summary: Get usage by user
       tags:
       - Usage Tracking
   /api/v1/usage/user/{id}/current:
     get:
-      description: Retrieves current period usage metrics for a specific user
+      description: Retrieves current usage metrics for a specific user
       parameters:
       - description: User ID
         in: path
@@ -2557,39 +2981,13 @@ paths:
         "200":
           description: Current usage metrics
           schema:
-            $ref: '#/definitions/model.UsageTracking'
+            $ref: '#/definitions/model.Usage'
         "500":
           description: Failed to fetch usage metrics
           schema:
             additionalProperties: true
             type: object
       summary: Get current usage metrics
-      tags:
-      - Usage Tracking
-  /api/v1/usage/user/{id}/history:
-    get:
-      description: Retrieves all usage tracking records for a specific user
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User usage history
-          schema:
-            items:
-              $ref: '#/definitions/model.UsageTracking'
-            type: array
-        "500":
-          description: Failed to fetch usage history
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get user usage history
       tags:
       - Usage Tracking
   /api/v1/usage/user/{id}/increment/question-banks:
@@ -2650,39 +3048,9 @@ paths:
       summary: Increment question usage
       tags:
       - Usage Tracking
-  /api/v1/usage/user/{id}/period/{period}:
-    get:
-      description: Retrieves usage tracking for a specific user and period
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Period (e.g., 2023-12)
-        in: path
-        name: period
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Usage tracking for period
-          schema:
-            $ref: '#/definitions/model.UsageTracking'
-        "404":
-          description: Usage tracking not found for the specified period
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get usage by period
-      tags:
-      - Usage Tracking
   /api/v1/usage/user/{id}/reset:
     post:
-      description: Resets usage counters for a user (creates new tracking record for
-        current period)
+      description: Resets usage counters for a user
       parameters:
       - description: User ID
         in: path
@@ -2705,49 +3073,11 @@ paths:
       summary: Reset user usage
       tags:
       - Usage Tracking
-  /api/v1/usage/user/{id}/track/bulk:
+  /api/v1/usage/user/{id}/track/ai-generation:
     post:
       consumes:
       - application/json
-      description: Tracks multiple usage types for a user in a single request
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Bulk usage data
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/service.BulkUsageTrackingRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Bulk usage tracked successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to track usage
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Track bulk usage
-      tags:
-      - Usage Tracking
-  /api/v1/usage/user/{id}/track/ia-agent:
-    post:
-      consumes:
-      - application/json
-      description: Tracks Intelligent Agent usage for a specific user
+      description: Tracks AI-powered feature usage for a specific user
       parameters:
       - description: User ID
         in: path
@@ -2780,7 +3110,45 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Track IA usage
+      summary: Track AI generation usage
+      tags:
+      - Usage Tracking
+  /api/v1/usage/user/{id}/track/bulk:
+    post:
+      consumes:
+      - application/json
+      description: Tracks multiple usage types for a user in a single request
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bulk usage data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/service.BulkUsageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bulk usage tracked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to track usage
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Track bulk usage
       tags:
       - Usage Tracking
   /api/v1/usage/user/{id}/track/question-banks:

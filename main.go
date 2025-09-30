@@ -139,6 +139,9 @@ func registerRoutes(router *gin.RouterGroup, metricsCollector *service.MetricsCo
 	routes.RegisterSubscriptionRoutes(router)
 	routes.RegisterUsageTrackingRoutes(router)
 
+	// Usage Limits management
+	routes.RegisterUsageLimitsRoutes(router)
+
 	questions.RegisterMCQRoutes(router)
 	questions.RegisterMSQRoutes(router)
 	questions.RegisterNATRoutes(router)

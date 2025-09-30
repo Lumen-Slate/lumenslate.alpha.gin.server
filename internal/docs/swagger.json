@@ -1746,6 +1746,34 @@
                 }
             }
         },
+        "/api/v1/admin/usage-limits/initialize-defaults": {
+            "post": {
+                "description": "Creates default usage limits for common plans (basic, premium, enterprise). Admin endpoint.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Initialize default usage limits",
+                "responses": {
+                    "200": {
+                        "description": "Default usage limits initialized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to initialize default usage limits",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/subscriptions": {
             "get": {
                 "description": "Retrieves subscriptions filtered by their status",
@@ -2239,14 +2267,14 @@
         },
         "/api/v1/usage": {
             "get": {
-                "description": "Retrieves all usage tracking records with optional filters",
+                "description": "Retrieves all usage records with optional filters",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Usage Tracking"
                 ],
-                "summary": "Get all usage tracking records",
+                "summary": "Get all usage records",
                 "parameters": [
                     {
                         "type": "string",
@@ -2256,8 +2284,8 @@
                     },
                     {
                         "type": "string",
-                        "description": "Filter by period",
-                        "name": "period",
+                        "description": "Filter by subscription lookup key",
+                        "name": "lookup_key",
                         "in": "query"
                     },
                     {
@@ -2275,16 +2303,16 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Usage tracking records",
+                        "description": "Usage records",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.UsageTracking"
+                                "$ref": "#/definitions/model.Usage"
                             }
                         }
                     },
                     "500": {
-                        "description": "Failed to fetch usage tracking records",
+                        "description": "Failed to fetch usage records",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2293,28 +2321,459 @@
                 }
             }
         },
-        "/api/v1/usage/summary/{period}": {
+        "/api/v1/usage-limits": {
             "get": {
-                "description": "Retrieves aggregated usage summary for a specific period",
+                "description": "Retrieves all usage limits with optional filtering by plan name, active status, and pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Usage Tracking"
+                    "Usage Limits"
                 ],
-                "summary": "Get usage summary by period",
+                "summary": "Get all usage limits",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Period (e.g., 2023-12)",
-                        "name": "period",
+                        "example": "premium",
+                        "description": "Filter by plan name",
+                        "name": "plan_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "10",
+                        "description": "Pagination limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "0",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved usage limits",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.UsageLimits"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates new usage limits for a subscription plan. Supports flexible value types: integers, \"unlimited\", \"custom\", or -1 for unlimited.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Create new usage limits",
+                "parameters": [
+                    {
+                        "description": "Usage limits data",
+                        "name": "usageLimits",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CreateUsageLimitsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successfully created usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage-limits/check/{userId}": {
+            "get": {
+                "description": "Checks if user's current usage exceeds their plan limits and returns detailed comparison",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Check user usage against limits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "507f1f77bcf86cd799439013",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "premium",
+                        "description": "Plan Name",
+                        "name": "planName",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage comparison results",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage-limits/plan/{planName}": {
+            "get": {
+                "description": "Retrieves usage limits by plan name (basic, premium, enterprise, etc.)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Get usage limits by plan name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "premium",
+                        "description": "Plan Name",
+                        "name": "planName",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Usage summary for period",
+                        "description": "Successfully retrieved usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "404": {
+                        "description": "Usage limits not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage-limits/stats": {
+            "get": {
+                "description": "Returns statistical information about usage limits including total counts and active/inactive breakdown",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Get usage limits statistics",
+                "responses": {
+                    "200": {
+                        "description": "Usage limits statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch statistics",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage-limits/{id}": {
+            "get": {
+                "description": "Retrieves usage limits by their ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Get usage limits by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage Limits ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "404": {
+                        "description": "Usage limits not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates existing usage limits completely. All fields will be replaced with new values.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Update usage limits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage Limits ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated usage limits data",
+                        "name": "usageLimits",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UpdateUsageLimitsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully updated usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes usage limits by ID",
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Delete usage limits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage Limits ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully deleted usage limits",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Performs partial updates on usage limits. Only specified fields will be updated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Patch usage limits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage Limits ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "updates",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully updated usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage-limits/{id}/deactivate": {
+            "post": {
+                "description": "Marks usage limits as inactive instead of deleting",
+                "tags": [
+                    "Usage Limits"
+                ],
+                "summary": "Soft delete usage limits",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage Limits ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully deactivated usage limits",
+                        "schema": {
+                            "$ref": "#/definitions/model.UsageLimits"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/summary": {
+            "get": {
+                "description": "Retrieves aggregated usage summary for all users",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Get usage summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by subscription lookup key",
+                        "name": "lookup_key",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage summary",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2330,16 +2789,16 @@
                 }
             }
         },
-        "/api/v1/usage/user/{id}/aggregated": {
+        "/api/v1/usage/user/{id}": {
             "get": {
-                "description": "Retrieves all-time aggregated usage metrics for a specific user",
+                "description": "Retrieves usage tracking for a specific user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Usage Tracking"
                 ],
-                "summary": "Get aggregated usage metrics",
+                "summary": "Get usage by user",
                 "parameters": [
                     {
                         "type": "string",
@@ -2351,14 +2810,20 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Aggregated usage metrics",
+                        "description": "User usage data",
+                        "schema": {
+                            "$ref": "#/definitions/model.Usage"
+                        }
+                    },
+                    "404": {
+                        "description": "Usage not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Failed to fetch aggregated usage metrics",
+                        "description": "Failed to fetch usage",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2369,7 +2834,7 @@
         },
         "/api/v1/usage/user/{id}/current": {
             "get": {
-                "description": "Retrieves current period usage metrics for a specific user",
+                "description": "Retrieves current usage metrics for a specific user",
                 "produces": [
                     "application/json"
                 ],
@@ -2390,50 +2855,11 @@
                     "200": {
                         "description": "Current usage metrics",
                         "schema": {
-                            "$ref": "#/definitions/model.UsageTracking"
+                            "$ref": "#/definitions/model.Usage"
                         }
                     },
                     "500": {
                         "description": "Failed to fetch usage metrics",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/usage/user/{id}/history": {
-            "get": {
-                "description": "Retrieves all usage tracking records for a specific user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Usage Tracking"
-                ],
-                "summary": "Get user usage history",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "User usage history",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.UsageTracking"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch usage history",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2528,52 +2954,9 @@
                 }
             }
         },
-        "/api/v1/usage/user/{id}/period/{period}": {
-            "get": {
-                "description": "Retrieves usage tracking for a specific user and period",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Usage Tracking"
-                ],
-                "summary": "Get usage by period",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Period (e.g., 2023-12)",
-                        "name": "period",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Usage tracking for period",
-                        "schema": {
-                            "$ref": "#/definitions/model.UsageTracking"
-                        }
-                    },
-                    "404": {
-                        "description": "Usage tracking not found for the specified period",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/usage/user/{id}/reset": {
             "post": {
-                "description": "Resets usage counters for a user (creates new tracking record for current period)",
+                "description": "Resets usage counters for a user",
                 "produces": [
                     "application/json"
                 ],
@@ -2600,6 +2983,65 @@
                     },
                     "500": {
                         "description": "Failed to reset usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/user/{id}/track/ai-generation": {
+            "post": {
+                "description": "Tracks AI-powered feature usage for a specific user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Track AI generation usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Usage count",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage tracked successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to track usage",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2635,72 +3077,13 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/service.BulkUsageTrackingRequest"
+                            "$ref": "#/definitions/service.BulkUsageRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Bulk usage tracked successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to track usage",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/usage/user/{id}/track/ia-agent": {
-            "post": {
-                "description": "Tracks Intelligent Agent usage for a specific user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Usage Tracking"
-                ],
-                "summary": "Track IA usage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Usage count",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Usage tracked successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2833,6 +3216,43 @@
                     },
                     "500": {
                         "description": "Failed to track usage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/usage/{id}": {
+            "delete": {
+                "description": "Deletes a usage record by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usage Tracking"
+                ],
+                "summary": "Delete usage record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Usage ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usage deleted successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete usage",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -6093,6 +6513,21 @@
             "type": "object",
             "additionalProperties": {}
         },
+        "model.AILimits": {
+            "type": "object",
+            "required": [
+                "independent_agent",
+                "lumen_agent",
+                "rag_agent",
+                "rag_document_uploads"
+            ],
+            "properties": {
+                "independent_agent": {},
+                "lumen_agent": {},
+                "rag_agent": {},
+                "rag_document_uploads": {}
+            }
+        },
         "model.Assignment": {
             "type": "object",
             "required": [
@@ -6283,6 +6718,24 @@
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "model.FeatureUsage": {
+            "type": "object",
+            "properties": {
+                "last_reset": {
+                    "type": "string"
+                },
+                "limit": {
+                    "description": "A value of -1 can represent \"unlimited\"",
+                    "type": "integer"
+                },
+                "unit": {
+                    "$ref": "#/definitions/model.UsageUnit"
+                },
+                "value": {
+                    "type": "integer"
                 }
             }
         },
@@ -6674,54 +7127,27 @@
                 }
             }
         },
-        "model.UsageTracking": {
+        "model.Usage": {
             "type": "object",
             "required": [
+                "lookup_key",
                 "user_id"
             ],
             "properties": {
                 "created_at": {
-                    "description": "Additional tracking fields",
                     "type": "string"
                 },
-                "daily_breakdown": {
-                    "description": "Daily breakdown (optional for detailed tracking)",
+                "features": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer"
+                        "$ref": "#/definitions/model.FeatureUsage"
                     }
                 },
                 "id": {
                     "type": "string"
                 },
-                "period": {
-                    "description": "Format: YYYY-MM for monthly tracking",
+                "lookup_key": {
                     "type": "string"
-                },
-                "total_assignment_exports": {
-                    "type": "integer"
-                },
-                "total_ia_uses": {
-                    "description": "AI Agent Usage",
-                    "type": "integer"
-                },
-                "total_lumen_agent_uses": {
-                    "type": "integer"
-                },
-                "total_question_banks": {
-                    "description": "Question Bank and Question Usage",
-                    "type": "integer"
-                },
-                "total_questions": {
-                    "type": "integer"
-                },
-                "total_ra_agent_uses": {
-                    "description": "Research Assistant Agent Uses",
-                    "type": "integer"
-                },
-                "total_recap_classes": {
-                    "description": "Class and Assignment Usage",
-                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -6730,6 +7156,58 @@
                     "type": "string"
                 }
             }
+        },
+        "model.UsageLimits": {
+            "type": "object",
+            "required": [
+                "ai",
+                "assignment_exports_per_day",
+                "classrooms",
+                "plan_name",
+                "question_banks",
+                "questions",
+                "students_per_classroom",
+                "teachers"
+            ],
+            "properties": {
+                "ai": {
+                    "$ref": "#/definitions/model.AILimits"
+                },
+                "assignment_exports_per_day": {},
+                "classrooms": {},
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "question_banks": {},
+                "questions": {},
+                "students_per_classroom": {},
+                "teachers": {},
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UsageUnit": {
+            "type": "string",
+            "enum": [
+                "daily",
+                "monthly",
+                "absolute"
+            ],
+            "x-enum-varnames": [
+                "UnitDaily",
+                "UnitMonthly",
+                "UnitAbsolute"
+            ]
         },
         "model.Variable": {
             "type": "object",
@@ -7081,31 +7559,22 @@
                 }
             }
         },
-        "service.BulkUsageTrackingRequest": {
+        "service.BulkUsageRequest": {
             "type": "object",
             "required": [
                 "user_id"
             ],
             "properties": {
+                "ai_generations": {
+                    "type": "integer"
+                },
                 "assignment_exports": {
-                    "type": "integer"
-                },
-                "ia_uses": {
-                    "type": "integer"
-                },
-                "lumen_agent_uses": {
                     "type": "integer"
                 },
                 "question_banks": {
                     "type": "integer"
                 },
                 "questions": {
-                    "type": "integer"
-                },
-                "ra_agent_uses": {
-                    "type": "integer"
-                },
-                "recap_classes": {
                     "type": "integer"
                 },
                 "user_id": {
@@ -7136,6 +7605,33 @@
                 "user_id": {
                     "type": "string"
                 }
+            }
+        },
+        "service.CreateUsageLimitsRequest": {
+            "type": "object",
+            "required": [
+                "ai",
+                "assignment_exports_per_day",
+                "classrooms",
+                "plan_name",
+                "question_banks",
+                "questions",
+                "students_per_classroom",
+                "teachers"
+            ],
+            "properties": {
+                "ai": {
+                    "$ref": "#/definitions/model.AILimits"
+                },
+                "assignment_exports_per_day": {},
+                "classrooms": {},
+                "plan_name": {
+                    "type": "string"
+                },
+                "question_banks": {},
+                "questions": {},
+                "students_per_classroom": {},
+                "teachers": {}
             }
         },
         "service.HealthStatus": {
@@ -7246,6 +7742,26 @@
                 "status": {
                     "$ref": "#/definitions/model.SubscriptionStatus"
                 }
+            }
+        },
+        "service.UpdateUsageLimitsRequest": {
+            "type": "object",
+            "properties": {
+                "ai": {
+                    "$ref": "#/definitions/model.AILimits"
+                },
+                "assignment_exports_per_day": {},
+                "classrooms": {},
+                "is_active": {
+                    "type": "boolean"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "question_banks": {},
+                "questions": {},
+                "students_per_classroom": {},
+                "teachers": {}
             }
         },
         "time.Duration": {
