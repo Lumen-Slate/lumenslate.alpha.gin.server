@@ -91,7 +91,18 @@ func main() {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	router.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Swagger documentation routes
+	router.GET("/docs/*any", func(c *gin.Context) {
+		path := c.Param("any")
+		// Handle redirect cases
+		if path == "" || path == "/" {
+			c.Redirect(http.StatusMovedPermanently, "/docs/index.html")
+			return
+		}
+		// Otherwise, use the normal Swagger handler
+		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+	})
 
 	// Initialize and start Asynq server for background task processing
 	asynqServer := initializeAsynqServer()

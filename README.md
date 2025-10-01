@@ -135,7 +135,9 @@ go run main.go
 
 ### ✅ Swagger UI
 
-Access at: [http://localhost:8080/docs/index.html](http://localhost:8080/docs/index.html)
+Access at: 
+- [http://localhost:8080/docs/](http://localhost:8080/docs/) (redirects to index.html)
+- [http://localhost:8080/docs/index.html](http://localhost:8080/docs/index.html) (direct access)
 
 ### ✅ Postman Collections
 
